@@ -1,0 +1,6 @@
+{
+  "name": "A/L Study Tracker",
+  "description": "A notebook-style study tracker to manage subjects, lessons, daily logs, and automatic spaced-repetition revisits.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

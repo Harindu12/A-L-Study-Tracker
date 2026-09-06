@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@theme {
+  --font-caveat: 'Caveat', cursive;
+  --font-patrick: 'Patrick Hand', sans-serif;
+  --font-architects: 'Architects Daughter', cursive;
+}
+
+:root {
+  --paper: #F6F2E7;
+  --dot: #E1D8BF;
+  --ink: #2E2A24;
+  --ink-soft: #7a7261;
+  --accent: #8B6F9E;
+  --accent-soft: #EAE0F0;
+  --accent-line: #b8a4c9;
+  --ok: #4f7a5c;
+  --warn: #b5652f;
+  --line: #d8cdae;
+}
+
+body {
+  margin: 0;
+  background: #38352e;
+  font-family: var(--font-patrick);
+  color: var(--ink);
+  padding: 24px 14px 80px;
+}
+
+h1 {
+  text-align: center;
+  color: #f1ead8;
+  font-family: var(--font-caveat);
+  font-size: 2.3rem;
+  margin: 0 0 4px;
+}
+
+.sub-title {
+  text-align: center;
+  color: #c9c2ac;
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+}
+
+.card {
+  background: var(--paper);
+  border-radius: 6px;
+  padding: 24px 26px;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+h2.section {
+  font-family: var(--font-caveat);
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1.7rem;
+  border-bottom: 2px solid var(--accent-line);
+  display: inline-block;
+  margin: 0 0 14px;
+  padding-bottom: 2px;
+}
+
+label {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  display: block;
+  margin-bottom: 4px;
+}
+
+input[type="text"], input[type="date"], input[type="month"], input[type="number"], textarea, select {
+  font-family: var(--font-patrick);
+  font-size: 1rem;
+  padding: 6px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  background: #fffdf7;
+  color: var(--ink);
+  width: 100%;
+}
+input[type="text"]:focus, input[type="date"]:focus, input[type="month"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+button.btn {
+  font-family: var(--font-patrick);
+  font-size: 0.95rem;
+  padding: 7px 16px;
+  border-radius: 5px;
+  border: 1.8px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+button.btn:hover {
+  opacity: 0.9;
+}
+button.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.btn.ghost {
+  background: transparent;
+  color: var(--accent);
+}
+button.btn.ghost:hover {
+  background: var(--accent-soft);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+th {
+  font-family: var(--font-caveat);
+  font-size: 1.1rem;
+  color: var(--accent);
+  text-align: left;
+  border-bottom: 2px solid var(--accent-line);
+  padding: 4px 6px;
+}
+td {
+  border-bottom: 1px dotted var(--line);
+  padding: 5px 6px;
+  font-size: 0.95rem;
+}
+
+.tag {
+  font-family: var(--font-architects);
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tag.overdue {
+  background: #f3d9c8;
+  color: var(--warn);
+}
+
+.empty-note {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.progress-track {
+  flex: 1;
+  height: 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 7px;
+  overflow: hidden;
+  background: #fff;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.tracker-cell {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--ink-soft);
+  border-radius: 2px;
+  margin: 0 auto;
+}
+.tracker-cell.on {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+/* Custom Checkbox */
+input[type="checkbox"] {
+  appearance: none;
+  background-color: #fff;
+  margin: 0;
+  font: inherit;
+  color: currentColor;
+  width: 1.15em;
+  height: 1.15em;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em white;
+  background-color: white;
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+input[type="checkbox"]:checked {
+  background-color: var(--ok);
+  border-color: var(--ok);
+}
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
