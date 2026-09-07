@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
+import { CircularProgress } from './ui/CircularProgress';
+import { StatTile } from './ui/StatTile';
+import { BookOpen, Layers } from 'lucide-react';
 
 export const LessonsTab = () => {
   const { subjects, addSubject, lessons, addLesson, updateLesson, markLessonDone } = useStore();
@@ -30,37 +33,55 @@ export const LessonsTab = () => {
     }
   };
 
+  const totalLessons = lessons.length;
+  const completedLessons = lessons.filter(l => l.done).length;
+
   return (
     <div>
+      <div className="flex gap-4 mb-6">
+        <StatTile 
+          icon={BookOpen} 
+          value={completedLessons} 
+          label="Completed Lessons" 
+          iconColor="text-[var(--accent)]" 
+        />
+        <StatTile 
+          icon={Layers} 
+          value={subjects.length} 
+          label="Total Subjects" 
+          iconColor="text-[var(--accent)]" 
+        />
+      </div>
+
       <div className="card">
         <h2 className="section">Progress</h2>
         {subjects.length === 0 ? (
           <div className="empty-note">No subjects yet. Add one below to start tracking.</div>
         ) : (
-          subjects.map(subj => {
-            const subjLessons = lessons.filter(l => l.subjectId === subj.id);
-            const doneCount = subjLessons.filter(l => l.done).length;
-            const target = subj.targetCount || (subjLessons.length > 0 ? subjLessons.length : 1);
-            const pct = Math.min(100, Math.round((doneCount / target) * 100));
+          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+            {subjects.map(subj => {
+              const subjLessons = lessons.filter(l => l.subjectId === subj.id);
+              const doneCount = subjLessons.filter(l => l.done).length;
+              const target = subj.targetCount || (subjLessons.length > 0 ? subjLessons.length : 1);
+              const pct = Math.min(100, Math.round((doneCount / target) * 100));
 
-            return (
-              <div key={subj.id} className="flex items-center gap-2 mb-2.5">
-                <span className="w-[110px] truncate" title={subj.name}>{subj.name}</span>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${pct}%` }}></div>
+              return (
+                <div key={subj.id} className="min-w-[100px] flex-shrink-0">
+                  <CircularProgress 
+                    progress={pct} 
+                    label={subj.name} 
+                    subtitle={`${doneCount} / ${subj.targetCount || (subjLessons.length > 0 ? subjLessons.length : '-')}`}
+                  />
                 </div>
-                <span className="font-architects text-sm w-[70px] text-right">
-                  {doneCount} / {subj.targetCount || (subjLessons.length > 0 ? subjLessons.length : '-')}
-                </span>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
 
       <div className="card">
         <h2 className="section">Manage Subjects</h2>
-        <div className="flex flex-wrap gap-4 items-end mb-4">
+        <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[140px]">
             <label>Subject Name</label>
             <input type="text" value={newSubjName} onChange={e => setNewSubjName(e.target.value)} placeholder="e.g. Physics" />
@@ -69,16 +90,17 @@ export const LessonsTab = () => {
             <label>Target Lessons</label>
             <input type="number" value={newSubjTarget} onChange={e => setNewSubjTarget(e.target.value)} placeholder="63" />
           </div>
-          <div>
-            <button className="btn" onClick={handleAddSubject} disabled={!newSubjName.trim()}>Add Subject</button>
+          <div className="w-full mt-2">
+            <button className="btn w-full" onClick={handleAddSubject} disabled={!newSubjName.trim()}>Add Subject</button>
           </div>
         </div>
       </div>
 
       {subjects.length > 0 && (
         <div className="card">
-          <div className="flex flex-wrap gap-4 items-end mb-4">
-            <div className="max-w-[200px] flex-1">
+          <h2 className="section">Add & Track Lessons</h2>
+          <div className="flex flex-wrap gap-4 items-end mb-6">
+            <div className="max-w-full flex-1">
               <label>Select Subject</label>
               <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)}>
                 <option value="">-- choose subject --</option>
@@ -89,19 +111,17 @@ export const LessonsTab = () => {
 
           {selectedSubjectId && (
             <>
-              <div className="flex flex-wrap gap-2 items-end mb-4">
-                <div className="flex-1 min-w-[200px]">
-                  <input type="text" value={newLessonName} onChange={e => setNewLessonName(e.target.value)} placeholder="Lesson Name" />
-                </div>
+              <div className="flex flex-col gap-3 mb-6">
+                <input type="text" value={newLessonName} onChange={e => setNewLessonName(e.target.value)} placeholder="Lesson Name" />
                 <button className="btn" onClick={handleAddLesson} disabled={!newLessonName.trim()}>Add Lesson</button>
               </div>
 
-              <div className="max-h-[340px] overflow-y-auto border-[1.5px] border-[var(--line)] rounded-[5px] p-2 bg-[#fffdf7]">
+              <div className="max-h-[340px] overflow-y-auto border border-[rgba(216,205,174,0.4)] rounded-xl p-2 bg-[#fffdf7]">
                 {lessons.filter(l => l.subjectId === selectedSubjectId).length === 0 ? (
                   <div className="empty-note text-center p-4">No lessons added for this subject yet.</div>
                 ) : (
                   lessons.filter(l => l.subjectId === selectedSubjectId).map(lesson => (
-                    <div key={lesson.id} className="flex items-center gap-2 py-1 border-b border-dotted border-[var(--line)] last:border-0">
+                    <div key={lesson.id} className="flex items-center gap-3 py-2 border-b border-dashed border-[rgba(216,205,174,0.4)] last:border-0 px-2">
                       <input 
                         type="checkbox" 
                         checked={lesson.done} 
@@ -117,10 +137,10 @@ export const LessonsTab = () => {
                         type="text" 
                         value={lesson.name} 
                         onChange={e => updateLesson(lesson.id, { name: e.target.value })}
-                        className="flex-1 border-none bg-transparent text-[0.95rem] focus:bg-white focus:ring-1 focus:ring-[var(--accent-line)] p-1 rounded"
+                        className="flex-1 border-none bg-transparent text-[0.95rem] focus:bg-white focus:ring-2 focus:ring-[var(--accent-line)] p-1.5 rounded-lg -ml-1.5"
                       />
                       <select 
-                        className="w-[60px] px-1 py-0.5 text-[0.8rem]" 
+                        className="w-[64px] px-2 py-1 text-[0.8rem] rounded-lg" 
                         value={lesson.confidence || ''}
                         onChange={e => updateLesson(lesson.id, { confidence: (e.target.value as any) || null })}
                       >
@@ -129,9 +149,6 @@ export const LessonsTab = () => {
                         <option value="M">M</option>
                         <option value="H">H</option>
                       </select>
-                      <span className="text-[0.75rem] text-[var(--ink-soft)] w-[90px] inline-block text-right">
-                        {lesson.completedDate || ''}
-                      </span>
                     </div>
                   ))
                 )}

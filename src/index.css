@@ -21,12 +21,13 @@
 
 body {
   margin: 0;
-  background: var(--paper);
-  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
-  background-size: 20px 20px;
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--dot) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
   font-family: var(--font-patrick);
   color: var(--ink);
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 h1 {
@@ -45,8 +46,12 @@ h1 {
 }
 
 .card {
-  padding: 16px 14px;
-  margin-bottom: 12px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 32px rgba(139, 111, 158, 0.08);
+  border: 1px solid rgba(139, 111, 158, 0.06);
 }
 
 h2.section {
@@ -54,49 +59,56 @@ h2.section {
   font-weight: 700;
   color: var(--accent);
   font-size: 1.7rem;
-  border-bottom: 2px solid var(--accent-line);
-  display: inline-block;
-  margin: 0 0 14px;
-  padding-bottom: 2px;
+  display: block;
+  margin: 0 0 16px;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 label {
   font-size: 0.95rem;
   color: var(--ink-soft);
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-family: var(--font-sans);
 }
 
 input[type="text"], input[type="date"], input[type="month"], input[type="number"], textarea, select {
-  font-family: var(--font-patrick);
+  font-family: var(--font-sans);
   font-size: 1rem;
-  padding: 6px 8px;
+  padding: 10px 12px;
   border: 1.5px solid var(--line);
-  border-radius: 4px;
+  border-radius: 12px;
   background: #fffdf7;
   color: var(--ink);
   width: 100%;
+  transition: all 0.2s;
 }
 input[type="text"]:focus, input[type="date"]:focus, input[type="month"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 textarea {
   resize: vertical;
-  min-height: 60px;
+  min-height: 80px;
 }
 
 button.btn {
-  font-family: var(--font-patrick);
+  font-family: var(--font-sans);
+  font-weight: 600;
   font-size: 0.95rem;
-  padding: 7px 16px;
-  border-radius: 5px;
+  padding: 10px 20px;
+  border-radius: 12px;
   border: 1.8px solid var(--accent);
   background: var(--accent);
   color: #fff;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
+}
+button.btn:active {
+  transform: scale(0.98);
 }
 button.btn:hover {
   opacity: 0.9;
@@ -116,30 +128,37 @@ button.btn.ghost:hover {
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   margin-bottom: 10px;
 }
 th {
-  font-family: var(--font-caveat);
-  font-size: 1.1rem;
-  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
   text-align: left;
-  border-bottom: 2px solid var(--accent-line);
-  padding: 4px 6px;
+  border-bottom: 1.5px solid var(--line);
+  padding: 8px 6px;
 }
 td {
-  border-bottom: 1px dotted var(--line);
-  padding: 5px 6px;
+  border-bottom: 1px solid rgba(216, 205, 174, 0.4);
+  padding: 12px 6px;
   font-size: 0.95rem;
+  font-family: var(--font-sans);
 }
 
 .tag {
-  font-family: var(--font-architects);
-  font-size: 0.68rem;
-  padding: 2px 7px;
-  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 12px;
   background: var(--accent-soft);
   color: var(--accent);
+  display: inline-flex;
+  align-items: center;
 }
 .tag.overdue {
   background: #f3d9c8;
@@ -148,8 +167,11 @@ td {
 
 .empty-note {
   color: var(--ink-soft);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-style: italic;
+  font-family: var(--font-sans);
+  text-align: center;
+  padding: 24px;
 }
 
 .progress-track {
@@ -167,15 +189,17 @@ td {
 }
 
 .tracker-cell {
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--ink-soft);
-  border-radius: 2px;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
   margin: 0 auto;
+  transition: all 0.2s;
 }
 .tracker-cell.on {
   background: var(--ok);
   border-color: var(--ok);
+  box-shadow: 0 2px 8px rgba(79, 122, 92, 0.3);
 }
 
 /* Custom Checkbox */
@@ -185,18 +209,19 @@ input[type="checkbox"] {
   margin: 0;
   font: inherit;
   color: currentColor;
-  width: 1.15em;
-  height: 1.15em;
+  width: 1.3em;
+  height: 1.3em;
   border: 1.5px solid var(--line);
-  border-radius: 4px;
+  border-radius: 6px;
   display: grid;
   place-content: center;
   cursor: pointer;
+  transition: all 0.2s;
 }
 input[type="checkbox"]::before {
   content: "";
-  width: 0.65em;
-  height: 0.65em;
+  width: 0.7em;
+  height: 0.7em;
   transform: scale(0);
   transition: 120ms transform ease-in-out;
   box-shadow: inset 1em 1em white;
@@ -207,6 +232,7 @@ input[type="checkbox"]::before {
 input[type="checkbox"]:checked {
   background-color: var(--ok);
   border-color: var(--ok);
+  box-shadow: 0 2px 8px rgba(79, 122, 92, 0.3);
 }
 input[type="checkbox"]:checked::before {
   transform: scale(1);

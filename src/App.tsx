@@ -32,21 +32,34 @@ function AppContent() {
     { id: 'lessons', label: 'Lessons', icon: BookOpen }
   ];
 
+  const getGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return 'Good morning';
+    if (hr < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const dateStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  });
+
   return (
-    <div className="max-w-[1100px] mx-auto pt-16 pb-20 px-2">
-      <header className="fixed top-0 left-0 right-0 h-14 bg-[var(--paper)] border-b-[1.5px] border-[var(--line)] flex items-center justify-between px-4 z-50 shadow-sm">
-        <div className="flex flex-col">
-          <h1 className="text-[1.5rem] m-0 leading-tight">A/L Study Tracker</h1>
-          <p className="sub-title text-left mt-[-2px]">Your digital study notebook</p>
+    <div className="max-w-[1100px] mx-auto pt-6 pb-32 px-4">
+      <header className="flex items-center justify-between px-2 mb-6">
+        <div>
+          <p className="text-[var(--ink-soft)] text-sm font-sans font-medium mb-1">{getGreeting()}!</p>
+          <h1 className="text-[2rem] font-caveat text-[var(--ink)] m-0 leading-none">{dateStr}</h1>
         </div>
         <PWAInstallButton />
       </header>
 
-      <div className="mt-2">
+      <div className="mt-4">
         {renderTab()}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-[var(--paper)] border-t-[1.5px] border-[var(--line)] flex justify-between items-center px-1 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed bottom-6 left-6 right-6 h-[72px] bg-white rounded-full flex justify-around items-center px-2 z-50 shadow-[0_16px_40px_rgba(139,111,158,0.15)] border border-[var(--accent-line)]/20 pb-0">
         {navItems.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -54,12 +67,12 @@ function AppContent() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as Tab)}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-                isActive ? 'text-[var(--accent)]' : 'text-[var(--ink-soft)]'
+              className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ease-out ${
+                isActive ? 'bg-[var(--accent-soft)] text-[var(--accent)] scale-105' : 'bg-transparent text-[var(--ink-soft)] hover:bg-[#fffdf7]'
               }`}
             >
-              <Icon size={22} className={isActive ? 'stroke-2' : 'stroke-[1.5]'} />
-              <span className="font-patrick text-[0.75rem] leading-none">{tab.label}</span>
+              <Icon size={isActive ? 24 : 22} className={isActive ? 'stroke-2' : 'stroke-[1.5]'} />
+              {!isActive && <span className="font-sans text-[10px] font-medium leading-none mt-1">{tab.label}</span>}
             </button>
           );
         })}

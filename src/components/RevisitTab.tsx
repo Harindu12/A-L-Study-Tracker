@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
 import { todayStr } from '../utils';
+import { StatTile } from './ui/StatTile';
+import { Calendar, AlertCircle } from 'lucide-react';
 
 export const RevisitTab = () => {
   const { revisits, subjects, lessons, updateRevisit } = useStore();
@@ -11,49 +13,121 @@ export const RevisitTab = () => {
     .filter(r => !r.done)
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const completedRevisits = revisits
+    .filter(r => r.done)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const dueToday = pendingRevisits.filter(r => r.date === today);
+  const overdue = pendingRevisits.filter(r => r.date < today);
+
+  const [activeView, setActiveView] = useState<'pending' | 'completed'>('pending');
+
   return (
-    <div className="card overflow-x-auto">
-      <h2 className="section">All pending revisits</h2>
-      {pendingRevisits.length === 0 ? (
-        <div className="empty-note">
-          No pending revisits yet — mark lessons complete in the Lessons tab or Daily view to generate them.
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-4 mb-2">
+        <StatTile 
+          icon={AlertCircle} 
+          value={overdue.length} 
+          label="Overdue" 
+          iconColor="text-[var(--warn)]"
+          bgColor="bg-[#fffdf7]"
+        />
+        <StatTile 
+          icon={Calendar} 
+          value={dueToday.length} 
+          label="Due Today" 
+          iconColor="text-[var(--accent)]" 
+        />
+      </div>
+
+      <div className="card !mb-0">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="section !mb-0">Revisit List</h2>
+          <div className="flex gap-2">
+            <button 
+              className={`btn ${activeView !== 'pending' ? 'ghost' : ''} !py-1.5 !px-3 !text-xs`}
+              onClick={() => setActiveView('pending')}
+            >
+              Pending
+            </button>
+            <button 
+              className={`btn ${activeView !== 'completed' ? 'ghost' : ''} !py-1.5 !px-3 !text-xs`}
+              onClick={() => setActiveView('completed')}
+            >
+              Completed
+            </button>
+          </div>
         </div>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Due</th>
-              <th>Subject</th>
-              <th>Lesson</th>
-              <th>Type</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingRevisits.map(r => {
-              const overdue = r.date < today;
-              const subject = subjects.find(s => s.id === r.subjectId);
-              const lesson = lessons.find(l => l.id === r.lessonId);
-              
-              return (
-                <tr key={r.id}>
-                  <td>
-                    {r.date} {overdue && <span className="tag overdue ml-2">overdue</span>}
-                  </td>
-                  <td>{subject?.name || 'Unknown Subject'}</td>
-                  <td>{lesson?.name || 'Unknown Lesson'}</td>
-                  <td>{r.type}</td>
-                  <td>
-                    <button className="btn ghost" onClick={() => updateRevisit(r.id, { done: true })}>
-                      Mark done
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+
+        {activeView === 'pending' ? (
+          <div>
+            {pendingRevisits.length === 0 ? (
+              <div className="empty-note">No pending revisits!</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {pendingRevisits.map(r => {
+                  const isOverdue = r.date < today;
+                  const isToday = r.date === today;
+                  const subject = subjects.find(s => s.id === r.subjectId);
+                  const lesson = lessons.find(l => l.id === r.lessonId);
+
+                  return (
+                    <div key={r.id} className="border border-[var(--line)] rounded-xl p-3 bg-[#fffdf7] flex items-start gap-3 transition-colors hover:bg-[var(--paper)]">
+                      <div className="pt-1">
+                        <input type="checkbox" checked={r.done} onChange={(e) => {
+                          updateRevisit(r.id, { done: e.target.checked });
+                        }} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-sans font-bold text-[var(--ink)] leading-tight mb-1">
+                          {subject?.name} — {lesson?.name}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[0.75rem] text-[var(--ink-soft)] font-sans">{r.date}</span>
+                          <span className={`tag ${isOverdue ? 'overdue' : ''}`}>{r.type}</span>
+                          {isOverdue && <span className="text-[0.7rem] text-[var(--warn)] font-sans font-bold uppercase tracking-wider ml-1">Overdue</span>}
+                          {isToday && <span className="text-[0.7rem] text-[var(--accent)] font-sans font-bold uppercase tracking-wider ml-1">Today</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            {completedRevisits.length === 0 ? (
+              <div className="empty-note">No completed revisits yet.</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {completedRevisits.map(r => {
+                  const subject = subjects.find(s => s.id === r.subjectId);
+                  const lesson = lessons.find(l => l.id === r.lessonId);
+                  return (
+                    <div key={r.id} className="border border-[var(--line)] rounded-xl p-3 bg-[#fffdf7] flex items-start gap-3 opacity-70">
+                      <div className="pt-1">
+                        <input type="checkbox" checked={r.done} onChange={(e) => {
+                          updateRevisit(r.id, { done: e.target.checked });
+                        }} />
+                      </div>
+                      <div className="flex-1 line-through">
+                        <div className="font-sans font-bold text-[var(--ink)] leading-tight mb-1">
+                          {subject?.name} — {lesson?.name}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[0.75rem] text-[var(--ink-soft)] font-sans">{r.date}</span>
+                          <span className="tag">{r.type}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
