@@ -17,6 +17,7 @@ interface AppContextType extends AppState {
   markLessonDone: (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => void;
   updateRevisit: (id: string, updates: Partial<Revisit>) => void;
   saveDailyEntry: (date: string, entry: DailyEntry) => void;
+  updateDailyEntry: (date: string, entry: DailyEntry) => void;
   saveWeeklyTest: (test: Omit<WeeklyTest, 'id'>) => void;
 }
 
@@ -275,6 +276,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         markLessonDone,
         updateRevisit,
         saveDailyEntry,
+        updateDailyEntry: saveDailyEntry,
         saveWeeklyTest,
       }}
     >
