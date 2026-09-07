@@ -1,92 +1,75 @@
-import React, { useState } from 'react';
-import { StoreProvider } from './store';
-import { MonthlyTab } from './components/MonthlyTab';
-import { WeeklyTab } from './components/WeeklyTab';
-import { DailyTab } from './components/DailyTab';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, ListTodo, CalendarDays, BarChart2 } from 'lucide-react';
+import { CalendarTab } from './components/CalendarTab';
+import { StatsTab } from './components/StatsTab';
 import { RevisitTab } from './components/RevisitTab';
 import { LessonsTab } from './components/LessonsTab';
-import { PWAInstallButton } from './components/PWAInstallButton';
-import { CalendarDays, Calendar, Sun, ListTodo, BookOpen } from 'lucide-react';
-import { todayStr } from './utils';
+import { useStore } from './store';
 
-type Tab = 'monthly' | 'weekly' | 'daily' | 'revisit' | 'lessons';
+type Tab = 'calendar' | 'stats' | 'revisit' | 'lessons';
 
-function AppContent() {
-  const [activeTab, setActiveTab] = useState<Tab>('daily');
-  const [dailyDate, setDailyDate] = useState<string>(todayStr());
-
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'monthly': return <MonthlyTab onDayClick={(d) => { setDailyDate(d); setActiveTab('daily'); }} />;
-      case 'weekly': return <WeeklyTab />;
-      case 'daily': return <DailyTab date={dailyDate} onDateChange={setDailyDate} />;
-      case 'revisit': return <RevisitTab />;
-      case 'lessons': return <LessonsTab />;
-      default: return null;
-    }
-  };
-
-  const navItems = [
-    { id: 'monthly', label: 'Monthly', icon: CalendarDays },
-    { id: 'weekly', label: 'Weekly', icon: Calendar },
-    { id: 'daily', label: 'Daily', icon: Sun },
-    { id: 'revisit', label: 'Revisits', icon: ListTodo },
-    { id: 'lessons', label: 'Lessons', icon: BookOpen }
-  ];
-
-  const getGreeting = () => {
-    const hr = new Date().getHours();
-    if (hr < 12) return 'Good morning';
-    if (hr < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-
-  const dateStr = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
+function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('calendar');
 
   return (
-    <div className="max-w-[1100px] mx-auto pt-6 pb-32 px-4">
-      <header className="flex items-center justify-between px-2 mb-6">
-        <div>
-          <p className="text-[var(--ink-soft)] text-sm font-sans font-medium mb-1">{getGreeting()}!</p>
-          <h1 className="text-[2rem] font-caveat text-[var(--ink)] m-0 leading-none">{dateStr}</h1>
-        </div>
-        <PWAInstallButton />
-      </header>
+    <div className="min-h-screen bg-[var(--bg)] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] relative">
+      <div className="max-w-md mx-auto min-h-screen relative shadow-2xl bg-[#fffdf7] overflow-hidden flex flex-col">
+        {/* Header */}
+        <header className="pt-10 pb-4 px-6 relative z-10">
+          <div className="flex justify-center items-center">
+            <h1 className="font-caveat text-4xl font-bold text-[var(--accent)] tracking-wide">
+              {activeTab === 'calendar' && 'Calendar'}
+              {activeTab === 'stats' && 'Analytics'}
+              {activeTab === 'revisit' && 'Spaced Repetition'}
+              {activeTab === 'lessons' && 'Curriculum'}
+            </h1>
+          </div>
+        </header>
 
-      <div className="mt-4">
-        {renderTab()}
-      </div>
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto px-4 relative z-10 scrollbar-hide">
+          {activeTab === 'calendar' && <CalendarTab />}
+          {activeTab === 'stats' && <StatsTab />}
+          {activeTab === 'revisit' && <RevisitTab />}
+          {activeTab === 'lessons' && <LessonsTab />}
+        </main>
 
-      <nav className="fixed bottom-6 left-6 right-6 h-[72px] bg-white rounded-full flex justify-around items-center px-2 z-50 shadow-[0_16px_40px_rgba(139,111,158,0.15)] border border-[var(--accent-line)]/20 pb-0">
-        {navItems.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as Tab)}
-              className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ease-out ${
-                isActive ? 'bg-[var(--accent-soft)] text-[var(--accent)] scale-105' : 'bg-transparent text-[var(--ink-soft)] hover:bg-[#fffdf7]'
-              }`}
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-4 left-4 right-4 max-w-[416px] mx-auto bg-white/95 backdrop-blur-md border border-[var(--line)] rounded-[24px] shadow-lg z-50 p-2">
+          <div className="flex justify-between items-center px-2">
+            <button 
+              className={`nav-btn ${activeTab === 'calendar' ? 'active' : ''}`}
+              onClick={() => setActiveTab('calendar')}
             >
-              <Icon size={isActive ? 24 : 22} className={isActive ? 'stroke-2' : 'stroke-[1.5]'} />
-              {!isActive && <span className="font-sans text-[10px] font-medium leading-none mt-1">{tab.label}</span>}
+              <CalendarDays size={24} strokeWidth={2.5} />
+              <span>Calendar</span>
             </button>
-          );
-        })}
-      </nav>
+            <button 
+              className={`nav-btn ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+            >
+              <BarChart2 size={24} strokeWidth={2.5} />
+              <span>Stats</span>
+            </button>
+            <button 
+              className={`nav-btn ${activeTab === 'revisit' ? 'active' : ''}`}
+              onClick={() => setActiveTab('revisit')}
+            >
+              <ListTodo size={24} strokeWidth={2.5} />
+              <span>Revisit</span>
+            </button>
+            <button 
+              className={`nav-btn ${activeTab === 'lessons' ? 'active' : ''}`}
+              onClick={() => setActiveTab('lessons')}
+            >
+              <BookOpen size={24} strokeWidth={2.5} />
+              <span>Lessons</span>
+            </button>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }
 
-export default function App() {
-  return (
-    <StoreProvider>
-      <AppContent />
-    </StoreProvider>
-  );
-}
+export default App;
