@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { mondayOf, addDays, todayStr } from '../utils';
 import { BarChart, BarChartData } from './ui/BarChart';
+import { DateChipStrip } from './ui/DateChipStrip';
 
 export const WeeklyTab = () => {
   const { dailyEntries, subjects, weeklyTests, saveWeeklyTest, revisits } = useStore();
   const [anchorDate, setAnchorDate] = useState(todayStr());
-
+  
   const monday = mondayOf(anchorDate);
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   
@@ -39,16 +40,14 @@ export const WeeklyTab = () => {
   });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="card !mb-0">
-        <div className="flex flex-wrap gap-4 items-end mb-4">
-          <div className="flex-1 min-w-[140px]">
-            <label>Any date in the week</label>
-            <input type="date" value={anchorDate} onChange={e => setAnchorDate(e.target.value)} />
-          </div>
-        </div>
+    <div className="flex flex-col gap-4 pb-24">
+      {/* Date Header matching Day view */}
+      <div className="card !mb-0 !pt-2 border border-[var(--line)] shadow-sm">
+        <DateChipStrip currentDate={anchorDate} onDateSelect={setAnchorDate} />
         
-        <h2 className="section">Week of {monday} → {days[6]}</h2>
+        <div className="mt-4 text-center">
+           <h2 className="font-caveat text-xl text-[var(--ink)]">Week of {monday}</h2>
+        </div>
         
         <div className="mt-6">
           <h3 className="font-sans font-bold text-[var(--ink)] text-sm mb-2">Subjects Studied</h3>
@@ -56,7 +55,7 @@ export const WeeklyTab = () => {
         </div>
       </div>
       
-      <div className="card !mb-0 overflow-x-auto">
+      <div className="card !mb-0 overflow-x-auto border border-[var(--line)] shadow-sm">
         <h2 className="section">Activity Log</h2>
         <div className="min-w-[500px]">
           <table>
@@ -92,7 +91,7 @@ export const WeeklyTab = () => {
         </div>
       </div>
 
-      <div className="card !mb-0 overflow-x-auto">
+      <div className="card !mb-0 overflow-x-auto border border-[var(--line)] shadow-sm">
         <h2 className="section">Habit tracker</h2>
         <div className="min-w-[500px]">
           <table>
@@ -140,7 +139,7 @@ export const WeeklyTab = () => {
         </div>
       </div>
 
-      <div className="card !mb-0">
+      <div className="card !mb-0 border border-[var(--line)] shadow-sm">
         <h2 className="section">Saturday test</h2>
         <div className="flex flex-col gap-4 mt-2">
           <div>
