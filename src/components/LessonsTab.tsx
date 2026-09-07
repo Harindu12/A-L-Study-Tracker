@@ -37,7 +37,7 @@ export const LessonsTab = () => {
   const completedLessons = lessons.filter(l => l.done).length;
 
   return (
-    <div>
+    <div className="pb-6">
       <div className="flex gap-4 mb-6">
         <StatTile 
           icon={BookOpen} 
@@ -58,7 +58,7 @@ export const LessonsTab = () => {
         {subjects.length === 0 ? (
           <div className="empty-note">No subjects yet. Add one below to start tracking.</div>
         ) : (
-          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+          <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start items-start py-2">
             {subjects.map(subj => {
               const subjLessons = lessons.filter(l => l.subjectId === subj.id);
               const doneCount = subjLessons.filter(l => l.done).length;
@@ -66,7 +66,7 @@ export const LessonsTab = () => {
               const pct = Math.min(100, Math.round((doneCount / target) * 100));
 
               return (
-                <div key={subj.id} className="min-w-[100px] flex-shrink-0">
+                <div key={subj.id} className="w-[100px] flex flex-col items-center">
                   <CircularProgress 
                     progress={pct} 
                     label={subj.name} 

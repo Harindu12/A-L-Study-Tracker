@@ -61,16 +61,16 @@ export const StatsTab = () => {
           </div>
         </div>
         
-        <div className="card !mb-0 overflow-x-auto border border-[var(--line)] shadow-sm">
+        <div className="card !mb-0 border border-[var(--line)] shadow-sm">
           <h2 className="section">Activity Log</h2>
-          <div className="min-w-[500px]">
-            <table>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-xs sm:text-sm">
               <thead>
                 <tr>
-                  <th>Day</th>
-                  <th>Subjects logged</th>
-                  <th>Revisits</th>
-                  <th>Teach-back</th>
+                  <th className="w-16 py-2 px-1 text-left">Day</th>
+                  <th className="py-2 px-2 text-left">Subjects logged</th>
+                  <th className="w-14 py-2 px-1 text-center whitespace-nowrap">Revisit</th>
+                  <th className="w-14 py-2 px-1 text-center whitespace-nowrap">Teach</th>
                 </tr>
               </thead>
               <tbody>
@@ -81,14 +81,22 @@ export const StatsTab = () => {
                   
                   return (
                     <tr key={d}>
-                      <td>{new Date(d).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}</td>
-                      <td>
+                      <td className="py-2 px-1 font-medium whitespace-nowrap">
+                        {new Date(d).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="py-2 px-2 text-[var(--ink)]">
                         {subjs.length > 0 
                           ? subjs.map(s => subjects.find(sx => sx.id === s.subjectId)?.name || '?').join(', ')
                           : '—'}
                       </td>
-                      <td>{revCount || '—'}</td>
-                      <td>{rec?.teachback ? '✓' : '—'}</td>
+                      <td className="py-2 px-1 text-center font-medium">
+                        {revCount > 0 ? (
+                          <span className="text-[var(--accent)] font-bold">{revCount}</span>
+                        ) : '—'}
+                      </td>
+                      <td className="py-2 px-1 text-center font-medium">
+                        {rec?.teachback ? <span className="text-[var(--ok)] font-bold">✓</span> : '—'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -333,7 +341,7 @@ export const StatsTab = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-24 h-full">
+    <div className="flex flex-col gap-4 pb-6 h-full">
       <div className="sticky top-0 z-30 pt-3 pb-2 bg-white/95 backdrop-blur-md">
         <div className="flex bg-[var(--paper)] p-1 rounded-xl border border-[var(--line)] shadow-sm max-w-sm mx-auto">
           <button 

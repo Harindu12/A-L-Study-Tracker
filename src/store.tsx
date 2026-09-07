@@ -30,6 +30,88 @@ const defaultState: AppState = {
   weeklyTests: [],
 };
 
+const cleanState = (raw: any): AppState => {
+  if (!raw || typeof raw !== 'object') return defaultState;
+
+  const subjects: Subject[] = Array.isArray(raw.subjects) ? raw.subjects : [];
+  let lessons: Lesson[] = Array.isArray(raw.lessons) ? [...raw.lessons] : [];
+  let revisits: Revisit[] = Array.isArray(raw.revisits) ? [...raw.revisits] : [];
+
+  // Detect and fix corrupted/duplicate lessons (e.g. "uYBonds" alongside "Bonds")
+  const idRemap = new Map<string, string>(); // corruptedId -> canonicalId
+
+  lessons.forEach((lesson) => {
+    const rawName = (lesson.name || '').trim();
+    // Look for another lesson in the same subject whose name is a pure suffix of this lesson
+    const match = lessons.find((other) => {
+      if (other.id === lesson.id || other.subjectId !== lesson.subjectId) return false;
+      const otherName = (other.name || '').trim();
+      return (
+        otherName.length > 0 &&
+        rawName.endsWith(otherName) &&
+        rawName.length > otherName.length &&
+        rawName.length <= otherName.length + 5
+      );
+    });
+
+    if (match) {
+      idRemap.set(lesson.id, match.id);
+    }
+  });
+
+  // Remove exact duplicates and remapped corrupted lessons
+  const seenLessonKeys = new Set<string>();
+  const filteredLessons: Lesson[] = [];
+
+  lessons.forEach((lesson) => {
+    if (idRemap.has(lesson.id)) return;
+    const cleanName = (lesson.name || '').trim();
+    const key = `${lesson.subjectId}::${cleanName.toLowerCase()}`;
+    if (!seenLessonKeys.has(key)) {
+      seenLessonKeys.add(key);
+      filteredLessons.push({ ...lesson, name: cleanName });
+    } else {
+      const canonical = filteredLessons.find(
+        (l) => l.subjectId === lesson.subjectId && l.name.trim().toLowerCase() === cleanName.toLowerCase()
+      );
+      if (canonical) {
+        idRemap.set(lesson.id, canonical.id);
+      }
+    }
+  });
+  lessons = filteredLessons;
+
+  // Remap revisits referencing remapped lessons
+  revisits = revisits.map((r) => ({
+    ...r,
+    lessonId: idRemap.get(r.lessonId) || r.lessonId,
+  }));
+
+  // Filter out revisits for lessons that don't exist or aren't done
+  const validCompletedLessonIds = new Set(lessons.filter((l) => l.done).map((l) => l.id));
+  revisits = revisits.filter((r) => validCompletedLessonIds.has(r.lessonId));
+
+  // Exactly one set of revisit reminders (Day 3, Day 7, Day 30) per completed lesson
+  const seenRevisits = new Set<string>();
+  const dedupedRevisits: Revisit[] = [];
+
+  revisits.forEach((r) => {
+    const key = `${r.lessonId}::${r.type}`;
+    if (!seenRevisits.has(key)) {
+      seenRevisits.add(key);
+      dedupedRevisits.push(r);
+    }
+  });
+
+  return {
+    subjects,
+    lessons,
+    revisits: dedupedRevisits,
+    dailyEntries: raw.dailyEntries && typeof raw.dailyEntries === 'object' ? raw.dailyEntries : {},
+    weeklyTests: Array.isArray(raw.weeklyTests) ? raw.weeklyTests : [],
+  };
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
@@ -40,7 +122,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setState(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setState(cleanState(parsed));
       } catch (e) {
         console.error('Failed to parse state from localStorage', e);
       }
@@ -57,7 +140,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const addSubject = (subject: Omit<Subject, 'id'>) => {
     setState((prev) => ({
       ...prev,
-      subjects: [...prev.subjects, { ...subject, id: Math.random().toString(36).slice(2, 10) }],
+      subjects: [...prev.subjects, { ...subject, name: subject.name.trim(), id: Math.random().toString(36).slice(2, 10) }],
     }));
   };
 
@@ -68,6 +151,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         ...prev.lessons,
         {
           ...lesson,
+          name: lesson.name.trim(),
           id: Math.random().toString(36).slice(2, 10),
           done: false,
           confidence: null,
@@ -78,16 +162,31 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateLesson = (id: string, updates: Partial<Lesson>) => {
-    setState((prev) => ({
-      ...prev,
-      lessons: prev.lessons.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-    }));
+    setState((prev) => {
+      const cleanUpdates = { ...updates };
+      if (typeof cleanUpdates.name === 'string') {
+        cleanUpdates.name = cleanUpdates.name.trim();
+      }
+      let revisits = prev.revisits;
+      if (cleanUpdates.done === false) {
+        // Remove revisits when lesson is unmarked
+        revisits = prev.revisits.filter((r) => r.lessonId !== id);
+      }
+      return {
+        ...prev,
+        lessons: prev.lessons.map((l) => (l.id === id ? { ...l, ...cleanUpdates } : l)),
+        revisits,
+      };
+    });
   };
 
   const markLessonDone = (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => {
     setState((prev) => {
       const lesson = prev.lessons.find((l) => l.id === id);
-      if (!lesson || lesson.done) return prev;
+      if (!lesson) return prev;
+
+      // Remove any existing revisits for this lesson to ensure strictly one set
+      const cleanRevisits = prev.revisits.filter((r) => r.lessonId !== id);
 
       const newRevisits: Revisit[] = [
         {
@@ -121,7 +220,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         lessons: prev.lessons.map((l) =>
           l.id === id ? { ...l, done: true, confidence, completedDate: date } : l
         ),
-        revisits: [...prev.revisits, ...newRevisits],
+        revisits: [...cleanRevisits, ...newRevisits],
       };
     });
   };

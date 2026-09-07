@@ -14,21 +14,22 @@ function App() {
   return (
     <div className="min-h-screen bg-[var(--bg)] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] relative">
       <div className="max-w-md mx-auto min-h-screen relative shadow-2xl bg-[#fffdf7] overflow-hidden flex flex-col">
-        {/* Header */}
-        <header className="pt-10 pb-4 px-6 relative z-10">
-          <div className="flex justify-center items-center">
-            <h1 className="font-caveat text-4xl font-bold text-[var(--accent)] tracking-wide">
-              {activeTab === 'calendar' && 'Calendar'}
-              {activeTab === 'stats' && 'Analytics'}
-              {activeTab === 'revisit' && 'Spaced Repetition'}
-              {activeTab === 'lessons' && 'Curriculum'}
-            </h1>
-          </div>
-        </header>
+        {/* Header - only for other tabs; CalendarTab renders the reference header */}
+        {activeTab !== 'calendar' && (
+          <header className="pt-10 pb-4 px-6 relative z-10">
+            <div className="flex justify-center items-center">
+              <h1 className="font-caveat text-4xl font-bold text-[var(--accent)] tracking-wide">
+                {activeTab === 'stats' && 'Analytics'}
+                {activeTab === 'revisit' && 'Spaced Repetition'}
+                {activeTab === 'lessons' && 'Curriculum'}
+              </h1>
+            </div>
+          </header>
+        )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto px-4 relative z-10 scrollbar-hide">
-          {activeTab === 'calendar' && <CalendarTab />}
+        <main className={`flex-1 overflow-y-auto px-4 pb-32 relative z-10 scrollbar-hide ${activeTab === 'calendar' ? 'pt-6' : ''}`}>
+          {activeTab === 'calendar' && <CalendarTab onNavigateToRevisit={() => setActiveTab('revisit')} />}
           {activeTab === 'stats' && <StatsTab />}
           {activeTab === 'revisit' && <RevisitTab />}
           {activeTab === 'lessons' && <LessonsTab />}

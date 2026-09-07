@@ -32,7 +32,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({ progress, la
         </div>
       </div>
       <div className="text-center">
-        <div className="text-[0.95rem] font-bold text-[var(--ink)] font-sans leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">{label}</div>
+        <div className="text-[0.85rem] font-bold text-[var(--ink)] font-sans leading-tight text-center break-words max-w-[100px]">{label}</div>
         {subtitle && <div className="text-[0.75rem] text-[var(--ink-soft)] font-sans mt-0.5">{subtitle}</div>}
       </div>
     </div>

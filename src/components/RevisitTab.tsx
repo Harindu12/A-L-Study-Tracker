@@ -10,11 +10,11 @@ export const RevisitTab = () => {
   const today = todayStr();
   
   const pendingRevisits = revisits
-    .filter(r => !r.done)
+    .filter(r => !r.done && lessons.some(l => l.id === r.lessonId))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const completedRevisits = revisits
-    .filter(r => r.done)
+    .filter(r => r.done && lessons.some(l => l.id === r.lessonId))
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const dueToday = pendingRevisits.filter(r => r.date === today);
@@ -23,7 +23,7 @@ export const RevisitTab = () => {
   const [activeView, setActiveView] = useState<'pending' | 'completed'>('pending');
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-6">
       <div className="flex gap-4 mb-2">
         <StatTile 
           icon={AlertCircle} 
