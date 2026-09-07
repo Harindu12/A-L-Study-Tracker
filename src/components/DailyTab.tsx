@@ -15,22 +15,26 @@ const createBlankDaily = (date: string): DailyEntry => ({
   notes: ''
 });
 
-export const DailyTab = () => {
+interface DailyTabProps {
+  date: string;
+  onDateChange: (d: string) => void;
+}
+
+export const DailyTab: React.FC<DailyTabProps> = ({ date, onDateChange }) => {
   const { dailyEntries, saveDailyEntry, subjects, lessons, revisits, updateRevisit } = useStore();
-  const [currentDate, setCurrentDate] = useState(todayStr());
-  const [entry, setEntry] = useState<DailyEntry>(createBlankDaily(currentDate));
+  const [entry, setEntry] = useState<DailyEntry>(createBlankDaily(date));
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    setEntry(dailyEntries[currentDate] || createBlankDaily(currentDate));
-  }, [currentDate, dailyEntries]);
+    setEntry(dailyEntries[date] || createBlankDaily(date));
+  }, [date, dailyEntries]);
 
   const updateEntry = (updates: Partial<DailyEntry>) => {
     setEntry(prev => ({ ...prev, ...updates }));
   };
 
   const handleSave = () => {
-    saveDailyEntry(currentDate, entry);
+    saveDailyEntry(date, entry);
     setSaveMsg('Saved ✓');
     setTimeout(() => setSaveMsg(''), 2000);
   };
@@ -50,7 +54,7 @@ export const DailyTab = () => {
     });
   };
 
-  const dueRevisits = revisits.filter(r => r.date === currentDate);
+  const dueRevisits = revisits.filter(r => r.date === date);
 
   return (
     <div className="flex flex-col gap-4">
@@ -58,7 +62,7 @@ export const DailyTab = () => {
         <div className="flex flex-wrap gap-4 items-end mb-2">
           <div className="flex-1 min-w-[140px]">
             <label>Date</label>
-            <input type="date" value={currentDate} onChange={e => setCurrentDate(e.target.value)} />
+            <input type="date" value={date} onChange={e => onDateChange(e.target.value)} />
           </div>
           <div className="flex-1 min-w-[140px]">
             <label>Woke up</label>
@@ -69,7 +73,7 @@ export const DailyTab = () => {
             <input type="text" value={entry.sleepTime} onChange={e => updateEntry({ sleepTime: e.target.value })} placeholder="11:20 pm" />
           </div>
           <div className="w-full mt-2">
-            <button className="btn w-full" onClick={() => setEntry(dailyEntries[currentDate] || createBlankDaily(currentDate))}>Load date</button>
+            <button className="btn w-full" onClick={() => setEntry(dailyEntries[date] || createBlankDaily(date))}>Load date</button>
           </div>
         </div>
       </div>

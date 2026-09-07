@@ -1,182 +1,117 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
-import { todayStr, mondayOf } from '../utils';
-import { BarChart, BarChartData } from './ui/BarChart';
-import { CircularProgress } from './ui/CircularProgress';
+import { todayStr } from '../utils';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const MonthlyTab = () => {
-  const { subjects, lessons, dailyEntries, weeklyTests, revisits } = useStore();
-  const [monthStr, setMonthStr] = useState(todayStr().slice(0, 7)); // YYYY-MM
+interface MonthlyTabProps {
+  onDayClick: (date: string) => void;
+}
 
-  const year = parseInt(monthStr.slice(0, 4), 10);
-  const month = parseInt(monthStr.slice(5, 7), 10);
-  const daysInMonth = new Date(year, month, 0).getDate();
+export const MonthlyTab: React.FC<MonthlyTabProps> = ({ onDayClick }) => {
+  const { dailyEntries, subjects, revisits } = useStore();
   
-  const totalDone: Record<string, number> = {};
-  const completedThisMonth: Record<string, number> = {};
-  
-  subjects.forEach(s => {
-    totalDone[s.id] = 0;
-    completedThisMonth[s.id] = 0;
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
-  lessons.forEach(l => {
-    if (l.done) {
-      if (totalDone[l.subjectId] !== undefined) totalDone[l.subjectId]++;
-      if (l.completedDate && l.completedDate.startsWith(monthStr)) {
-        if (completedThisMonth[l.subjectId] !== undefined) completedThisMonth[l.subjectId]++;
-      }
-    }
-  });
-
-  const mondays = new Set<string>();
-  for (let i = 1; i <= daysInMonth; i++) {
-    const d = `${monthStr}-${String(i).padStart(2, '0')}`;
-    mondays.add(mondayOf(d));
-  }
+  const prevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
   
-  const testResults = Array.from(mondays).map(m => {
-    return weeklyTests.find(t => t.weekStartDate === m);
-  }).filter(Boolean);
-
-  const getRevisitsDoneOnDate = (date: string) => {
-    return revisits.filter(r => r.date === date && r.done).length;
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const chartData: BarChartData[] = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = `${monthStr}-${String(i + 1).padStart(2, '0')}`;
-    const rec = dailyEntries[d];
-    return {
-      label: String(i + 1),
-      value: rec ? rec.subjects.filter(s => s.studied || s.pastPaper).length : 0
-    };
-  });
+  const monthLabel = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Calendar Logic
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startingDay = firstDay.getDay(); // 0 is Sunday
+  
+  const days = [];
+  
+  // Pad previous month
+  for (let i = startingDay - 1; i >= 0; i--) {
+    days.push({ date: new Date(year, month, -i), isCurrentMonth: false });
+  }
+  
+  // Current month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push({ date: new Date(year, month, i), isCurrentMonth: true });
+  }
+  
+  // Pad next month
+  const remaining = 42 - days.length;
+  for (let i = 1; i <= remaining; i++) {
+    days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false });
+  }
+
+  const toDateString = (d: Date) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="card !mb-0">
-        <div className="flex flex-wrap gap-4 items-end mb-4">
-          <div className="w-[200px]">
-            <label>Month</label>
-            <input type="month" value={monthStr} onChange={e => setMonthStr(e.target.value)} />
+    <div className="card">
+      <div className="flex justify-between items-center mb-6 px-2 pt-2">
+        <button onClick={prevMonth} className="p-2 text-[var(--ink-soft)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-full transition-colors">
+          <ChevronLeft size={26} strokeWidth={2.5} />
+        </button>
+        <h2 className="font-caveat text-3xl font-bold text-[var(--accent)] m-0">{monthLabel}</h2>
+        <button onClick={nextMonth} className="p-2 text-[var(--ink-soft)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-full transition-colors">
+          <ChevronRight size={26} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 md:gap-2">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} className="text-center text-[0.65rem] md:text-xs font-sans font-bold text-[var(--ink-soft)] uppercase pb-2">
+            {d}
           </div>
-        </div>
+        ))}
+        
+        {days.map((dayObj, i) => {
+          const dateStr = toDateString(dayObj.date);
+          const isToday = dateStr === todayStr();
+          const entry = dailyEntries[dateStr];
+          
+          const studied = entry ? entry.subjects.filter(s => s.studied || s.pastPaper).map(s => {
+            const sub = subjects.find(x => x.id === s.subjectId);
+            return sub ? sub.name.substring(0, 2).toUpperCase() : '?';
+          }) : [];
+          
+          const hasRevisit = revisits.some(r => r.date === dateStr && !r.done);
+          
+          return (
+            <div 
+              key={i} 
+              onClick={() => onDayClick(dateStr)}
+              className={`min-h-[64px] md:min-h-[76px] p-1 rounded-[14px] flex flex-col items-center relative cursor-pointer transition-all active:scale-95
+                ${!dayObj.isCurrentMonth ? 'opacity-40 bg-transparent' : 'bg-[#fffdf7] border border-[var(--line)] shadow-sm hover:border-[var(--accent)] hover:shadow-md'}
+                ${isToday ? 'ring-2 ring-[var(--accent)] ring-inset shadow-md' : ''}
+              `}
+            >
+              <span className={`font-sans text-xs md:text-sm font-bold ${isToday ? 'text-[var(--accent)] mt-0.5' : 'text-[var(--ink)] mt-0.5'}`}>
+                {dayObj.date.getDate()}
+              </span>
 
-        <h2 className="section">Overall progress</h2>
-        {subjects.length === 0 ? (
-          <div className="empty-note">No subjects added yet.</div>
-        ) : (
-          <div className="flex gap-6 overflow-x-auto pb-4 pt-2 scrollbar-hide">
-            {subjects.map(subj => {
-              const doneCount = totalDone[subj.id] || 0;
-              const target = subj.targetCount || (lessons.filter(l => l.subjectId === subj.id).length || 1);
-              const pct = Math.min(100, Math.round((doneCount / target) * 100));
+              {hasRevisit && (
+                <div className="absolute top-1 right-1 w-[6px] h-[6px] rounded-full bg-[var(--warn)] shadow-sm"></div>
+              )}
 
-              return (
-                <div key={subj.id} className="min-w-[100px] flex-shrink-0">
-                  <CircularProgress 
-                    progress={pct} 
-                    label={subj.name} 
-                    subtitle={`${doneCount} / ${subj.targetCount || (lessons.filter(l => l.subjectId === subj.id).length || '-')}`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="card !mb-0 overflow-x-auto">
-        <h2 className="section">Study Consistency</h2>
-        <div className="min-w-[700px]">
-          <BarChart data={chartData} />
-        </div>
-      </div>
-
-      <div className="card !mb-0">
-        <h2 className="section">Lessons completed this month</h2>
-        {subjects.length === 0 ? (
-          <div className="empty-note">No subjects added yet.</div>
-        ) : (
-          <div className="flex gap-4 flex-wrap text-[0.95rem]">
-            {subjects.map(s => (
-              <div key={s.id} className="bg-[var(--accent-soft)] px-3 py-2 rounded-xl border border-[var(--accent-line)]/30">
-                <span className="font-sans font-medium text-[var(--ink-soft)]">{s.name}:</span>
-                <span className="font-sans font-bold text-[var(--accent)] ml-2">{completedThisMonth[s.id] || 0}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="card !mb-0">
-        <h2 className="section">Saturday test scores</h2>
-        {testResults.length === 0 ? (
-          <div className="empty-note">No test scores logged for weeks in this month.</div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Week of</th>
-                <th>Subject</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {testResults.map(t => (
-                <tr key={t!.id}>
-                  <td>{t!.weekStartDate}</td>
-                  <td>{subjects.find(s => s.id === t!.subjectId)?.name || 'Unknown'}</td>
-                  <td>{t!.score}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="card !mb-0 overflow-x-auto">
-        <h2 className="section">Habit tracker</h2>
-        <div className="overflow-x-auto pb-2">
-          <table className="text-[0.75rem]">
-            <thead>
-              <tr>
-                <th></th>
-                {Array.from({ length: daysInMonth }, (_, i) => (
-                  <th key={i + 1} className="text-center w-[28px]">{i + 1}</th>
+              <div className="mt-auto flex gap-0.5 md:gap-1 justify-center flex-wrap w-full pb-0.5">
+                {studied.map((abbr, idx) => (
+                  <span key={idx} className="text-[8px] md:text-[10px] font-sans font-bold bg-[var(--accent-soft)] text-[var(--accent)] px-1 py-[1px] rounded-[4px] leading-tight max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                    {abbr}
+                  </span>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="whitespace-nowrap pr-2">Study</td>
-                {Array.from({ length: daysInMonth }, (_, i) => {
-                  const d = `${monthStr}-${String(i + 1).padStart(2, '0')}`;
-                  const rec = dailyEntries[d];
-                  const on = rec && rec.subjects.some(s => s.studied);
-                  return <td key={i}><div className={`tracker-cell ${on ? 'on' : ''}`}></div></td>;
-                })}
-              </tr>
-              <tr>
-                <td className="whitespace-nowrap pr-2">Revisit</td>
-                {Array.from({ length: daysInMonth }, (_, i) => {
-                  const d = `${monthStr}-${String(i + 1).padStart(2, '0')}`;
-                  const on = getRevisitsDoneOnDate(d) > 0;
-                  return <td key={i}><div className={`tracker-cell ${on ? 'on' : ''}`}></div></td>;
-                })}
-              </tr>
-              <tr>
-                <td className="whitespace-nowrap pr-2">Teach-back</td>
-                {Array.from({ length: daysInMonth }, (_, i) => {
-                  const d = `${monthStr}-${String(i + 1).padStart(2, '0')}`;
-                  const rec = dailyEntries[d];
-                  const on = !!rec?.teachback;
-                  return <td key={i}><div className={`tracker-cell ${on ? 'on' : ''}`}></div></td>;
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

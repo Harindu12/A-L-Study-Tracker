@@ -7,17 +7,19 @@ import { RevisitTab } from './components/RevisitTab';
 import { LessonsTab } from './components/LessonsTab';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { CalendarDays, Calendar, Sun, ListTodo, BookOpen } from 'lucide-react';
+import { todayStr } from './utils';
 
 type Tab = 'monthly' | 'weekly' | 'daily' | 'revisit' | 'lessons';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('daily');
+  const [dailyDate, setDailyDate] = useState<string>(todayStr());
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'monthly': return <MonthlyTab />;
+      case 'monthly': return <MonthlyTab onDayClick={(d) => { setDailyDate(d); setActiveTab('daily'); }} />;
       case 'weekly': return <WeeklyTab />;
-      case 'daily': return <DailyTab />;
+      case 'daily': return <DailyTab date={dailyDate} onDateChange={setDailyDate} />;
       case 'revisit': return <RevisitTab />;
       case 'lessons': return <LessonsTab />;
       default: return null;
