@@ -43,7 +43,7 @@ export const LessonsTab = () => {
           icon={BookOpen} 
           value={completedLessons} 
           label="Completed Lessons" 
-          iconColor="text-[var(--accent)]" 
+          iconColor="text-[var(--ok)]" 
         />
         <StatTile 
           icon={Layers} 
@@ -116,7 +116,7 @@ export const LessonsTab = () => {
                 <button className="btn" onClick={handleAddLesson} disabled={!newLessonName.trim()}>Add Lesson</button>
               </div>
 
-              <div className="max-h-[340px] overflow-y-auto border border-[rgba(216,205,174,0.4)] rounded-xl p-2 bg-[#fffdf7]">
+              <div className="max-h-[340px] overflow-y-auto border border-[rgba(216,205,174,0.5)] rounded-xl p-2 bg-[#FAF7F0] paper-card">
                 {lessons.filter(l => l.subjectId === selectedSubjectId).length === 0 ? (
                   <div className="empty-note text-center p-4">No lessons added for this subject yet.</div>
                 ) : (

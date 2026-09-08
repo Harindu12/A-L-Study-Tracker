@@ -253,11 +253,11 @@ export const StatsTab = () => {
           <BarChart data={chartData} />
           
           <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="bg-[#fffdf7] border border-[var(--line)] rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="bg-[#FAF7F0] border border-[var(--line)] rounded-2xl p-4 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] flex flex-col items-center justify-center text-center">
               <span className="font-caveat text-3xl font-bold text-[var(--accent)]">{Object.values(completedThisMonth).reduce((a, b) => a + b, 0)}</span>
               <span className="text-[0.7rem] font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider">Lessons completed</span>
             </div>
-            <div className="bg-[#fffdf7] border border-[var(--line)] rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="bg-[#FAF7F0] border border-[var(--line)] rounded-2xl p-4 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] flex flex-col items-center justify-center text-center">
               <span className="font-caveat text-3xl font-bold text-[var(--accent)]">{testResults.length}</span>
               <span className="text-[0.7rem] font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider">Tests taken</span>
             </div>
@@ -342,16 +342,16 @@ export const StatsTab = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-6 h-full">
-      <div className="sticky top-0 z-30 pt-3 pb-2 bg-white/95 backdrop-blur-md">
-        <div className="flex bg-[var(--paper)] p-1 rounded-xl border border-[var(--line)] shadow-sm max-w-sm mx-auto">
+      <div className="sticky top-0 z-30 pt-3 pb-2 bg-[#F6F2E7]/90 backdrop-blur-md">
+        <div className="flex bg-[#EAE4D5] p-1 rounded-xl border border-[var(--line)] shadow-[0_2px_6px_rgba(120,100,70,0.08)] max-w-sm mx-auto">
           <button 
-            className={`flex-1 py-2 rounded-lg font-sans font-bold text-sm transition-all ${mode === 'weekly' ? 'bg-white shadow-sm text-[var(--accent)] border border-[var(--line)]' : 'text-[var(--ink-soft)] hover:bg-black/5 border border-transparent'}`}
+            className={`flex-1 py-2 rounded-lg font-sans font-bold text-sm transition-all ${mode === 'weekly' ? 'bg-[#FAF7F0] shadow-sm text-[var(--accent)] border border-[#D8CEBA]' : 'text-[var(--ink-soft)] hover:bg-black/5 border border-transparent'}`}
             onClick={() => setMode('weekly')}
           >
             Weekly
           </button>
           <button 
-            className={`flex-1 py-2 rounded-lg font-sans font-bold text-sm transition-all ${mode === 'monthly' ? 'bg-white shadow-sm text-[var(--accent)] border border-[var(--line)]' : 'text-[var(--ink-soft)] hover:bg-black/5 border border-transparent'}`}
+            className={`flex-1 py-2 rounded-lg font-sans font-bold text-sm transition-all ${mode === 'monthly' ? 'bg-[#FAF7F0] shadow-sm text-[var(--accent)] border border-[#D8CEBA]' : 'text-[var(--ink-soft)] hover:bg-black/5 border border-transparent'}`}
             onClick={() => setMode('monthly')}
           >
             Monthly

@@ -14,10 +14,10 @@ export const StatTile: React.FC<StatTileProps> = ({
   value, 
   label, 
   iconColor = 'text-[var(--warn)]', 
-  bgColor = 'bg-[#fffdf7]' 
+  bgColor = 'bg-[#FAF7F0]' 
 }) => {
   return (
-    <div className={`${bgColor} border border-[var(--line)] rounded-2xl p-4 flex flex-col gap-2 flex-1 shadow-sm`}>
+    <div className={`${bgColor} border border-[var(--line)] rounded-2xl p-4 flex flex-col gap-2 flex-1 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] transition-all`}>
       <div className={iconColor}>
         <Icon size={22} strokeWidth={2.5} />
       </div>

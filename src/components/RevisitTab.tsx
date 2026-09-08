@@ -30,13 +30,14 @@ export const RevisitTab = () => {
           value={overdue.length} 
           label="Overdue" 
           iconColor="text-[var(--warn)]"
-          bgColor="bg-[#fffdf7]"
+          bgColor="bg-[#FAF7F0]"
         />
         <StatTile 
           icon={Calendar} 
           value={dueToday.length} 
           label="Due Today" 
           iconColor="text-[var(--accent)]" 
+          bgColor="bg-[#FAF7F0]"
         />
       </div>
 
@@ -72,7 +73,7 @@ export const RevisitTab = () => {
                   const lesson = lessons.find(l => l.id === r.lessonId);
 
                   return (
-                    <div key={r.id} className="border border-[var(--line)] rounded-xl p-3 bg-[#fffdf7] flex items-start gap-3 transition-colors hover:bg-[var(--paper)]">
+                    <div key={r.id} className="border border-[var(--line)] rounded-xl p-3 bg-[#FAF7F0] paper-card shadow-[0_1px_4px_rgba(120,100,70,0.06)] flex items-start gap-3 transition-all hover:bg-[#FFFDF9]">
                       <div className="pt-1">
                         <input type="checkbox" checked={r.done} onChange={(e) => {
                           updateRevisit(r.id, { done: e.target.checked });
@@ -105,7 +106,7 @@ export const RevisitTab = () => {
                   const subject = subjects.find(s => s.id === r.subjectId);
                   const lesson = lessons.find(l => l.id === r.lessonId);
                   return (
-                    <div key={r.id} className="border border-[var(--line)] rounded-xl p-3 bg-[#fffdf7] flex items-start gap-3 opacity-70">
+                    <div key={r.id} className="border border-[#D2DEC8] rounded-xl p-3 bg-[#F4F7F2] paper-card shadow-[0_1px_3px_rgba(91,130,102,0.08)] flex items-start gap-3 opacity-80">
                       <div className="pt-1">
                         <input type="checkbox" checked={r.done} onChange={(e) => {
                           updateRevisit(r.id, { done: e.target.checked });
@@ -117,7 +118,7 @@ export const RevisitTab = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[0.75rem] text-[var(--ink-soft)] font-sans">{r.date}</span>
-                          <span className="tag">{r.type}</span>
+                          <span className="bg-[#E4ECE0] text-[#4A6B53] font-sans font-semibold text-[0.7rem] px-2 py-0.5 rounded-full">{r.type}</span>
                         </div>
                       </div>
                     </div>
