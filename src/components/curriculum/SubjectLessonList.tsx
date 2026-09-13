@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Subject, Lesson } from '../../types';
+import { Subject } from '../../types';
 import { useStore } from '../../store';
 import { CircularProgress } from '../ui/CircularProgress';
-import { ArrowLeft, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { todayStr } from '../../utils';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { useNavigation } from '../../navigation';
+import { LessonCardItem } from './LessonCardItem';
 
 interface SubjectLessonListProps {
   subject: Subject;
@@ -14,12 +14,12 @@ interface SubjectLessonListProps {
 type FilterType = 'all' | 'pending' | 'done' | 'low';
 
 export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, onBack }) => {
-  const { lessons, addLesson, updateLesson, deleteLesson, markLessonDone } = useStore();
+  const { lessons, addLesson } = useStore();
   const { activeOverlay, openOverlay, closeOverlay, isPopping } = useNavigation();
   
   const [filter, setFilter] = useState<FilterType>('all');
   const [newLessonName, setNewLessonName] = useState('');
-  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [expandedLessonIds, setExpandedLessonIds] = useState<Record<string, boolean>>({});
 
   // Reset newLessonName if add-lesson overlay was dismissed via system back
   React.useEffect(() => {
@@ -27,6 +27,13 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
       setNewLessonName('');
     }
   }, [activeOverlay, isPopping]);
+
+  const toggleExpandLesson = (lessonId: string) => {
+    setExpandedLessonIds((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
+    }));
+  };
 
   // Lessons strictly in the order they were added
   const subjectLessons = lessons.filter((l) => l.subjectId === subject.id);
@@ -56,43 +63,6 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
       if (activeOverlay === 'add-lesson') {
         closeOverlay();
       }
-    }
-  };
-
-  const handleToggleDone = (lesson: Lesson) => {
-    if (!lesson.done) {
-      markLessonDone(lesson.id, lesson.confidence, todayStr());
-    } else {
-      updateLesson(lesson.id, { done: false, completedDate: null });
-    }
-  };
-
-  const handleConfidenceChange = (lessonId: string, level: 'L' | 'M' | 'H') => {
-    updateLesson(lessonId, { confidence: level });
-  };
-
-  const handleBlurName = (lessonId: string, originalName: string) => {
-    if (isPopping) {
-      // User pressed back button / gesture to cancel inline editing - discard changes
-      setEditingNames((prev) => {
-        const next = { ...prev };
-        delete next[lessonId];
-        return next;
-      });
-      return;
-    }
-
-    const updated = editingNames[lessonId];
-    if (updated !== undefined) {
-      const trimmed = updated.trim();
-      if (trimmed && trimmed !== originalName) {
-        updateLesson(lessonId, { name: trimmed });
-      }
-      setEditingNames((prev) => {
-        const next = { ...prev };
-        delete next[lessonId];
-        return next;
-      });
     }
   };
 
@@ -246,127 +216,17 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
             </p>
           </div>
         ) : (
-          filteredLessons.map((lesson) => {
-            const currentName =
-              editingNames[lesson.id] !== undefined
-                ? editingNames[lesson.id]
-                : lesson.name;
-
-            return (
-              <div
-                key={lesson.id}
-                className={`paper-card rounded-2xl p-3.5 border transition-all ${
-                  lesson.done
-                    ? 'border-[#D2DEC8] bg-[#F7F9F5] shadow-[0_1px_4px_rgba(91,130,102,0.06)]'
-                    : 'border-[var(--line)] bg-[#FAF7F0] shadow-[0_2px_8px_rgba(120,100,70,0.06)] hover:bg-[#FFFDF9]'
-                }`}
-              >
-                {/* Top Row: Checkbox + Editable Name + Delete */}
-                <div className="flex items-start gap-3">
-                  <div className="pt-0.5">
-                    <input
-                      type="checkbox"
-                      checked={lesson.done}
-                      onChange={() => handleToggleDone(lesson)}
-                      className="cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <input
-                      type="text"
-                      value={currentName}
-                      onChange={(e) =>
-                        setEditingNames((prev) => ({ ...prev, [lesson.id]: e.target.value }))
-                      }
-                      onFocus={() => {
-                        if (activeOverlay !== `edit-lesson-${lesson.id}`) {
-                          openOverlay(`edit-lesson-${lesson.id}`);
-                        }
-                      }}
-                      onBlur={() => {
-                        handleBlurName(lesson.id, lesson.name);
-                        if (activeOverlay === `edit-lesson-${lesson.id}` && !isPopping) {
-                          closeOverlay();
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.currentTarget.blur();
-                        }
-                      }}
-                      className={`w-full bg-transparent border border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] focus:bg-white px-2 py-0.5 rounded-lg text-sm font-sans font-medium transition-colors ${
-                        lesson.done
-                          ? 'line-through text-[var(--ink-soft)]'
-                          : 'text-[var(--ink)] font-semibold'
-                      }`}
-                    />
-
-                    {/* Metadata: Completed Date */}
-                    {lesson.done && lesson.completedDate && (
-                      <div className="flex items-center gap-1.5 mt-1 ml-2">
-                        <span className="text-[0.68rem] font-sans font-semibold text-[#4A6B53] bg-[#E4ECE0] px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                          <CheckCircle2 size={10} />
-                          Done {lesson.completedDate}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => deleteLesson(lesson.id)}
-                    title="Delete lesson"
-                    className="p-1 text-[var(--ink-soft)] hover:text-red-600 rounded-lg hover:bg-black/5 transition-colors"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-
-                {/* Bottom Row: Confidence Picker (only visible/interactive once done) */}
-                {lesson.done && (
-                  <div className="mt-3 pt-2.5 border-t border-[rgba(91,130,102,0.2)] flex items-center justify-between">
-                    <span className="text-[0.7rem] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)] ml-1">
-                      Confidence Rating:
-                    </span>
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => handleConfidenceChange(lesson.id, 'L')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all ${
-                          lesson.confidence === 'L'
-                            ? 'bg-[#FEF3C7] text-[#92400E] border border-[#F59E0B] shadow-xs'
-                            : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
-                        }`}
-                      >
-                        Low
-                      </button>
-                      <button
-                        onClick={() => handleConfidenceChange(lesson.id, 'M')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all ${
-                          lesson.confidence === 'M'
-                            ? 'bg-[#EFE8F5] text-[#5C3D77] border border-[#7A5C94] shadow-xs'
-                            : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
-                        }`}
-                      >
-                        Medium
-                      </button>
-                      <button
-                        onClick={() => handleConfidenceChange(lesson.id, 'H')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all ${
-                          lesson.confidence === 'H'
-                            ? 'bg-[#E4ECE0] text-[#2F5238] border border-[#5B8266] shadow-xs'
-                            : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
-                        }`}
-                      >
-                        High
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
+          filteredLessons.map((lesson) => (
+            <LessonCardItem
+              key={lesson.id}
+              lesson={lesson}
+              isExpanded={!!expandedLessonIds[lesson.id]}
+              onToggleExpand={() => toggleExpandLesson(lesson.id)}
+            />
+          ))
         )}
       </div>
     </div>
   );
 };
+

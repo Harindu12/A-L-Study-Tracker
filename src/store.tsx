@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Subject, Lesson, Revisit, DailyEntry, WeeklyTest } from './types';
+import { Subject, Lesson, LessonPart, Revisit, DailyEntry, WeeklyTest } from './types';
 import { addDays, todayStr } from './utils';
 
 interface AppState {
@@ -17,6 +17,7 @@ interface AppContextType extends AppState {
   deleteSubject: (id: string) => void;
   addLesson: (lesson: Omit<Lesson, 'id' | 'done' | 'confidence' | 'completedDate'>) => void;
   updateLesson: (id: string, updates: Partial<Lesson>) => void;
+  updateLessonParts: (id: string, parts: LessonPart[]) => void;
   deleteLesson: (id: string) => void;
   markLessonDone: (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => void;
   updateRevisit: (id: string, updates: Partial<Revisit>) => void;
@@ -86,7 +87,17 @@ const cleanState = (raw: any): AppState => {
       }
     }
   });
-  lessons = filteredLessons;
+  lessons = filteredLessons.map((l) => ({
+    ...l,
+    parts: Array.isArray(l.parts)
+      ? l.parts.map((p) => ({
+          id: typeof p.id === 'string' ? p.id : Math.random().toString(36).slice(2, 10),
+          name: typeof p.name === 'string' ? p.name : 'Part',
+          watched: !!p.watched,
+          pastPaper: !!p.pastPaper,
+        }))
+      : [],
+  }));
 
   // Remap revisits referencing remapped lessons
   revisits = revisits.map((r) => ({
@@ -227,6 +238,68 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const updateLessonParts = (id: string, parts: LessonPart[]) => {
+    setState((prev) => {
+      const lesson = prev.lessons.find((l) => l.id === id);
+      if (!lesson) return prev;
+
+      const allPartsComplete = parts.length > 0 && parts.every((p) => p.watched && p.pastPaper);
+
+      // Auto-mark done if all parts complete and not already done
+      if (allPartsComplete && !lesson.done) {
+        const date = todayStr();
+        const cleanRevisits = prev.revisits.filter((r) => r.lessonId !== id);
+        const newRevisits: Revisit[] = [
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            lessonId: lesson.id,
+            subjectId: lesson.subjectId,
+            date: addDays(date, 3),
+            type: 'Day 3',
+            done: false,
+          },
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            lessonId: lesson.id,
+            subjectId: lesson.subjectId,
+            date: addDays(date, 7),
+            type: 'Day 7',
+            done: false,
+          },
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            lessonId: lesson.id,
+            subjectId: lesson.subjectId,
+            date: addDays(date, 30),
+            type: 'Day 30',
+            done: false,
+          },
+        ];
+
+        return {
+          ...prev,
+          lessons: prev.lessons.map((l) =>
+            l.id === id
+              ? {
+                  ...l,
+                  parts,
+                  done: true,
+                  confidence: l.confidence || 'M',
+                  completedDate: l.completedDate || date,
+                }
+              : l
+          ),
+          revisits: [...cleanRevisits, ...newRevisits],
+        };
+      }
+
+      return {
+        ...prev,
+        lessons: prev.lessons.map((l) => (l.id === id ? { ...l, parts } : l)),
+      };
+    });
+  };
+
   const markLessonDone = (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => {
     setState((prev) => {
       const lesson = prev.lessons.find((l) => l.id === id);
@@ -321,6 +394,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         deleteSubject,
         addLesson,
         updateLesson,
+        updateLessonParts,
         deleteLesson,
         markLessonDone,
         updateRevisit,

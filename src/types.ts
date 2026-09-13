@@ -4,6 +4,13 @@ export interface Subject {
   targetCount?: number;
 }
 
+export interface LessonPart {
+  id: string;
+  name: string;
+  watched: boolean;
+  pastPaper: boolean;
+}
+
 export interface Lesson {
   id: string;
   subjectId: string;
@@ -11,6 +18,7 @@ export interface Lesson {
   done: boolean;
   confidence: 'L' | 'M' | 'H' | null;
   completedDate: string | null;
+  parts?: LessonPart[];
 }
 
 export interface Revisit {
