@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
-import { Subject } from '../../types';
+import React from 'react';
+import { Subject, Lesson, Revisit } from '../../types';
 import { useStore } from '../../store';
 import { StatTile } from '../ui/StatTile';
 import { ExamDateModal } from './ExamDateModal';
-import { SubjectEditModal, DeleteConfirmModal } from './SubjectEditModal';
+import { 
+  AddSubjectModal, 
+  SubjectActionSheetModal, 
+  SubjectEditModal, 
+  DeleteConfirmModal 
+} from './SubjectEditModal';
 import { todayStr } from '../../utils';
 import { useNavigation } from '../../navigation';
 import { 
@@ -12,7 +17,6 @@ import {
   Calendar, 
   Clock, 
   Pencil, 
-  Trash2, 
   Plus,
   ChevronRight,
   CheckCircle2
@@ -26,6 +30,219 @@ const SUBJECT_SWATCHES = [
   { bg: 'bg-[#B25B6C]/15', text: 'text-[#9A4355]', border: 'border-[#B25B6C]/25' }, // dusty rose
   { bg: 'bg-[#8C7A58]/15', text: 'text-[#756240]', border: 'border-[#8C7A58]/25' }, // warm ochre
 ];
+
+interface SubjectCardProps {
+  subj: Subject;
+  idx: number;
+  lessons: Lesson[];
+  revisits: Revisit[];
+  onSelectSubject: (subjectId: string) => void;
+  onLongPressSubject: (subject: Subject) => void;
+}
+
+const SubjectCard: React.FC<SubjectCardProps> = ({
+  subj,
+  idx,
+  lessons,
+  revisits,
+  onSelectSubject,
+  onLongPressSubject,
+}) => {
+  const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
+  const doneCount = subjLessons.filter((l) => l.done).length;
+  const progressTarget = subj.targetCount || subjLessons.length;
+  const pct = progressTarget > 0 ? Math.min(100, Math.round((doneCount / progressTarget) * 100)) : 0;
+  const displayTarget = progressTarget > 0 ? progressTarget : 0;
+
+  // Checkmark indicator: clean if has lessons and 0 pending revisits and 0 low confidence
+  const subjLessonIds = new Set(subjLessons.map((l) => l.id));
+  const pendingRevisitsCount = revisits.filter((r) => subjLessonIds.has(r.lessonId) && !r.completed).length;
+  const lowConfCount = subjLessons.filter((l) => l.done && l.confidence === 'L').length;
+  const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0 && lowConfCount === 0;
+
+  const swatch = SUBJECT_SWATCHES[idx % SUBJECT_SWATCHES.length];
+
+  // Long-press handling (500ms standard hold threshold)
+  const timerRef = React.useRef<number | null>(null);
+  const isLongPressTriggered = React.useRef(false);
+  const touchStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mouseStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const clearTimer = () => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isLongPressTriggered.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      isLongPressTriggered.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(40);
+        } catch (_) {}
+      }
+      onLongPressSubject(subj);
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (timerRef.current === null) return;
+    const dx = e.touches[0].clientX - touchStartPos.current.x;
+    const dy = e.touches[0].clientY - touchStartPos.current.y;
+    // Cancel if finger moved more than 10px (user is scrolling)
+    if (Math.hypot(dx, dy) > 10) {
+      clearTimer();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    clearTimer();
+    if (isLongPressTriggered.current) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // left click only
+    mouseStartPos.current = { x: e.clientX, y: e.clientY };
+    isLongPressTriggered.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      isLongPressTriggered.current = true;
+      onLongPressSubject(subj);
+    }, 500);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (timerRef.current === null) return;
+    const dx = e.clientX - mouseStartPos.current.x;
+    const dy = e.clientY - mouseStartPos.current.y;
+    if (Math.hypot(dx, dy) > 8) {
+      clearTimer();
+    }
+  };
+
+  const handleMouseUp = () => {
+    clearTimer();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isLongPressTriggered.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPressTriggered.current = false;
+      return;
+    }
+    onSelectSubject(subj.id);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearTimer();
+    onLongPressSubject(subj);
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={clearTimer}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={clearTimer}
+      onContextMenu={handleContextMenu}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelectSubject(subj.id);
+        }
+      }}
+      title={`Tap to view ${subj.name} lessons · Press & hold to edit or delete`}
+      className="w-full bg-[#FFFDF9] hover:bg-[#FAF7F0] active:scale-[0.99] border border-[var(--line)] hover:border-[var(--accent)] rounded-2xl p-5 sm:p-6 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] hover:shadow-[0_6px_16px_rgba(120,100,70,0.12)] transition-all cursor-pointer group flex items-center gap-4 sm:gap-5 text-left select-none"
+    >
+      {/* Large colored icon block / solid-color swatch */}
+      <div
+        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border flex-shrink-0 flex flex-col items-center justify-center ${swatch.bg} ${swatch.border} ${swatch.text} shadow-xs transition-transform group-hover:scale-[1.03]`}
+      >
+        <BookOpen size={24} strokeWidth={2.2} className="opacity-90 sm:w-7 sm:h-7" />
+        <span className="text-xs sm:text-sm font-sans font-bold uppercase tracking-wider mt-1 opacity-90">
+          {subj.name.trim().slice(0, 3)}
+        </span>
+      </div>
+
+      {/* Card Content Column */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between">
+        {/* Top Row: Subject Name + Circular Checkmark */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="font-sans font-bold text-lg sm:text-xl text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
+            {subj.name}
+          </div>
+
+          <div
+            className="flex-shrink-0 mt-0.5"
+            title={
+              isClean
+                ? 'All caught up: no pending revisits or low-confidence lessons'
+                : pendingRevisitsCount > 0
+                ? `${pendingRevisitsCount} revisit(s) pending`
+                : 'Pending reviews'
+            }
+          >
+            <CheckCircle2
+              size={22}
+              className={isClean ? 'text-[#5B8266]' : 'text-[var(--ink-soft)]/25'}
+              fill={isClean ? '#5B8266' : 'none'}
+              color={isClean ? '#FFFDF9' : 'currentColor'}
+            />
+          </div>
+        </div>
+
+        {/* Metadata line */}
+        <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
+          {subj.targetCount
+            ? `Target: ${subj.targetCount} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
+            : `${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
+        </div>
+
+        {/* Label + Progress Bar Row */}
+        <div className="mt-3 sm:mt-4">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[11px] sm:text-xs font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
+              PROGRESS
+            </span>
+            <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
+              {doneCount} / {displayTarget} ({pct}%)
+            </span>
+          </div>
+
+          {/* Horizontal progress bar */}
+          <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                pct >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface CurriculumDashboardProps {
   onSelectSubject: (subjectId: string) => void;
@@ -43,22 +260,12 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
     deleteSubject 
   } = useStore();
 
-  // New subject form state
-  const [newSubjName, setNewSubjName] = useState('');
-  const [newSubjTarget, setNewSubjTarget] = useState('');
-
-  const { activeOverlay, overlayData, openOverlay, closeOverlay, isPopping } = useNavigation();
-
-  // Reset new subject inputs if user presses system back to dismiss add-subject form
-  React.useEffect(() => {
-    if (activeOverlay !== 'add-subject' && isPopping) {
-      setNewSubjName('');
-      setNewSubjTarget('');
-    }
-  }, [activeOverlay, isPopping]);
+  const { activeOverlay, overlayData, openOverlay, closeOverlay } = useNavigation();
 
   // Modals state derived from navigation overlay
+  const isAddModalOpen = activeOverlay === 'curriculum-add-subject';
   const isExamModalOpen = activeOverlay === 'curriculum-exam-date';
+  const actionSheetSubject = activeOverlay === 'curriculum-subject-menu' ? (overlayData as Subject) : null;
   const editingSubject = activeOverlay === 'curriculum-edit-subject' ? (overlayData as Subject) : null;
   const deletingSubject = activeOverlay === 'curriculum-delete-subject' ? (overlayData as Subject) : null;
 
@@ -85,23 +292,8 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
     }
   }
 
-  const handleAddSubject = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newSubjName.trim()) {
-      addSubject({
-        name: newSubjName.trim(),
-        targetCount: newSubjTarget ? parseInt(newSubjTarget, 10) : undefined,
-      });
-      setNewSubjName('');
-      setNewSubjTarget('');
-      if (activeOverlay === 'add-subject') {
-        closeOverlay();
-      }
-    }
-  };
-
   return (
-    <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-200 relative">
       {/* Title */}
       <div className="text-center pt-2 pb-1">
         <h1 className="font-caveat text-4xl font-bold text-[var(--accent)] tracking-wide m-0">
@@ -109,7 +301,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         </h1>
       </div>
 
-      {/* Top Stat Tiles Row (wrap to new row on narrow screens) */}
+      {/* Top Stat Tiles Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile
           icon={BookOpen}
@@ -171,109 +363,21 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
 
         {subjects.length === 0 ? (
           <div className="card !mb-0 paper-card empty-note text-center py-6">
-            No subjects yet. Add one below to start tracking your curriculum.
+            No subjects yet. Tap the <strong className="text-[var(--accent)]">+</strong> button below to start tracking your curriculum.
           </div>
         ) : (
           <div className="flex flex-col gap-4 sm:gap-5">
-            {subjects.map((subj, idx) => {
-              const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
-              const doneCount = subjLessons.filter((l) => l.done).length;
-              const progressTarget = subj.targetCount || subjLessons.length;
-              const pct = progressTarget > 0 ? Math.min(100, Math.round((doneCount / progressTarget) * 100)) : 0;
-              const displayTarget = progressTarget > 0 ? progressTarget : 0;
-
-              // Checkmark indicator: clean if has lessons and 0 pending revisits and 0 low confidence
-              const subjLessonIds = new Set(subjLessons.map((l) => l.id));
-              const pendingRevisitsCount = revisits.filter((r) => subjLessonIds.has(r.lessonId) && !r.completed).length;
-              const lowConfCount = subjLessons.filter((l) => l.done && l.confidence === 'L').length;
-              const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0 && lowConfCount === 0;
-
-              const swatch = SUBJECT_SWATCHES[idx % SUBJECT_SWATCHES.length];
-
-              return (
-                <div
-                  key={subj.id}
-                  onClick={() => onSelectSubject(subj.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onSelectSubject(subj.id);
-                    }
-                  }}
-                  title={`View ${subj.name} lessons`}
-                  className="w-full bg-[#FFFDF9] hover:bg-[#FAF7F0] border border-[var(--line)] hover:border-[var(--accent)] rounded-2xl p-5 sm:p-6 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] hover:shadow-[0_6px_16px_rgba(120,100,70,0.12)] transition-all cursor-pointer group flex items-center gap-4 sm:gap-5 text-left"
-                >
-                  {/* Large colored icon block / solid-color swatch */}
-                  <div
-                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border flex-shrink-0 flex flex-col items-center justify-center ${swatch.bg} ${swatch.border} ${swatch.text} shadow-xs transition-transform group-hover:scale-[1.03]`}
-                  >
-                    <BookOpen size={24} strokeWidth={2.2} className="opacity-90 sm:w-7 sm:h-7" />
-                    <span className="text-xs sm:text-sm font-sans font-bold uppercase tracking-wider mt-1 opacity-90">
-                      {subj.name.trim().slice(0, 3)}
-                    </span>
-                  </div>
-
-                  {/* Card Content Column */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    {/* Top Row: Subject Name + Circular Checkmark */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-sans font-bold text-lg sm:text-xl text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
-                        {subj.name}
-                      </div>
-
-                      <div
-                        className="flex-shrink-0 mt-0.5"
-                        title={
-                          isClean
-                            ? 'All caught up: no pending revisits or low-confidence lessons'
-                            : pendingRevisitsCount > 0
-                            ? `${pendingRevisitsCount} revisit(s) pending`
-                            : 'Pending reviews'
-                        }
-                      >
-                        <CheckCircle2
-                          size={22}
-                          className={isClean ? 'text-[#5B8266]' : 'text-[var(--ink-soft)]/25'}
-                          fill={isClean ? '#5B8266' : 'none'}
-                          color={isClean ? '#FFFDF9' : 'currentColor'}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Metadata line */}
-                    <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
-                      {subj.targetCount
-                        ? `Target: ${subj.targetCount} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
-                        : `${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
-                    </div>
-
-                    {/* Label + Progress Bar Row */}
-                    <div className="mt-3 sm:mt-4">
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-[11px] sm:text-xs font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
-                          PROGRESS
-                        </span>
-                        <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
-                          {doneCount} / {displayTarget} ({pct}%)
-                        </span>
-                      </div>
-
-                      {/* Horizontal progress bar */}
-                      <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            pct >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
-                          }`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {subjects.map((subj, idx) => (
+              <SubjectCard
+                key={subj.id}
+                subj={subj}
+                idx={idx}
+                lessons={lessons}
+                revisits={revisits}
+                onSelectSubject={onSelectSubject}
+                onLongPressSubject={(s) => openOverlay('curriculum-subject-menu', s)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -312,7 +416,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                     </div>
                   ) : (
                     <div>
-                      {/* Compact textual format required: "Chemistry — 6 Low · 12 Medium · 10 High" */}
+                      {/* Compact textual format */}
                       <div className="text-xs font-sans text-[var(--ink)] flex flex-wrap items-center gap-1.5">
                         <span className="font-bold text-[var(--ink)]">{subj.name} —</span>
                         <span className="text-[#B45309] font-medium">{lowCount} Low</span>
@@ -357,125 +461,40 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         )}
       </div>
 
-      {/* Manage Subjects Section: Add a Subject + Existing Subjects List */}
-      <div className="card !mb-0 paper-card">
-        <h2 className="section">Add a subject</h2>
-        <form onSubmit={handleAddSubject} className="flex flex-col gap-3 mb-5">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[140px]">
-              <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
-                Subject Name
-              </label>
-              <input
-                type="text"
-                value={newSubjName}
-                onChange={(e) => setNewSubjName(e.target.value)}
-                onFocus={() => {
-                  if (activeOverlay !== 'add-subject') {
-                    openOverlay('add-subject');
-                  }
-                }}
-                onBlur={(e) => {
-                  const form = e.currentTarget.closest('form');
-                  if (form && form.contains(e.relatedTarget as Node)) {
-                    return;
-                  }
-                  if (activeOverlay === 'add-subject' && !newSubjName.trim() && !isPopping) {
-                    closeOverlay();
-                  }
-                }}
-                placeholder="e.g. Chemistry"
-                className="w-full font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-              />
-            </div>
-            <div className="w-[120px]">
-              <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
-                Target Lessons <span className="text-[var(--ink-soft)] font-normal">(opt)</span>
-              </label>
-              <input
-                type="number"
-                value={newSubjTarget}
-                onChange={(e) => setNewSubjTarget(e.target.value)}
-                onFocus={() => {
-                  if (activeOverlay !== 'add-subject') {
-                    openOverlay('add-subject');
-                  }
-                }}
-                onBlur={(e) => {
-                  const form = e.currentTarget.closest('form');
-                  if (form && form.contains(e.relatedTarget as Node)) {
-                    return;
-                  }
-                  if (activeOverlay === 'add-subject' && !newSubjName.trim() && !isPopping) {
-                    closeOverlay();
-                  }
-                }}
-                placeholder="e.g. 50"
-                min="1"
-                className="w-full font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={!newSubjName.trim()}
-            className="btn w-full !py-2 flex justify-center items-center gap-1.5 disabled:opacity-50"
-          >
-            <Plus size={16} />
-            <span>Add Subject</span>
-          </button>
-        </form>
+      {/* Floating Action Button (above the bottom navigation bar) */}
+      <button
+        type="button"
+        onClick={() => openOverlay('curriculum-add-subject')}
+        className="fixed bottom-24 z-40 w-14 h-14 rounded-full bg-[var(--accent)] text-white shadow-[0_6px_20px_rgba(122,92,148,0.35)] hover:bg-[#684c80] hover:scale-105 active:scale-95 transition-all flex items-center justify-center border-2 border-[#FAF7F0] focus:outline-none focus:ring-4 focus:ring-[var(--accent)]/30 cursor-pointer"
+        style={{ right: 'max(1.25rem, calc(50% - 204px))' }}
+        aria-label="Add Subject"
+        title="Add Subject"
+      >
+        <Plus size={28} strokeWidth={2.6} />
+      </button>
 
-        {/* Existing Subjects List with Edit and Delete */}
-        {subjects.length > 0 && (
-          <div className="pt-4 border-t border-[var(--line)]">
-            <h3 className="font-sans text-xs font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-2.5">
-              Configured Subjects ({subjects.length})
-            </h3>
-            <div className="flex flex-col gap-2">
-              {subjects.map((subj) => {
-                const subjLessonsCount = lessons.filter((l) => l.subjectId === subj.id).length;
+      {/* Modals & Action Sheets */}
+      <AddSubjectModal
+        isOpen={isAddModalOpen}
+        onClose={closeOverlay}
+        onAdd={(data) => {
+          addSubject(data);
+          closeOverlay();
+        }}
+      />
 
-                return (
-                  <div
-                    key={subj.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl border border-[var(--line)] bg-[#FAF7F0] hover:bg-[#FFFDF9] transition-colors"
-                  >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="font-sans font-bold text-sm text-[var(--ink)] truncate">
-                        {subj.name}
-                      </div>
-                      <div className="text-[0.7rem] font-sans text-[var(--ink-soft)]">
-                        {subj.targetCount ? `Target: ${subj.targetCount} lessons` : 'No target count'} · {subjLessonsCount} lessons added
-                      </div>
-                    </div>
+      <SubjectActionSheetModal
+        subject={actionSheetSubject}
+        isOpen={!!actionSheetSubject}
+        onClose={closeOverlay}
+        onEdit={(subj) => {
+          openOverlay('curriculum-edit-subject', subj);
+        }}
+        onDelete={(subj) => {
+          openOverlay('curriculum-delete-subject', subj);
+        }}
+      />
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openOverlay('curriculum-edit-subject', subj)}
-                        className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--accent)] rounded-lg hover:bg-black/5 transition-colors"
-                        title="Edit subject"
-                      >
-                        <Pencil size={15} />
-                      </button>
-
-                      <button
-                        onClick={() => openOverlay('curriculum-delete-subject', subj)}
-                        className="p-1.5 text-[var(--ink-soft)] hover:text-red-600 rounded-lg hover:bg-black/5 transition-colors"
-                        title="Delete subject"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Modals */}
       <ExamDateModal
         currentDate={examDate}
         isOpen={isExamModalOpen}
@@ -511,3 +530,4 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
     </div>
   );
 };
+
