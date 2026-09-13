@@ -42,8 +42,16 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
   const lowConfidenceCount = subjectLessons.filter((l) => l.done && l.confidence === 'L').length;
 
   const targetCount = subject.targetCount;
-  const progressTarget = targetCount || (subjectLessons.length > 0 ? subjectLessons.length : 1);
-  const percentage = Math.min(100, Math.round((doneCount / progressTarget) * 100));
+  const watchedVideosCount = subjectLessons.reduce(
+    (acc, l) => acc + (l.parts ? l.parts.filter((p) => p.watched).length : 0),
+    0
+  );
+  const totalVideosInSubject = subjectLessons.reduce(
+    (acc, l) => acc + (l.parts ? l.parts.length : 0),
+    0
+  );
+  const progressTarget = targetCount || totalVideosInSubject;
+  const percentage = progressTarget > 0 ? Math.min(100, Math.round((watchedVideosCount / progressTarget) * 100)) : 0;
 
   const filteredLessons = subjectLessons.filter((lesson) => {
     if (filter === 'pending') return !lesson.done;
@@ -90,9 +98,9 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
           </h1>
           <div className="flex items-center gap-2 mt-2 text-xs font-sans text-[var(--ink-soft)]">
             <span className="font-bold text-[var(--ink)]">
-              {doneCount} / {targetCount || subjectLessons.length}
+              {watchedVideosCount} / {progressTarget}
             </span>
-            <span>lessons completed</span>
+            <span>videos completed</span>
             {targetCount && (
               <span className="text-[0.7rem] bg-[var(--paper)] px-2 py-0.5 rounded-full border border-[var(--line)]">
                 Target: {targetCount}
@@ -104,7 +112,7 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         <div className="flex-shrink-0">
           <CircularProgress
             progress={percentage}
-            centerText={targetCount ? `${percentage}%` : `${doneCount}`}
+            centerText={progressTarget > 0 ? `${percentage}%` : `${watchedVideosCount}`}
             size={74}
             strokeWidth={7}
           />

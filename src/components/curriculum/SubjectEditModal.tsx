@@ -78,7 +78,7 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
 
           <div>
             <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
-              Target Lessons <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
+              Target Videos/Parts <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
             </label>
             <input 
               type="number" 
@@ -89,7 +89,7 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
               min="1"
             />
             <p className="text-[0.7rem] text-[var(--ink-soft)] mt-1 font-sans">
-              Optionally set a target lesson count to track your completion percentage.
+              Optionally set the total videos/parts planned for this subject to track your completion percentage.
             </p>
           </div>
 
@@ -300,18 +300,18 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
 
           <div>
             <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
-              Target Lesson Count <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
+              Target Videos/Parts <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
             </label>
             <input 
               type="number" 
               value={targetCount} 
               onChange={(e) => setTargetCount(e.target.value)}
               className="w-full font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-              placeholder="Leave blank for raw count"
+              placeholder="e.g. 50 (or leave blank)"
               min="1"
             />
             <p className="text-[0.7rem] text-[var(--ink-soft)] mt-1 font-sans">
-              If left blank, progress displays as a raw lesson count instead of a percentage.
+              Set the total videos/parts planned for this subject to track your completion percentage.
             </p>
           </div>
 

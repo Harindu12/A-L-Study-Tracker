@@ -19,7 +19,8 @@ import {
   Pencil, 
   Plus,
   ChevronRight,
-  CheckCircle2
+  CheckCircle2,
+  Video
 } from 'lucide-react';
 
 const SUBJECT_SWATCHES = [
@@ -49,9 +50,16 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   onLongPressSubject,
 }) => {
   const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
-  const doneCount = subjLessons.filter((l) => l.done).length;
-  const progressTarget = subj.targetCount || subjLessons.length;
-  const pct = progressTarget > 0 ? Math.min(100, Math.round((doneCount / progressTarget) * 100)) : 0;
+  const watchedVideosCount = subjLessons.reduce(
+    (acc, l) => acc + (l.parts ? l.parts.filter((p) => p.watched).length : 0),
+    0
+  );
+  const totalVideosInSubject = subjLessons.reduce(
+    (acc, l) => acc + (l.parts ? l.parts.length : 0),
+    0
+  );
+  const progressTarget = subj.targetCount || totalVideosInSubject;
+  const pct = progressTarget > 0 ? Math.min(100, Math.round((watchedVideosCount / progressTarget) * 100)) : 0;
   const displayTarget = progressTarget > 0 ? progressTarget : 0;
 
   // Checkmark indicator: clean if has lessons and 0 pending revisits and 0 low confidence
@@ -214,8 +222,8 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
         {/* Metadata line */}
         <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
           {subj.targetCount
-            ? `Target: ${subj.targetCount} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
-            : `${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
+            ? `Target: ${subj.targetCount} videos · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
+            : `${totalVideosInSubject} ${totalVideosInSubject === 1 ? 'video' : 'videos'} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
         </div>
 
         {/* Label + Progress Bar Row */}
@@ -225,7 +233,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
               PROGRESS
             </span>
             <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
-              {doneCount} / {displayTarget} ({pct}%)
+              {watchedVideosCount} / {displayTarget} ({pct}%)
             </span>
           </div>
 
@@ -269,10 +277,19 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
   const editingSubject = activeOverlay === 'curriculum-edit-subject' ? (overlayData as Subject) : null;
   const deletingSubject = activeOverlay === 'curriculum-delete-subject' ? (overlayData as Subject) : null;
 
-  // Top stats calculations
-  const totalLessons = lessons.length;
-  const completedLessons = lessons.filter((l) => l.done).length;
-  const lessonsRemaining = totalLessons - completedLessons;
+  // Top stats calculations (video parts based)
+  const totalWatchedVideos = lessons.reduce(
+    (acc, l) => acc + (l.parts ? l.parts.filter((p) => p.watched).length : 0),
+    0
+  );
+  const totalTargetVideos = subjects.reduce((acc, s) => {
+    const sLessons = lessons.filter((l) => l.subjectId === s.id);
+    const sParts = sLessons.reduce((pAcc, l) => pAcc + (l.parts ? l.parts.length : 0), 0);
+    return acc + (s.targetCount || sParts);
+  }, 0);
+  const allPartsCount = lessons.reduce((acc, l) => acc + (l.parts ? l.parts.length : 0), 0);
+  const totalVideosGoal = totalTargetVideos > 0 ? totalTargetVideos : allPartsCount;
+  const videosRemaining = Math.max(0, totalVideosGoal - totalWatchedVideos);
 
   // Days remaining calculation
   let daysRemainingText: string | React.ReactNode = 'Set exam date';
@@ -304,9 +321,9 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
       {/* Top Stat Tiles Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile
-          icon={BookOpen}
-          value={`${completedLessons} / ${totalLessons}`}
-          label="Lessons completed"
+          icon={Video}
+          value={`${totalWatchedVideos} / ${totalVideosGoal}`}
+          label="Videos completed"
           iconColor="text-[var(--ok)]"
           bgColor="bg-[#FAF7F0]"
         />
@@ -345,8 +362,8 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
 
         <StatTile
           icon={Clock}
-          value={lessonsRemaining}
-          label="Lessons remaining"
+          value={videosRemaining}
+          label="Videos remaining"
           iconColor="text-[#D97706]"
           bgColor="bg-[#FAF7F0]"
         />
