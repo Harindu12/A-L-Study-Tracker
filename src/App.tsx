@@ -14,21 +14,20 @@ function App() {
   return (
     <div className="min-h-screen bg-[var(--paper)] bg-[radial-gradient(var(--dot)_1.5px,transparent_1.5px)] [background-size:24px_24px] relative">
       <div className="max-w-md mx-auto min-h-screen relative shadow-[0_12px_40px_rgba(120,100,70,0.14)] bg-[var(--paper)] border-x border-[var(--line)]/40 overflow-hidden flex flex-col">
-        {/* Header - only for other tabs; CalendarTab renders the reference header */}
-        {activeTab !== 'calendar' && (
+        {/* Header - only for stats and revisit; Calendar and Lessons render their own headers */}
+        {activeTab !== 'calendar' && activeTab !== 'lessons' && (
           <header className="pt-10 pb-4 px-6 relative z-10">
             <div className="flex justify-center items-center">
               <h1 className="font-caveat text-4xl font-bold text-[var(--accent)] tracking-wide">
                 {activeTab === 'stats' && 'Analytics'}
                 {activeTab === 'revisit' && 'Spaced Repetition'}
-                {activeTab === 'lessons' && 'Curriculum'}
               </h1>
             </div>
           </header>
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-y-auto px-4 pb-32 relative z-10 scrollbar-hide ${activeTab === 'calendar' ? 'pt-6' : ''}`}>
+        <main className={`flex-1 overflow-y-auto px-4 pb-32 relative z-10 scrollbar-hide ${activeTab === 'calendar' || activeTab === 'lessons' ? 'pt-6' : ''}`}>
           {activeTab === 'calendar' && <CalendarTab onNavigateToRevisit={() => setActiveTab('revisit')} />}
           {activeTab === 'stats' && <StatsTab />}
           {activeTab === 'revisit' && <RevisitTab />}

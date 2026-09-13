@@ -8,17 +8,22 @@ interface AppState {
   revisits: Revisit[];
   dailyEntries: Record<string, DailyEntry>;
   weeklyTests: WeeklyTest[];
+  examDate?: string;
 }
 
 interface AppContextType extends AppState {
   addSubject: (subject: Omit<Subject, 'id'>) => void;
+  updateSubject: (id: string, updates: Partial<Subject>) => void;
+  deleteSubject: (id: string) => void;
   addLesson: (lesson: Omit<Lesson, 'id' | 'done' | 'confidence' | 'completedDate'>) => void;
   updateLesson: (id: string, updates: Partial<Lesson>) => void;
+  deleteLesson: (id: string) => void;
   markLessonDone: (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => void;
   updateRevisit: (id: string, updates: Partial<Revisit>) => void;
   saveDailyEntry: (date: string, entry: DailyEntry) => void;
   updateDailyEntry: (date: string, entry: DailyEntry) => void;
   saveWeeklyTest: (test: Omit<WeeklyTest, 'id'>) => void;
+  setExamDate: (date: string) => void;
 }
 
 const STORAGE_KEY = 'al_study_tracker_data';
@@ -29,6 +34,7 @@ const defaultState: AppState = {
   revisits: [],
   dailyEntries: {},
   weeklyTests: [],
+  examDate: undefined,
 };
 
 const cleanState = (raw: any): AppState => {
@@ -110,6 +116,7 @@ const cleanState = (raw: any): AppState => {
     revisits: dedupedRevisits,
     dailyEntries: raw.dailyEntries && typeof raw.dailyEntries === 'object' ? raw.dailyEntries : {},
     weeklyTests: Array.isArray(raw.weeklyTests) ? raw.weeklyTests : [],
+    examDate: typeof raw.examDate === 'string' ? raw.examDate : undefined,
   };
 };
 
@@ -145,6 +152,30 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const updateSubject = (id: string, updates: Partial<Subject>) => {
+    setState((prev) => ({
+      ...prev,
+      subjects: prev.subjects.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              ...updates,
+              name: updates.name !== undefined ? updates.name.trim() : s.name,
+            }
+          : s
+      ),
+    }));
+  };
+
+  const deleteSubject = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      subjects: prev.subjects.filter((s) => s.id !== id),
+      lessons: prev.lessons.filter((l) => l.subjectId !== id),
+      revisits: prev.revisits.filter((r) => r.subjectId !== id),
+    }));
+  };
+
   const addLesson = (lesson: Omit<Lesson, 'id' | 'done' | 'confidence' | 'completedDate'>) => {
     setState((prev) => ({
       ...prev,
@@ -159,6 +190,21 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           completedDate: null,
         },
       ],
+    }));
+  };
+
+  const deleteLesson = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      lessons: prev.lessons.filter((l) => l.id !== id),
+      revisits: prev.revisits.filter((r) => r.lessonId !== id),
+    }));
+  };
+
+  const setExamDate = (date: string) => {
+    setState((prev) => ({
+      ...prev,
+      examDate: date,
     }));
   };
 
@@ -271,13 +317,17 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       value={{
         ...state,
         addSubject,
+        updateSubject,
+        deleteSubject,
         addLesson,
         updateLesson,
+        deleteLesson,
         markLessonDone,
         updateRevisit,
         saveDailyEntry,
         updateDailyEntry: saveDailyEntry,
         saveWeeklyTest,
+        setExamDate,
       }}
     >
       {children}
