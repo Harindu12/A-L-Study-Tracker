@@ -87,17 +87,54 @@ const cleanState = (raw: any): AppState => {
       }
     }
   });
-  lessons = filteredLessons.map((l) => ({
-    ...l,
-    parts: Array.isArray(l.parts)
-      ? l.parts.map((p) => ({
+  // Migration: ensure every lesson has a valid parts array
+  lessons = filteredLessons.map((l: any) => {
+    // Check if the lesson already has parts defined by the user
+    const hasExistingParts = Array.isArray(l.parts) && l.parts.length > 0;
+
+    if (hasExistingParts) {
+      return {
+        ...l,
+        parts: l.parts.map((p: any) => ({
           id: typeof p.id === 'string' ? p.id : Math.random().toString(36).slice(2, 10),
-          name: typeof p.name === 'string' ? p.name : 'Part',
+          name: typeof p.name === 'string' && p.name.trim() ? p.name : 'Part',
           watched: !!p.watched,
           pastPaper: !!p.pastPaper,
-        }))
-      : [],
-  }));
+        })),
+      };
+    }
+
+    // Migration Case 1: Old lesson that was marked complete under the old simple checkbox system
+    // Preserve its completion by giving it a default part marked watched and pastPaper done
+    if (l.done) {
+      return {
+        ...l,
+        parts: [
+          {
+            id: Math.random().toString(36).slice(2, 10),
+            name: 'Full lesson',
+            watched: true,
+            pastPaper: true,
+          },
+        ],
+      };
+    }
+
+    // Migration Case 2: Old lesson that was not marked done
+    // Create an unwatched default part ("Day 01") to avoid errors when expanded and displayed,
+    // and to ensure accurate video/part counts
+    return {
+      ...l,
+      parts: [
+        {
+          id: Math.random().toString(36).slice(2, 10),
+          name: 'Day 01',
+          watched: false,
+          pastPaper: false,
+        },
+      ],
+    };
+  });
 
   // Remap revisits referencing remapped lessons
   revisits = revisits.map((r) => ({
@@ -199,6 +236,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           done: false,
           confidence: null,
           completedDate: null,
+          parts: Array.isArray(lesson.parts) && lesson.parts.length > 0
+            ? lesson.parts
+            : [
+                {
+                  id: Math.random().toString(36).slice(2, 10),
+                  name: 'Day 01',
+                  watched: false,
+                  pastPaper: false,
+                },
+              ],
         },
       ],
     }));
@@ -305,6 +352,19 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       const lesson = prev.lessons.find((l) => l.id === id);
       if (!lesson) return prev;
 
+      // Ensure parts reflect the completed status
+      const updatedParts =
+        lesson.parts && lesson.parts.length > 0
+          ? lesson.parts.map((p) => ({ ...p, watched: true, pastPaper: true }))
+          : [
+              {
+                id: Math.random().toString(36).slice(2, 10),
+                name: 'Full lesson',
+                watched: true,
+                pastPaper: true,
+              },
+            ];
+
       // Remove any existing revisits for this lesson to ensure strictly one set
       const cleanRevisits = prev.revisits.filter((r) => r.lessonId !== id);
 
@@ -338,7 +398,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       return {
         ...prev,
         lessons: prev.lessons.map((l) =>
-          l.id === id ? { ...l, done: true, confidence, completedDate: date } : l
+          l.id === id ? { ...l, done: true, confidence, completedDate: date, parts: updatedParts } : l
         ),
         revisits: [...cleanRevisits, ...newRevisits],
       };
