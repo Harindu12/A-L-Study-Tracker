@@ -5,6 +5,7 @@ interface StatTileProps {
   icon: LucideIcon;
   value: string | number;
   label: string;
+  sublabel?: string;
   iconColor?: string;
   bgColor?: string;
 }
@@ -13,6 +14,7 @@ export const StatTile: React.FC<StatTileProps> = ({
   icon: Icon, 
   value, 
   label, 
+  sublabel,
   iconColor = 'text-[var(--warn)]', 
   bgColor = 'bg-[#FAF7F0]' 
 }) => {
@@ -24,6 +26,11 @@ export const StatTile: React.FC<StatTileProps> = ({
       <div>
         <div className="text-2xl font-bold font-sans text-[var(--ink)] leading-tight">{value}</div>
         <div className="text-xs text-[var(--ink-soft)] font-sans font-medium">{label}</div>
+        {sublabel && (
+          <div className="text-[10px] sm:text-xs text-[var(--ink-soft)] font-sans mt-0.5 font-medium truncate">
+            {sublabel}
+          </div>
+        )}
       </div>
     </div>
   );

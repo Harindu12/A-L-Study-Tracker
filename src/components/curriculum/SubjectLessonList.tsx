@@ -4,6 +4,7 @@ import { useStore } from '../../store';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { useNavigation } from '../../navigation';
 import { LessonCardItem } from './LessonCardItem';
+import { calculateSubjectMetrics } from '../../utils/subjectMetrics';
 
 interface AddLessonModalProps {
   isOpen: boolean;
@@ -117,17 +118,8 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
   // Lessons strictly in the order they were added
   const subjectLessons = lessons.filter((l) => l.subjectId === subject.id);
 
-  const targetCount = subject.targetCount;
-  const watchedVideosCount = subjectLessons.reduce(
-    (acc, l) => acc + (l.parts ? l.parts.filter((p) => p.watched).length : 0),
-    0
-  );
-  const totalVideosInSubject = subjectLessons.reduce(
-    (acc, l) => acc + (l.parts ? l.parts.length : 0),
-    0
-  );
-  const progressTarget = targetCount || totalVideosInSubject;
-  const percentage = progressTarget > 0 ? Math.min(100, Math.round((watchedVideosCount / progressTarget) * 100)) : 0;
+  // Centralized, live metrics calculated fresh on every render
+  const metrics = calculateSubjectMetrics(subject, lessons);
 
   const isAddModalOpen = activeOverlay === 'curriculum-add-lesson';
 
@@ -142,7 +134,7 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
     <div className="flex flex-col gap-4 animate-in fade-in duration-200 pb-20">
       {/* Top navigation row & Subject Header */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <button
             onClick={onBack}
             className="flex items-center gap-1.5 text-xs font-sans font-bold text-[var(--accent)] hover:opacity-80 py-1.5 px-3 rounded-xl transition-all bg-[#FAF7F0] border border-[var(--line)] shadow-[0_1px_3px_rgba(120,100,70,0.08)] paper-card cursor-pointer"
@@ -150,11 +142,24 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
             <ArrowLeft size={16} strokeWidth={2.5} />
             <span>Curriculum Dashboard</span>
           </button>
-          {targetCount && (
-            <span className="text-xs font-sans text-[var(--ink-soft)] bg-[#FAF7F0] px-2.5 py-1 rounded-xl border border-[var(--line)]">
-              Target: <strong className="text-[var(--ink)]">{targetCount}</strong> videos
+          
+          {/* Target & Parts Added Badges */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <span
+              className="text-xs font-sans text-[var(--ink-soft)] bg-[#FAF7F0] px-2.5 py-1 rounded-xl border border-[var(--line)] shadow-xs"
+              title="Actual live count of parts across all lessons in this subject"
+            >
+              Total parts added: <strong className="text-[var(--ink)] font-bold">{metrics.totalPartsAdded}</strong>
             </span>
-          )}
+            {metrics.targetCount ? (
+              <span
+                className="text-xs font-sans text-[var(--ink-soft)] bg-[#FAF7F0] px-2.5 py-1 rounded-xl border border-[var(--line)] shadow-xs"
+                title="Goal target videos set for this subject"
+              >
+                Target: <strong className="text-[var(--ink)] font-bold">{metrics.targetCount}</strong>
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="px-1 mt-1">
@@ -164,10 +169,37 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
           <h1 className="font-caveat text-3xl sm:text-4xl font-bold text-[var(--accent)] leading-tight mt-0.5">
             {subject.name}
           </h1>
+
+          {/* Explicit live summary line: e.g. "28 / 50 videos completed (Target: 50 · 62 parts added so far)" */}
+          <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] mt-1 flex flex-wrap items-center gap-1">
+            <span className="font-bold text-[var(--ink)]">
+              {metrics.watchedPartsCount} / {metrics.progressDenominator} videos completed
+            </span>
+            <span>
+              {metrics.targetCount ? (
+                <>
+                  (Target: {metrics.targetCount} · {metrics.totalPartsAdded} {metrics.totalPartsAdded === 1 ? 'part' : 'parts'} added so far
+                  {metrics.exceedsTarget && (
+                    <span className="text-[#92400E] font-medium ml-1">
+                      · exceeds target by {metrics.partsOverTarget}
+                    </span>
+                  )}
+                  {metrics.partsUnderTarget > 0 && (
+                    <span className="text-[var(--ink-soft)] ml-1">
+                      · {metrics.partsUnderTarget} more to reach target
+                    </span>
+                  )}
+                  )
+                </>
+              ) : (
+                <>({metrics.totalPartsAdded} {metrics.totalPartsAdded === 1 ? 'part' : 'parts'} added so far)</>
+              )}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Top summary card: SUBJECT PROGRESS (Matches Reference) */}
+      {/* Top summary card: SUBJECT PROGRESS */}
       <div className="paper-card rounded-2xl sm:rounded-3xl border border-[var(--line)] bg-[#FAF7F0] p-4 sm:p-5 shadow-[0_2px_8px_rgba(120,100,70,0.06)]">
         <div className="flex items-center justify-between mb-2.5 sm:mb-3">
           <span className="text-[11px] sm:text-xs font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)]">
@@ -175,9 +207,9 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
           </span>
           <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)]">
             <span className="font-bold text-[var(--ink)] text-sm sm:text-base">
-              {watchedVideosCount}/{progressTarget}
+              {metrics.watchedPartsCount} / {metrics.progressDenominator}
             </span>{' '}
-            <span className="font-medium">videos</span>
+            <span className="font-medium">videos completed</span>
           </div>
         </div>
 
@@ -185,10 +217,39 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-300 ${
-              percentage >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
+              metrics.percentage >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
             }`}
-            style={{ width: `${percentage}%` }}
+            style={{ width: `${metrics.percentage}%` }}
           />
+        </div>
+
+        {/* Detail footer breakdown row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[var(--line)]/60 text-xs font-sans text-[var(--ink-soft)]">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {metrics.targetCount ? (
+              <span>
+                Target: <strong className="text-[var(--ink)] font-semibold">{metrics.targetCount} videos</strong> · Total parts added:{' '}
+                <strong className="text-[var(--ink)] font-semibold">{metrics.totalPartsAdded}</strong>
+                {metrics.exceedsTarget && (
+                  <span className="text-[#92400E] font-medium ml-1.5 bg-[#FEF3C7] px-1.5 py-0.5 rounded-md border border-[#FDE68A]">
+                    +{metrics.partsOverTarget} over target
+                  </span>
+                )}
+                {metrics.partsUnderTarget > 0 && (
+                  <span className="text-[var(--ink-soft)] font-medium ml-1.5 bg-black/5 px-1.5 py-0.5 rounded-md">
+                    {metrics.partsUnderTarget} remaining to reach target
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span>
+                Total parts added: <strong className="text-[var(--ink)] font-semibold">{metrics.totalPartsAdded}</strong> (No target set)
+              </span>
+            )}
+          </div>
+          <span className="font-bold text-[var(--accent)] whitespace-nowrap">
+            {metrics.percentage}% {metrics.targetCount ? 'of target' : 'completed'}
+          </span>
         </div>
       </div>
 

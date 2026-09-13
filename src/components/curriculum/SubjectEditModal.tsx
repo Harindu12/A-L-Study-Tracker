@@ -78,18 +78,18 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
 
           <div>
             <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
-              Target Videos/Parts <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
+              Target Goal <span className="text-[var(--ink-soft)] font-normal">(optional videos estimate)</span>
             </label>
             <input 
               type="number" 
               value={targetCount} 
               onChange={(e) => setTargetCount(e.target.value)}
               className="w-full font-sans text-sm p-2.5 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-              placeholder="e.g. 50 (optional)"
+              placeholder="e.g. 50 (or leave blank)"
               min="1"
             />
-            <p className="text-[0.7rem] text-[var(--ink-soft)] mt-1 font-sans">
-              Optionally set the total videos/parts planned for this subject to track your completion percentage.
+            <p className="text-[0.7rem] text-[var(--ink-soft)] mt-1 font-sans leading-relaxed">
+              Target is your overall goal estimate (e.g. &ldquo;expecting about 50 videos total&rdquo;). This is separate from the actual live parts you add inside lessons.
             </p>
           </div>
 
@@ -230,6 +230,8 @@ interface SubjectEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (id: string, updates: Partial<Subject>) => void;
+  currentPartsCount?: number;
+  lessonCount?: number;
 }
 
 export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
@@ -237,6 +239,8 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  currentPartsCount,
+  lessonCount,
 }) => {
   const [name, setName] = useState('');
   const [targetCount, setTargetCount] = useState('');
@@ -300,7 +304,7 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
 
           <div>
             <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
-              Target Videos/Parts <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
+              Target Goal <span className="text-[var(--ink-soft)] font-normal">(optional videos estimate)</span>
             </label>
             <input 
               type="number" 
@@ -310,9 +314,15 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
               placeholder="e.g. 50 (or leave blank)"
               min="1"
             />
-            <p className="text-[0.7rem] text-[var(--ink-soft)] mt-1 font-sans">
-              Set the total videos/parts planned for this subject to track your completion percentage.
+            <p className="text-[0.7rem] text-[var(--ink-soft)] mt-1 font-sans leading-relaxed">
+              Target is your overall goal estimate (e.g. &ldquo;expecting about 50 videos total&rdquo;). This is separate from the actual live count of parts added across your lessons.
             </p>
+            {typeof currentPartsCount === 'number' && (
+              <div className="mt-2 text-[0.72rem] font-sans bg-[#FAF7F0] border border-[var(--line)] rounded-lg p-2 text-[var(--ink-soft)] flex items-center justify-between">
+                <span>Total parts currently added:</span>
+                <strong className="text-[var(--ink)] font-bold">{currentPartsCount} parts</strong>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 justify-end mt-2">

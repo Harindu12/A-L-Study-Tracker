@@ -11,6 +11,7 @@ import {
 } from './SubjectEditModal';
 import { todayStr } from '../../utils';
 import { useNavigation } from '../../navigation';
+import { calculateSubjectMetrics, calculateCurriculumMetrics } from '../../utils/subjectMetrics';
 import { 
   BookOpen, 
   Layers, 
@@ -50,17 +51,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   onLongPressSubject,
 }) => {
   const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
-  const watchedVideosCount = subjLessons.reduce(
-    (acc, l) => acc + (l.parts ? l.parts.filter((p) => p.watched).length : 0),
-    0
-  );
-  const totalVideosInSubject = subjLessons.reduce(
-    (acc, l) => acc + (l.parts ? l.parts.length : 0),
-    0
-  );
-  const progressTarget = subj.targetCount || totalVideosInSubject;
-  const pct = progressTarget > 0 ? Math.min(100, Math.round((watchedVideosCount / progressTarget) * 100)) : 0;
-  const displayTarget = progressTarget > 0 ? progressTarget : 0;
+  const metrics = calculateSubjectMetrics(subj, lessons);
 
   // Checkmark indicator: clean if has lessons and 0 pending revisits and 0 low confidence
   const subjLessonIds = new Set(subjLessons.map((l) => l.id));
@@ -220,10 +211,22 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
         </div>
 
         {/* Metadata line */}
-        <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
-          {subj.targetCount
-            ? `Target: ${subj.targetCount} videos · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
-            : `${totalVideosInSubject} ${totalVideosInSubject === 1 ? 'video' : 'videos'} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
+        <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          {metrics.targetCount ? (
+            <>
+              <span>Target: <strong className="text-[var(--ink)] font-semibold">{metrics.targetCount}</strong></span>
+              <span>·</span>
+              <span>Total parts added: <strong className="text-[var(--ink)] font-semibold">{metrics.totalPartsAdded}</strong></span>
+              <span>·</span>
+              <span>{metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}</span>
+            </>
+          ) : (
+            <>
+              <span>Total parts added: <strong className="text-[var(--ink)] font-semibold">{metrics.totalPartsAdded}</strong></span>
+              <span>·</span>
+              <span>{metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}</span>
+            </>
+          )}
         </div>
 
         {/* Label + Progress Bar Row */}
@@ -232,18 +235,23 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
             <span className="text-[11px] sm:text-xs font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
               PROGRESS
             </span>
-            <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
-              {watchedVideosCount} / {displayTarget} ({pct}%)
-            </span>
+            <div className="text-right">
+              <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
+                {metrics.watchedPartsCount} / {metrics.progressDenominator}
+              </span>
+              <span className="text-xs font-sans text-[var(--ink-soft)] ml-1">
+                ({metrics.percentage}%)
+              </span>
+            </div>
           </div>
 
           {/* Horizontal progress bar */}
           <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                pct >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
+                metrics.percentage >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
               }`}
-              style={{ width: `${pct}%` }}
+              style={{ width: `${metrics.percentage}%` }}
             />
           </div>
         </div>
@@ -277,19 +285,8 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
   const editingSubject = activeOverlay === 'curriculum-edit-subject' ? (overlayData as Subject) : null;
   const deletingSubject = activeOverlay === 'curriculum-delete-subject' ? (overlayData as Subject) : null;
 
-  // Top stats calculations (video parts based)
-  const totalWatchedVideos = lessons.reduce(
-    (acc, l) => acc + (l.parts ? l.parts.filter((p) => p.watched).length : 0),
-    0
-  );
-  const totalTargetVideos = subjects.reduce((acc, s) => {
-    const sLessons = lessons.filter((l) => l.subjectId === s.id);
-    const sParts = sLessons.reduce((pAcc, l) => pAcc + (l.parts ? l.parts.length : 0), 0);
-    return acc + (s.targetCount || sParts);
-  }, 0);
-  const allPartsCount = lessons.reduce((acc, l) => acc + (l.parts ? l.parts.length : 0), 0);
-  const totalVideosGoal = totalTargetVideos > 0 ? totalTargetVideos : allPartsCount;
-  const videosRemaining = Math.max(0, totalVideosGoal - totalWatchedVideos);
+  // Top stats calculations (video parts based - unified live metrics)
+  const overallMetrics = calculateCurriculumMetrics(subjects, lessons);
 
   // Days remaining calculation
   let daysRemainingText: string | React.ReactNode = 'Set exam date';
@@ -322,8 +319,9 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile
           icon={Video}
-          value={`${totalWatchedVideos} / ${totalVideosGoal}`}
+          value={`${overallMetrics.totalWatchedVideos} / ${overallMetrics.totalTargetVideos}`}
           label="Videos completed"
+          sublabel={`${overallMetrics.totalPartsAdded} parts added so far`}
           iconColor="text-[var(--ok)]"
           bgColor="bg-[#FAF7F0]"
         />
@@ -362,7 +360,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
 
         <StatTile
           icon={Clock}
-          value={videosRemaining}
+          value={overallMetrics.videosRemaining}
           label="Videos remaining"
           iconColor="text-[#D97706]"
           bgColor="bg-[#FAF7F0]"
@@ -526,6 +524,18 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         subject={editingSubject}
         isOpen={!!editingSubject}
         onClose={closeOverlay}
+        currentPartsCount={
+          editingSubject
+            ? lessons
+                .filter((l) => l.subjectId === editingSubject.id)
+                .reduce((acc, l) => acc + (l.parts ? l.parts.length : 0), 0)
+            : 0
+        }
+        lessonCount={
+          editingSubject
+            ? lessons.filter((l) => l.subjectId === editingSubject.id).length
+            : 0
+        }
         onSave={(id, updates) => {
           updateSubject(id, updates);
           closeOverlay();
