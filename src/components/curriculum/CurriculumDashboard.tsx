@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Subject } from '../../types';
 import { useStore } from '../../store';
-import { CircularProgress } from '../ui/CircularProgress';
 import { StatTile } from '../ui/StatTile';
 import { ExamDateModal } from './ExamDateModal';
 import { SubjectEditModal, DeleteConfirmModal } from './SubjectEditModal';
@@ -15,8 +14,18 @@ import {
   Pencil, 
   Trash2, 
   Plus,
-  ChevronRight
+  ChevronRight,
+  CheckCircle2
 } from 'lucide-react';
+
+const SUBJECT_SWATCHES = [
+  { bg: 'bg-[#7A5C94]/12', text: 'text-[#7A5C94]', border: 'border-[#7A5C94]/25' }, // plum
+  { bg: 'bg-[#5B8266]/15', text: 'text-[#5B8266]', border: 'border-[#5B8266]/25' }, // sage
+  { bg: 'bg-[#D97706]/15', text: 'text-[#B45309]', border: 'border-[#D97706]/25' }, // warm amber
+  { bg: 'bg-[#4A7C8A]/15', text: 'text-[#366B79]', border: 'border-[#4A7C8A]/25' }, // slate teal
+  { bg: 'bg-[#B25B6C]/15', text: 'text-[#9A4355]', border: 'border-[#B25B6C]/25' }, // dusty rose
+  { bg: 'bg-[#8C7A58]/15', text: 'text-[#756240]', border: 'border-[#8C7A58]/25' }, // warm ochre
+];
 
 interface CurriculumDashboardProps {
   onSelectSubject: (subjectId: string) => void;
@@ -26,6 +35,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
   const { 
     subjects, 
     lessons, 
+    revisits,
     examDate, 
     setExamDate, 
     addSubject, 
@@ -155,7 +165,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         <div className="flex justify-between items-center mb-4">
           <h2 className="section !mb-0">Progress</h2>
           <span className="text-xs font-sans text-[var(--ink-soft)]">
-            Tap a ring to view lessons
+            Tap a card to view lessons
           </span>
         </div>
 
@@ -164,30 +174,103 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
             No subjects yet. Add one below to start tracking your curriculum.
           </div>
         ) : (
-          <div className="flex flex-wrap gap-5 sm:gap-6 justify-center sm:justify-start items-start py-2">
-            {subjects.map((subj) => {
+          <div className="flex flex-col gap-3 py-1">
+            {subjects.map((subj, idx) => {
               const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
               const doneCount = subjLessons.filter((l) => l.done).length;
-              const hasTarget = !!subj.targetCount;
-              const progressTarget = subj.targetCount || (subjLessons.length > 0 ? subjLessons.length : 1);
-              const pct = Math.min(100, Math.round((doneCount / progressTarget) * 100));
+              const progressTarget = subj.targetCount || subjLessons.length;
+              const pct = progressTarget > 0 ? Math.min(100, Math.round((doneCount / progressTarget) * 100)) : 0;
+              const displayTarget = progressTarget > 0 ? progressTarget : 0;
+
+              // Checkmark indicator: clean if has lessons and 0 pending revisits and 0 low confidence
+              const subjLessonIds = new Set(subjLessons.map((l) => l.id));
+              const pendingRevisitsCount = revisits.filter((r) => subjLessonIds.has(r.lessonId) && !r.completed).length;
+              const lowConfCount = subjLessons.filter((l) => l.done && l.confidence === 'L').length;
+              const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0 && lowConfCount === 0;
+
+              const swatch = SUBJECT_SWATCHES[idx % SUBJECT_SWATCHES.length];
 
               return (
                 <div
                   key={subj.id}
-                  className="w-[105px] flex flex-col items-center group cursor-pointer"
                   onClick={() => onSelectSubject(subj.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectSubject(subj.id);
+                    }
+                  }}
                   title={`View ${subj.name} lessons`}
+                  className="w-full bg-[#FFFDF9] hover:bg-[#FAF7F0] border border-[var(--line)] hover:border-[var(--accent)] rounded-2xl p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(120,100,70,0.06)] hover:shadow-[0_4px_12px_rgba(120,100,70,0.1)] transition-all cursor-pointer group flex items-center gap-3.5 sm:gap-4 text-left"
                 >
-                  <CircularProgress
-                    progress={pct}
-                    centerText={hasTarget ? `${pct}%` : `${doneCount}`}
-                    label={subj.name}
-                    subtitle={`${doneCount} / ${subj.targetCount || subjLessons.length}`}
-                    onClick={() => onSelectSubject(subj.id)}
-                    size={84}
-                    strokeWidth={8}
-                  />
+                  {/* Small colored icon block / solid-color swatch */}
+                  <div
+                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl border flex-shrink-0 flex flex-col items-center justify-center ${swatch.bg} ${swatch.border} ${swatch.text} shadow-xs transition-transform group-hover:scale-[1.03]`}
+                  >
+                    <BookOpen size={20} strokeWidth={2.2} className="opacity-85" />
+                    <span className="text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-wider mt-0.5 opacity-90">
+                      {subj.name.trim().slice(0, 3)}
+                    </span>
+                  </div>
+
+                  {/* Card Content Column */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    {/* Top Row: Subject Name + Circular Checkmark */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-sans font-bold text-base sm:text-lg text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
+                        {subj.name}
+                      </div>
+
+                      <div
+                        className="flex-shrink-0 mt-0.5"
+                        title={
+                          isClean
+                            ? 'All caught up: no pending revisits or low-confidence lessons'
+                            : pendingRevisitsCount > 0
+                            ? `${pendingRevisitsCount} revisit(s) pending`
+                            : 'Pending reviews'
+                        }
+                      >
+                        <CheckCircle2
+                          size={19}
+                          className={isClean ? 'text-[#5B8266]' : 'text-[var(--ink-soft)]/25'}
+                          fill={isClean ? '#5B8266' : 'none'}
+                          color={isClean ? '#FFFDF9' : 'currentColor'}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Metadata line */}
+                    <div className="text-xs font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
+                      {subj.targetCount
+                        ? `Target: ${subj.targetCount} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
+                        : `${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
+                    </div>
+
+                    {/* Label + Progress Bar Row */}
+                    <div className="mt-2 sm:mt-2.5">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] sm:text-[11px] font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
+                          PROGRESS
+                        </span>
+                        <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
+                          {doneCount} / {displayTarget} ({pct}%)
+                        </span>
+                      </div>
+
+                      {/* Horizontal progress bar */}
+                      <div className="w-full h-2 rounded-full bg-[#EAE6DC] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            pct >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
