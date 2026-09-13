@@ -1,31 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Subject } from '../../types';
 import { useStore } from '../../store';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import { useNavigation } from '../../navigation';
 import { LessonCardItem } from './LessonCardItem';
+
+interface AddLessonModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (name: string) => void;
+}
+
+export const AddLessonModal: React.FC<AddLessonModalProps> = ({
+  isOpen,
+  onClose,
+  onAdd,
+}) => {
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onAdd(name.trim());
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl p-5 border border-[var(--line)] shadow-[0_12px_36px_rgba(120,100,70,0.18)] paper-card bg-[#FAF7F0] animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <Plus size={20} className="text-[var(--accent)]" />
+            <h3 className="font-caveat text-2xl font-bold text-[var(--accent)] m-0">Add Lesson</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-full hover:bg-black/5 transition-colors cursor-pointer"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
+              Lesson Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)] text-[var(--ink)]"
+              placeholder="e.g. Chemical Bonding"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div className="flex gap-2 justify-end mt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn ghost !py-2 !px-3 !text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim()}
+              className="btn !py-2 !px-4 !text-xs disabled:opacity-50 cursor-pointer"
+            >
+              Add Lesson
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 interface SubjectLessonListProps {
   subject: Subject;
   onBack: () => void;
 }
 
-type FilterType = 'all' | 'pending' | 'done' | 'low';
-
 export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, onBack }) => {
   const { lessons, addLesson } = useStore();
-  const { activeOverlay, openOverlay, closeOverlay, isPopping } = useNavigation();
+  const { activeOverlay, openOverlay, closeOverlay } = useNavigation();
   
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [newLessonName, setNewLessonName] = useState('');
   const [expandedLessonIds, setExpandedLessonIds] = useState<Record<string, boolean>>({});
-
-  // Reset newLessonName if add-lesson overlay was dismissed via system back
-  React.useEffect(() => {
-    if (activeOverlay !== 'add-lesson' && isPopping) {
-      setNewLessonName('');
-    }
-  }, [activeOverlay, isPopping]);
 
   const toggleExpandLesson = (lessonId: string) => {
     setExpandedLessonIds((prev) => ({
@@ -36,9 +116,6 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
 
   // Lessons strictly in the order they were added
   const subjectLessons = lessons.filter((l) => l.subjectId === subject.id);
-  const doneCount = subjectLessons.filter((l) => l.done).length;
-  const pendingCount = subjectLessons.length - doneCount;
-  const lowConfidenceCount = subjectLessons.filter((l) => l.done && l.confidence === 'L').length;
 
   const targetCount = subject.targetCount;
   const watchedVideosCount = subjectLessons.reduce(
@@ -52,29 +129,17 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
   const progressTarget = targetCount || totalVideosInSubject;
   const percentage = progressTarget > 0 ? Math.min(100, Math.round((watchedVideosCount / progressTarget) * 100)) : 0;
 
-  const filteredLessons = subjectLessons.filter((lesson) => {
-    if (filter === 'pending') return !lesson.done;
-    if (filter === 'done') return lesson.done;
-    if (filter === 'low') return lesson.done && lesson.confidence === 'L';
-    return true; // 'all'
-  });
+  const isAddModalOpen = activeOverlay === 'curriculum-add-lesson';
 
-  const handleAddLesson = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newLessonName.trim()) {
-      addLesson({
-        subjectId: subject.id,
-        name: newLessonName.trim(),
-      });
-      setNewLessonName('');
-      if (activeOverlay === 'add-lesson') {
-        closeOverlay();
-      }
-    }
+  const handleAddLesson = (name: string) => {
+    addLesson({
+      subjectId: subject.id,
+      name: name.trim(),
+    });
   };
 
   return (
-    <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-200 pb-20">
       {/* Top navigation row & Subject Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -127,112 +192,16 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         </div>
       </div>
 
-      {/* Filter Chips Bar */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            filter === 'all'
-              ? 'bg-[#7A5C94] text-white shadow-sm'
-              : 'bg-[#FAF7F0] text-[var(--ink-soft)] hover:text-[var(--ink)] border border-[var(--line)]'
-          }`}
-        >
-          <span>All</span>
-          <span className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${filter === 'all' ? 'bg-white/20' : 'bg-black/5'}`}>
-            {subjectLessons.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setFilter('pending')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            filter === 'pending'
-              ? 'bg-[#7A5C94] text-white shadow-sm'
-              : 'bg-[#FAF7F0] text-[var(--ink-soft)] hover:text-[var(--ink)] border border-[var(--line)]'
-          }`}
-        >
-          <span>Pending</span>
-          <span className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${filter === 'pending' ? 'bg-white/20' : 'bg-black/5'}`}>
-            {pendingCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setFilter('done')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            filter === 'done'
-              ? 'bg-[#5B8266] text-white shadow-sm'
-              : 'bg-[#FAF7F0] text-[var(--ink-soft)] hover:text-[var(--ink)] border border-[var(--line)]'
-          }`}
-        >
-          <span>Done</span>
-          <span className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${filter === 'done' ? 'bg-white/20' : 'bg-black/5'}`}>
-            {doneCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setFilter('low')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            filter === 'low'
-              ? 'bg-[#B45309] text-white shadow-sm'
-              : 'bg-[#FAF7F0] text-[var(--ink-soft)] hover:text-[var(--ink)] border border-[var(--line)]'
-          }`}
-        >
-          <span>Low confidence</span>
-          <span className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${filter === 'low' ? 'bg-white/20' : 'bg-black/5'}`}>
-            {lowConfidenceCount}
-          </span>
-        </button>
-      </div>
-
-      {/* Add Lesson Input */}
-      <form onSubmit={handleAddLesson} className="card !mb-0 p-3 sm:p-4 paper-card">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newLessonName}
-            onChange={(e) => setNewLessonName(e.target.value)}
-            onFocus={() => {
-              if (activeOverlay !== 'add-lesson') {
-                openOverlay('add-lesson');
-              }
-            }}
-            onBlur={() => {
-              if (activeOverlay === 'add-lesson' && !newLessonName.trim() && !isPopping) {
-                closeOverlay();
-              }
-            }}
-            placeholder="Lesson name (e.g. Chemical Bonding)..."
-            className="flex-1 font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-          />
-          <button
-            type="submit"
-            disabled={!newLessonName.trim()}
-            className="btn !py-2 !px-4 !text-xs whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
-          >
-            <Plus size={16} />
-            <span>Add Lesson</span>
-          </button>
-        </div>
-      </form>
-
       {/* Lesson List */}
       <div className="flex flex-col gap-2.5">
-        {filteredLessons.length === 0 ? (
-          <div className="card paper-card text-center py-8">
+        {subjectLessons.length === 0 ? (
+          <div className="card paper-card text-center py-10 px-4">
             <p className="text-sm font-sans text-[var(--ink-soft)]">
-              {subjectLessons.length === 0
-                ? 'No lessons added yet. Type a lesson name above to get started.'
-                : filter === 'pending'
-                ? 'Great job! No pending lessons in this subject.'
-                : filter === 'done'
-                ? 'No completed lessons yet. Mark one as done above!'
-                : 'No low confidence lessons found.'}
+              No lessons added yet. Tap the <strong className="text-[var(--accent)]">+</strong> button below to add your first lesson.
             </p>
           </div>
         ) : (
-          filteredLessons.map((lesson) => (
+          subjectLessons.map((lesson) => (
             <LessonCardItem
               key={lesson.id}
               lesson={lesson}
@@ -242,6 +211,28 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
           ))
         )}
       </div>
+
+      {/* Floating Action Button (above the bottom navigation bar) */}
+      <button
+        type="button"
+        onClick={() => openOverlay('curriculum-add-lesson')}
+        className="fixed bottom-24 z-40 w-14 h-14 rounded-full bg-[var(--accent)] text-white shadow-[0_6px_20px_rgba(122,92,148,0.35)] hover:bg-[#684c80] hover:scale-105 active:scale-95 transition-all flex items-center justify-center border-2 border-[#FAF7F0] focus:outline-none focus:ring-4 focus:ring-[var(--accent)]/30 cursor-pointer"
+        style={{ right: 'max(1.25rem, calc(50% - 204px))' }}
+        aria-label="Add Lesson"
+        title="Add Lesson"
+      >
+        <Plus size={28} strokeWidth={2.6} />
+      </button>
+
+      {/* Add Lesson Modal */}
+      <AddLessonModal
+        isOpen={isAddModalOpen}
+        onClose={closeOverlay}
+        onAdd={(name) => {
+          handleAddLesson(name);
+          closeOverlay();
+        }}
+      />
     </div>
   );
 };
