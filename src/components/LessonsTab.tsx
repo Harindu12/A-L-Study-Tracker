@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store';
 import { CurriculumDashboard } from './curriculum/CurriculumDashboard';
 import { SubjectLessonList } from './curriculum/SubjectLessonList';
+import { useNavigation } from '../navigation';
 
 export const LessonsTab: React.FC = () => {
   const { subjects } = useStore();
-  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
+  const { activeSubjectId, openSubject, closeSubject } = useNavigation();
 
   // If active subject was deleted, return to dashboard
   useEffect(() => {
     if (activeSubjectId && !subjects.some((s) => s.id === activeSubjectId)) {
-      setActiveSubjectId(null);
+      closeSubject();
     }
-  }, [activeSubjectId, subjects]);
+  }, [activeSubjectId, subjects, closeSubject]);
 
   const activeSubject = subjects.find((s) => s.id === activeSubjectId);
 
   const handleSelectSubject = (subjectId: string) => {
-    setActiveSubjectId(subjectId);
+    openSubject(subjectId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBackToDashboard = () => {
-    setActiveSubjectId(null);
+    closeSubject();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

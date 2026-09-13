@@ -6,6 +6,7 @@ import { StatTile } from '../ui/StatTile';
 import { ExamDateModal } from './ExamDateModal';
 import { SubjectEditModal, DeleteConfirmModal } from './SubjectEditModal';
 import { todayStr } from '../../utils';
+import { useNavigation } from '../../navigation';
 import { 
   BookOpen, 
   Layers, 
@@ -36,10 +37,20 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
   const [newSubjName, setNewSubjName] = useState('');
   const [newSubjTarget, setNewSubjTarget] = useState('');
 
-  // Modals state
-  const [isExamModalOpen, setIsExamModalOpen] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
-  const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
+  const { activeOverlay, overlayData, openOverlay, closeOverlay, isPopping } = useNavigation();
+
+  // Reset new subject inputs if user presses system back to dismiss add-subject form
+  React.useEffect(() => {
+    if (activeOverlay !== 'add-subject' && isPopping) {
+      setNewSubjName('');
+      setNewSubjTarget('');
+    }
+  }, [activeOverlay, isPopping]);
+
+  // Modals state derived from navigation overlay
+  const isExamModalOpen = activeOverlay === 'curriculum-exam-date';
+  const editingSubject = activeOverlay === 'curriculum-edit-subject' ? (overlayData as Subject) : null;
+  const deletingSubject = activeOverlay === 'curriculum-delete-subject' ? (overlayData as Subject) : null;
 
   // Top stats calculations
   const totalLessons = lessons.length;
@@ -73,6 +84,9 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
       });
       setNewSubjName('');
       setNewSubjTarget('');
+      if (activeOverlay === 'add-subject') {
+        closeOverlay();
+      }
     }
   };
 
@@ -104,7 +118,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         />
 
         <div 
-          onClick={() => setIsExamModalOpen(true)}
+          onClick={() => openOverlay('curriculum-exam-date')}
           className="bg-[#FAF7F0] border border-[var(--line)] rounded-2xl p-4 flex flex-col gap-2 flex-1 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] cursor-pointer hover:border-[var(--accent)] transition-all group"
         >
           <div className="flex justify-between items-center text-[var(--accent)]">
@@ -273,6 +287,20 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                 type="text"
                 value={newSubjName}
                 onChange={(e) => setNewSubjName(e.target.value)}
+                onFocus={() => {
+                  if (activeOverlay !== 'add-subject') {
+                    openOverlay('add-subject');
+                  }
+                }}
+                onBlur={(e) => {
+                  const form = e.currentTarget.closest('form');
+                  if (form && form.contains(e.relatedTarget as Node)) {
+                    return;
+                  }
+                  if (activeOverlay === 'add-subject' && !newSubjName.trim() && !isPopping) {
+                    closeOverlay();
+                  }
+                }}
                 placeholder="e.g. Chemistry"
                 className="w-full font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
               />
@@ -285,6 +313,20 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                 type="number"
                 value={newSubjTarget}
                 onChange={(e) => setNewSubjTarget(e.target.value)}
+                onFocus={() => {
+                  if (activeOverlay !== 'add-subject') {
+                    openOverlay('add-subject');
+                  }
+                }}
+                onBlur={(e) => {
+                  const form = e.currentTarget.closest('form');
+                  if (form && form.contains(e.relatedTarget as Node)) {
+                    return;
+                  }
+                  if (activeOverlay === 'add-subject' && !newSubjName.trim() && !isPopping) {
+                    closeOverlay();
+                  }
+                }}
                 placeholder="e.g. 50"
                 min="1"
                 className="w-full font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
@@ -327,7 +369,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
 
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => setEditingSubject(subj)}
+                        onClick={() => openOverlay('curriculum-edit-subject', subj)}
                         className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--accent)] rounded-lg hover:bg-black/5 transition-colors"
                         title="Edit subject"
                       >
@@ -335,7 +377,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                       </button>
 
                       <button
-                        onClick={() => setDeletingSubject(subj)}
+                        onClick={() => openOverlay('curriculum-delete-subject', subj)}
                         className="p-1.5 text-[var(--ink-soft)] hover:text-red-600 rounded-lg hover:bg-black/5 transition-colors"
                         title="Delete subject"
                       >
@@ -354,25 +396,32 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
       <ExamDateModal
         currentDate={examDate}
         isOpen={isExamModalOpen}
-        onClose={() => setIsExamModalOpen(false)}
-        onSave={(date) => setExamDate(date)}
+        onClose={closeOverlay}
+        onSave={(date) => {
+          setExamDate(date);
+          closeOverlay();
+        }}
       />
 
       <SubjectEditModal
         subject={editingSubject}
         isOpen={!!editingSubject}
-        onClose={() => setEditingSubject(null)}
-        onSave={(id, updates) => updateSubject(id, updates)}
+        onClose={closeOverlay}
+        onSave={(id, updates) => {
+          updateSubject(id, updates);
+          closeOverlay();
+        }}
       />
 
       <DeleteConfirmModal
         subject={deletingSubject}
         lessonCount={deletingSubject ? lessons.filter((l) => l.subjectId === deletingSubject.id).length : 0}
         isOpen={!!deletingSubject}
-        onClose={() => setDeletingSubject(null)}
+        onClose={closeOverlay}
         onConfirm={() => {
           if (deletingSubject) {
             deleteSubject(deletingSubject.id);
+            closeOverlay();
           }
         }}
       />

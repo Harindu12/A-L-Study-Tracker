@@ -1,10 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { todayStr, mondayOf, addDays } from '../utils';
 import { CircularProgress } from './ui/CircularProgress';
 import { BarChart, BarChartData } from './ui/BarChart';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateChipStrip } from './ui/DateChipStrip';
+import { useNavigation } from '../navigation';
+
+interface SaturdayTestSectionProps {
+  monday: string;
+}
+
+const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => {
+  const { weeklyTests, saveWeeklyTest, subjects } = useStore();
+  const { activeOverlay, openOverlay, closeOverlay, isPopping } = useNavigation();
+
+  const currentWeekTest = weeklyTests.find(t => t.weekStartDate === monday) || { subjectId: '', score: '' };
+  const [testSubj, setTestSubj] = useState(currentWeekTest.subjectId);
+  const [testScore, setTestScore] = useState(currentWeekTest.score);
+  const [saveMsg, setSaveMsg] = useState('');
+
+  useEffect(() => {
+    setTestSubj(currentWeekTest.subjectId);
+    setTestScore(currentWeekTest.score);
+  }, [currentWeekTest.subjectId, currentWeekTest.score, monday]);
+
+  const handleSaveTest = () => {
+    if (testSubj) {
+      saveWeeklyTest({ weekStartDate: monday, subjectId: testSubj, score: testScore });
+      setSaveMsg('Saved ✓');
+      if (activeOverlay === 'stats-saturday-test') {
+        closeOverlay();
+      }
+      setTimeout(() => setSaveMsg(''), 1500);
+    }
+  };
+
+  return (
+    <div className="card !mb-0 border border-[var(--line)] shadow-sm">
+      <h2 className="section">Saturday test</h2>
+      <div className="flex flex-col gap-4 mt-2">
+        <div>
+          <label>Subject</label>
+          <select 
+            value={testSubj} 
+            onChange={e => setTestSubj(e.target.value)}
+            onFocus={() => {
+              if (activeOverlay !== 'stats-saturday-test') {
+                openOverlay('stats-saturday-test');
+              }
+            }}
+            onBlur={() => {
+              if (activeOverlay === 'stats-saturday-test' && !isPopping) {
+                closeOverlay();
+              }
+            }}
+          >
+            <option value="">-- subject --</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label>Score</label>
+          <input 
+            type="text" 
+            value={testScore} 
+            onChange={e => setTestScore(e.target.value)} 
+            onFocus={() => {
+              if (activeOverlay !== 'stats-saturday-test') {
+                openOverlay('stats-saturday-test');
+              }
+            }}
+            onBlur={() => {
+              if (activeOverlay === 'stats-saturday-test' && !isPopping) {
+                closeOverlay();
+              }
+            }}
+            placeholder="e.g. 72%" 
+          />
+        </div>
+        <div className="mt-2 flex items-center">
+          <button className="btn w-full flex justify-center gap-2" onClick={handleSaveTest}>
+            Save test result
+            {saveMsg && <span className="font-sans font-normal opacity-90 ml-2">{saveMsg}</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const StatsTab = () => {
   const { dailyEntries, subjects, lessons, weeklyTests, saveWeeklyTest, revisits } = useStore();
@@ -26,19 +110,6 @@ export const StatsTab = () => {
     const monday = mondayOf(anchorDate);
     const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
     
-    const currentWeekTest = weeklyTests.find(t => t.weekStartDate === monday) || { subjectId: '', score: '' };
-    const [testSubj, setTestSubj] = useState(currentWeekTest.subjectId);
-    const [testScore, setTestScore] = useState(currentWeekTest.score);
-    const [saveMsg, setSaveMsg] = useState('');
-
-    const handleSaveTest = () => {
-      if (testSubj) {
-        saveWeeklyTest({ weekStartDate: monday, subjectId: testSubj, score: testScore });
-        setSaveMsg('Saved ✓');
-        setTimeout(() => setSaveMsg(''), 1500);
-      }
-    };
-
     const chartData: BarChartData[] = days.map(d => {
       const rec = getDaily(d);
       const dayLabel = new Date(d).toLocaleDateString('en-US', { weekday: 'short' });
@@ -153,28 +224,7 @@ export const StatsTab = () => {
           </div>
         </div>
 
-        <div className="card !mb-0 border border-[var(--line)] shadow-sm">
-          <h2 className="section">Saturday test</h2>
-          <div className="flex flex-col gap-4 mt-2">
-            <div>
-              <label>Subject</label>
-              <select value={testSubj} onChange={e => setTestSubj(e.target.value)}>
-                <option value="">-- subject --</option>
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Score</label>
-              <input type="text" value={testScore} onChange={e => setTestScore(e.target.value)} placeholder="e.g. 72%" />
-            </div>
-            <div className="mt-2 flex items-center">
-              <button className="btn w-full flex justify-center gap-2" onClick={handleSaveTest}>
-                Save test result
-                {saveMsg && <span className="font-sans font-normal opacity-90 ml-2">{saveMsg}</span>}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SaturdayTestSection monday={monday} />
       </div>
     );
   };

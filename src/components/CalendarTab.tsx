@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store';
+import { useNavigation } from '../navigation';
 import { DailyEntry, DailySubjectLog, HourBlock } from '../types';
 import { todayStr, uid, addDays, mondayOf } from '../utils';
 import { 
@@ -41,16 +42,24 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
   const today = todayStr();
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
-  // Floating toolbar states
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { activeOverlay, openOverlay, closeOverlay } = useNavigation();
+
+  // Floating toolbar & overlay states
+  const isSearchOpen = activeOverlay === 'calendar-search';
   const [searchQuery, setSearchQuery] = useState('');
-  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
+  const isNotesModalOpen = activeOverlay === 'calendar-notes';
+  const isAddModalOpen = activeOverlay === 'calendar-add-task';
+  const isMonthModalOpen = activeOverlay === 'calendar-month';
   const [modalMonth, setModalMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setSearchQuery('');
+    }
+  }, [isSearchOpen]);
 
   // Add modal form state
   const [addMode, setAddMode] = useState<'task' | 'subject'>('task');
@@ -252,7 +261,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       updateEntry({ hours: [...(entry.hours || []), newHour] });
       setNewTaskTitle('');
       setNewTaskDetail('');
-      setIsAddModalOpen(false);
+      closeOverlay();
     } else {
       if (!newSubjId) return;
       const newLog: DailySubjectLog & { duration?: string; period?: string } = {
@@ -269,7 +278,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       updateEntry({ subjects: [...(entry.subjects || []), newLog] });
       setNewSubjId('');
       setNewLessonId('');
-      setIsAddModalOpen(false);
+      closeOverlay();
     }
   };
 
@@ -317,7 +326,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               key={i}
               onClick={() => {
                 setSelectedDate(dateStr);
-                setIsMonthModalOpen(false);
+                closeOverlay();
               }}
               className="flex flex-col items-center justify-start h-[40px] cursor-pointer"
             >
@@ -405,7 +414,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             onClick={() => {
               setNewTaskPeriod(period);
               setNewSubjPeriod(period);
-              setIsAddModalOpen(true);
+              openOverlay('calendar-add-task');
             }}
             className="text-[0.7rem] text-[#7A5C94] hover:underline font-sans font-bold flex items-center gap-0.5 opacity-85 hover:opacity-100"
           >
@@ -419,7 +428,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             onClick={() => {
               setNewTaskPeriod(period);
               setNewSubjPeriod(period);
-              setIsAddModalOpen(true);
+              openOverlay('calendar-add-task');
             }}
             className="border border-dashed border-[#D8CDAE] rounded-2xl p-3.5 text-center text-xs text-[var(--ink-soft)]/70 hover:text-[#7A5C94] hover:border-[#7A5C94]/50 cursor-pointer transition-colors bg-[#FAF7F0]/60 shadow-[0_1px_3px_rgba(120,100,70,0.04)]"
           >
@@ -469,7 +478,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
           {/* Month calendar jump icon */}
           <button
-            onClick={() => setIsMonthModalOpen(true)}
+            onClick={() => openOverlay('calendar-month')}
             className="p-1.5 text-[var(--ink-soft)] hover:text-[#7A5C94] hover:bg-[var(--accent-soft)] rounded-full transition-colors ml-0.5"
             title="Choose date"
           >
@@ -563,7 +572,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           {/* 1. Search */}
           <button
             type="button"
-            onClick={() => setIsSearchOpen((prev) => !prev)}
+            onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
             className={`transition-transform active:scale-95 ${
               isSearchOpen ? 'text-white scale-110' : 'text-white/80 hover:text-white'
             }`}
@@ -585,7 +594,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           {/* 3. Edit (Open notes / teach-back) */}
           <button
             type="button"
-            onClick={() => setIsNotesModalOpen(true)}
+            onClick={() => openOverlay('calendar-notes')}
             className="text-white/80 hover:text-white transition-transform active:scale-95"
             title="Teach-back & Notes"
           >
@@ -595,7 +604,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           {/* 4. Plus (Add new task) */}
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => openOverlay('calendar-add-task')}
             className="text-white/90 hover:text-white transition-transform active:scale-95 hover:scale-110"
             title="Add task or log"
           >
@@ -608,7 +617,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {isNotesModalOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setIsNotesModalOpen(false)}
+          onClick={closeOverlay}
         >
           <div
             className="bg-[#FAF7F0] rounded-3xl shadow-[0_16px_40px_rgba(120,100,70,0.22)] border border-[var(--line)] w-full max-w-sm p-5 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto paper-card"
@@ -620,7 +629,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                 <h3 className="font-caveat text-2xl font-bold text-[#7A5C94] m-0">Daily Reflections</h3>
               </div>
               <button
-                onClick={() => setIsNotesModalOpen(false)}
+                onClick={closeOverlay}
                 className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-full"
               >
                 <X size={18} />
@@ -655,7 +664,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsNotesModalOpen(false)}
+                  onClick={closeOverlay}
                   className="w-full py-2.5 bg-[#7A5C94] text-white font-sans font-bold text-sm rounded-full shadow-sm hover:opacity-95 transition-opacity"
                 >
                   Done
@@ -670,7 +679,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {isAddModalOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setIsAddModalOpen(false)}
+          onClick={closeOverlay}
         >
           <div
             className="bg-[#FAF7F0] rounded-3xl shadow-[0_16px_40px_rgba(120,100,70,0.22)] border border-[var(--line)] w-full max-w-sm p-5 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto paper-card"
@@ -679,7 +688,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-caveat text-2xl font-bold text-[#7A5C94] m-0">Add to Agenda</h3>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={closeOverlay}
                 className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-full"
               >
                 <X size={18} />
@@ -904,7 +913,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {isMonthModalOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setIsMonthModalOpen(false)}
+          onClick={closeOverlay}
         >
           <div
             className="bg-[#FAF7F0] rounded-3xl shadow-[0_16px_40px_rgba(120,100,70,0.22)] border border-[var(--line)] w-full max-w-sm p-5 animate-in fade-in zoom-in-95 duration-200 paper-card"
@@ -933,7 +942,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                 className="text-xs font-sans font-bold text-[#7A5C94] hover:underline"
                 onClick={() => {
                   setSelectedDate(today);
-                  setIsMonthModalOpen(false);
+                  closeOverlay();
                 }}
               >
                 Jump to Today

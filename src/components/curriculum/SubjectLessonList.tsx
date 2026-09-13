@@ -4,6 +4,7 @@ import { useStore } from '../../store';
 import { CircularProgress } from '../ui/CircularProgress';
 import { ArrowLeft, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { todayStr } from '../../utils';
+import { useNavigation } from '../../navigation';
 
 interface SubjectLessonListProps {
   subject: Subject;
@@ -14,10 +15,18 @@ type FilterType = 'all' | 'pending' | 'done' | 'low';
 
 export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, onBack }) => {
   const { lessons, addLesson, updateLesson, deleteLesson, markLessonDone } = useStore();
+  const { activeOverlay, openOverlay, closeOverlay, isPopping } = useNavigation();
   
   const [filter, setFilter] = useState<FilterType>('all');
   const [newLessonName, setNewLessonName] = useState('');
   const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+
+  // Reset newLessonName if add-lesson overlay was dismissed via system back
+  React.useEffect(() => {
+    if (activeOverlay !== 'add-lesson' && isPopping) {
+      setNewLessonName('');
+    }
+  }, [activeOverlay, isPopping]);
 
   // Lessons strictly in the order they were added
   const subjectLessons = lessons.filter((l) => l.subjectId === subject.id);
@@ -44,6 +53,9 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         name: newLessonName.trim(),
       });
       setNewLessonName('');
+      if (activeOverlay === 'add-lesson') {
+        closeOverlay();
+      }
     }
   };
 
@@ -60,19 +72,27 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
   };
 
   const handleBlurName = (lessonId: string, originalName: string) => {
+    if (isPopping) {
+      // User pressed back button / gesture to cancel inline editing - discard changes
+      setEditingNames((prev) => {
+        const next = { ...prev };
+        delete next[lessonId];
+        return next;
+      });
+      return;
+    }
+
     const updated = editingNames[lessonId];
     if (updated !== undefined) {
       const trimmed = updated.trim();
       if (trimmed && trimmed !== originalName) {
         updateLesson(lessonId, { name: trimmed });
-      } else {
-        // revert to original
-        setEditingNames((prev) => {
-          const next = { ...prev };
-          delete next[lessonId];
-          return next;
-        });
       }
+      setEditingNames((prev) => {
+        const next = { ...prev };
+        delete next[lessonId];
+        return next;
+      });
     }
   };
 
@@ -187,6 +207,16 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
             type="text"
             value={newLessonName}
             onChange={(e) => setNewLessonName(e.target.value)}
+            onFocus={() => {
+              if (activeOverlay !== 'add-lesson') {
+                openOverlay('add-lesson');
+              }
+            }}
+            onBlur={() => {
+              if (activeOverlay === 'add-lesson' && !newLessonName.trim() && !isPopping) {
+                closeOverlay();
+              }
+            }}
             placeholder="Lesson name (e.g. Chemical Bonding)..."
             className="flex-1 font-sans text-sm p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
           />
@@ -249,7 +279,17 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
                       onChange={(e) =>
                         setEditingNames((prev) => ({ ...prev, [lesson.id]: e.target.value }))
                       }
-                      onBlur={() => handleBlurName(lesson.id, lesson.name)}
+                      onFocus={() => {
+                        if (activeOverlay !== `edit-lesson-${lesson.id}`) {
+                          openOverlay(`edit-lesson-${lesson.id}`);
+                        }
+                      }}
+                      onBlur={() => {
+                        handleBlurName(lesson.id, lesson.name);
+                        if (activeOverlay === `edit-lesson-${lesson.id}` && !isPopping) {
+                          closeOverlay();
+                        }
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.currentTarget.blur();

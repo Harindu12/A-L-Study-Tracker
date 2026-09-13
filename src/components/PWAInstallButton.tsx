@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { Download } from 'lucide-react';
+import { useNavigation } from '../navigation';
 
 export const PWAInstallButton: React.FC = () => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
-  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const { activeOverlay, openOverlay, closeOverlay } = useNavigation();
+  const showIOSGuide = activeOverlay === 'pwa-ios-guide';
 
   if (isInstalled) {
     return null;
@@ -26,7 +28,7 @@ export const PWAInstallButton: React.FC = () => {
     return (
       <>
         <button
-          onClick={() => setShowIOSGuide(true)}
+          onClick={() => openOverlay('pwa-ios-guide')}
           className="flex items-center gap-1.5 rounded-lg border border-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--accent)] transition hover:bg-[var(--accent-soft)]"
         >
           <Download size={16} />
@@ -34,15 +36,21 @@ export const PWAInstallButton: React.FC = () => {
         </button>
 
         {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={closeOverlay}
+          >
+            <div 
+              className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <h3 className="text-lg font-caveat font-bold text-[var(--accent)] mb-2">Install on iPhone / iPad</h3>
               <p className="text-sm text-[var(--ink)] font-patrick leading-relaxed mb-4">
                 1. Tap the <strong>Share</strong> button in Safari toolbar.<br />
                 2. Scroll down and tap <strong>Add to Home Screen</strong>.
               </p>
               <button
-                onClick={() => setShowIOSGuide(false)}
+                onClick={closeOverlay}
                 className="w-full rounded-lg bg-[var(--accent-soft)] py-2 text-[1rem] font-patrick text-[var(--accent)] hover:opacity-90"
               >
                 Close
