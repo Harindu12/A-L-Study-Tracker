@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Lesson, LessonPart } from '../../types';
 import { useStore } from '../../store';
 import { 
@@ -6,11 +6,14 @@ import {
   ChevronUp, 
   Trash2, 
   CheckCircle2, 
+  Check,
+  Circle,
   Plus, 
   Video, 
   Layers,
   Sparkles,
-  ListPlus
+  ListPlus,
+  X
 } from 'lucide-react';
 import { todayStr } from '../../utils';
 import { useNavigation } from '../../navigation';
@@ -32,6 +35,79 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   const [lessonName, setLessonName] = useState(lesson.name);
   const [newPartName, setNewPartName] = useState('');
   const [editingPartNames, setEditingPartNames] = useState<Record<string, string>>({});
+  const [showActionMenu, setShowActionMenu] = useState(false);
+
+  // Long-press handling (500ms threshold)
+  const timerRef = useRef<number | null>(null);
+  const isLongPressTriggered = useRef(false);
+  const touchStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mouseStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const clearTimer = () => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isLongPressTriggered.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      isLongPressTriggered.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(40);
+        } catch (_) {}
+      }
+      setShowActionMenu(true);
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (timerRef.current === null) return;
+    const dx = e.touches[0].clientX - touchStartPos.current.x;
+    const dy = e.touches[0].clientY - touchStartPos.current.y;
+    if (Math.hypot(dx, dy) > 10) {
+      clearTimer();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    clearTimer();
+    if (isLongPressTriggered.current) {
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    mouseStartPos.current = { x: e.clientX, y: e.clientY };
+    isLongPressTriggered.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      isLongPressTriggered.current = true;
+      setShowActionMenu(true);
+    }, 500);
+  };
+
+  const handleMouseUp = () => {
+    clearTimer();
+  };
+
+  const handleMouseLeave = () => {
+    clearTimer();
+  };
+
+  const handleCardClick = () => {
+    if (isLongPressTriggered.current) {
+      isLongPressTriggered.current = false;
+      return;
+    }
+    onToggleExpand();
+  };
 
   // Bulk add parts state
   const [showBulkAdd, setShowBulkAdd] = useState(false);
@@ -45,8 +121,10 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   }, [lesson.name]);
 
   const parts = lesson.parts || [];
+  const watchedPartsCount = parts.filter((p) => p.watched).length;
   const completedPartsCount = parts.filter((p) => p.watched && p.pastPaper).length;
   const allPartsComplete = parts.length > 0 && completedPartsCount === parts.length;
+  const isFullyComplete = lesson.done || (parts.length > 0 && watchedPartsCount === parts.length);
 
   const handleToggleDone = (e: React.MouseEvent | React.ChangeEvent) => {
     e.stopPropagation();
@@ -178,176 +256,163 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   };
 
   return (
-    <div
-      onClick={onToggleExpand}
-      className={`paper-card rounded-2xl border transition-all cursor-pointer select-none overflow-hidden ${
-        lesson.done
-          ? 'border-[#D2DEC8] bg-[#F7F9F5] shadow-[0_1px_4px_rgba(91,130,102,0.06)]'
-          : 'border-[var(--line)] bg-[#FAF7F0] shadow-[0_2px_8px_rgba(120,100,70,0.06)] hover:bg-[#FFFDF9]'
-      }`}
-    >
-      {/* Card Header: Checkbox + Name + Progress Indicator + Chevron */}
-      <div className="p-3.5 sm:p-4">
-        <div className="flex items-start gap-3">
-          {/* Lesson Done Checkbox */}
-          <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={lesson.done}
-              onChange={handleToggleDone}
-              title={lesson.done ? 'Mark lesson pending' : 'Mark lesson done'}
-              className="cursor-pointer w-4 h-4 rounded accent-[#5B8266]"
-            />
-          </div>
-
-          {/* Main Title & Metadata */}
-          <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="text"
-              value={lessonName}
-              onChange={(e) => setLessonName(e.target.value)}
-              onFocus={() => {
-                if (activeOverlay !== `edit-lesson-${lesson.id}`) {
-                  openOverlay(`edit-lesson-${lesson.id}`);
-                }
-              }}
-              onBlur={() => {
-                handleBlurLessonName();
-                if (activeOverlay === `edit-lesson-${lesson.id}` && !isPopping) {
-                  closeOverlay();
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.currentTarget.blur();
-                }
-              }}
-              className={`w-full bg-transparent border border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] focus:bg-white px-2 py-0.5 rounded-lg text-sm font-sans font-medium transition-colors ${
-                lesson.done
-                  ? 'line-through text-[var(--ink-soft)]'
-                  : 'text-[var(--ink)] font-semibold'
-              }`}
-            />
-
-            {/* Badges Row: Parts Progress Indicator & Done Date */}
-            <div className="flex flex-wrap items-center gap-2 mt-1.5 ml-2">
-              {/* Parts Progress Indicator (e.g. "3/5 parts") */}
-              <span
-                className={`inline-flex items-center gap-1 text-[0.7rem] font-sans font-semibold px-2 py-0.5 rounded-full border transition-colors ${
-                  allPartsComplete
-                    ? 'bg-[#5B8266]/15 text-[#5B8266] border-[#5B8266]/30'
-                    : parts.length > 0
-                    ? 'bg-[#7A5C94]/10 text-[#7A5C94] border-[#7A5C94]/20'
-                    : 'bg-black/5 text-[var(--ink-soft)] border-black/10'
-                }`}
-                title={
-                  parts.length > 0
-                    ? `${completedPartsCount} of ${parts.length} parts completed (watched & past paper done)`
-                    : 'No sub-parts yet'
-                }
-              >
-                <Layers size={11} />
-                <span>
-                  {parts.length > 0 ? `${completedPartsCount}/${parts.length} parts` : '0 parts'}
-                </span>
+    <>
+      <div
+        onClick={handleCardClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        className={`paper-card rounded-2xl sm:rounded-3xl border transition-all cursor-pointer select-none overflow-hidden ${
+          isFullyComplete
+            ? 'border-[#D2DEC8] bg-[#FAF7F0] shadow-[0_2px_8px_rgba(91,130,102,0.06)] hover:bg-[#FFFDF9]'
+            : 'border-[var(--line)] bg-[#FAF7F0] shadow-[0_2px_8px_rgba(120,100,70,0.06)] hover:bg-[#FFFDF9]'
+        }`}
+      >
+        {/* Collapsed Card Main Row (Matches Reference Structure) */}
+        <div className="p-4 sm:p-5 flex items-center justify-between gap-3.5 sm:gap-4">
+          {/* Left Square Badge */}
+          <div
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all ${
+              isFullyComplete
+                ? 'bg-[#5B8266] text-white shadow-xs'
+                : 'bg-[#EAE6DC] text-[var(--ink)] border border-[var(--line)]/50'
+            }`}
+          >
+            {isFullyComplete ? (
+              <Check size={20} strokeWidth={2.8} />
+            ) : (
+              <span className="font-sans font-bold text-base sm:text-lg">
+                {watchedPartsCount}
               </span>
-
-              {/* Completed Date Badge */}
-              {lesson.done && lesson.completedDate && (
-                <span className="text-[0.68rem] font-sans font-semibold text-[#4A6B53] bg-[#E4ECE0] px-2 py-0.5 rounded-full inline-flex items-center gap-1 border border-[#5B8266]/20">
-                  <CheckCircle2 size={10} />
-                  Done {lesson.completedDate}
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Right Controls: Delete & Expand Chevron */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteLesson(lesson.id);
-              }}
-              title="Delete lesson"
-              className="p-1.5 text-[var(--ink-soft)] hover:text-red-600 rounded-lg hover:bg-black/5 transition-colors"
-            >
-              <Trash2 size={15} />
-            </button>
+          {/* Title & Parts Count */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-sans font-bold text-base sm:text-lg text-[var(--ink)] truncate leading-snug">
+              {lesson.name}
+            </h3>
+            <p className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5">
+              {watchedPartsCount} / {parts.length} parts
+            </p>
+          </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand();
-              }}
-              title={isExpanded ? 'Collapse parts' : 'Expand parts'}
-              className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--accent)] rounded-lg hover:bg-black/5 transition-transform"
-            >
-              {isExpanded ? (
-                <ChevronUp size={18} strokeWidth={2.2} />
-              ) : (
-                <ChevronDown size={18} strokeWidth={2.2} />
-              )}
-            </button>
+          {/* Chevron to expand/collapse */}
+          <div className="flex-shrink-0 text-[var(--ink-soft)] pl-1">
+            {isExpanded ? (
+              <ChevronUp size={20} strokeWidth={2.2} className="text-[var(--accent)]" />
+            ) : (
+              <ChevronDown size={20} strokeWidth={2.2} />
+            )}
           </div>
         </div>
 
-        {/* Confidence Rating row (when done) */}
-        {lesson.done && (
+        {/* Expanded Checklist of Video / Parts */}
+        {isExpanded && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="mt-3 pt-2.5 border-t border-[rgba(91,130,102,0.2)] flex items-center justify-between"
+            className="bg-[#FFFDF9] border-t border-[var(--line)] p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-150"
           >
-            <span className="text-[0.7rem] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)] ml-1">
-              Confidence Rating:
-            </span>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => updateLesson(lesson.id, { confidence: 'L' })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all ${
-                  lesson.confidence === 'L'
-                    ? 'bg-[#FEF3C7] text-[#92400E] border border-[#F59E0B] shadow-xs'
-                    : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
-                }`}
-              >
-                Low
-              </button>
-              <button
-                type="button"
-                onClick={() => updateLesson(lesson.id, { confidence: 'M' })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all ${
-                  lesson.confidence === 'M'
-                    ? 'bg-[#EFE8F5] text-[#5C3D77] border border-[#7A5C94] shadow-xs'
-                    : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
-                }`}
-              >
-                Medium
-              </button>
-              <button
-                type="button"
-                onClick={() => updateLesson(lesson.id, { confidence: 'H' })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all ${
-                  lesson.confidence === 'H'
-                    ? 'bg-[#E4ECE0] text-[#2F5238] border border-[#5B8266] shadow-xs'
-                    : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
-                }`}
-              >
-                High
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+            {/* Expanded Lesson Controls Bar: Rename, Mark Done & Delete */}
+            <div className="flex flex-col gap-3 pb-3.5 mb-3.5 border-b border-[var(--line)]">
+              {/* Rename Lesson input */}
+              <div>
+                <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)] mb-1">
+                  Lesson Title (Click to edit)
+                </label>
+                <input
+                  type="text"
+                  value={lessonName}
+                  onChange={(e) => setLessonName(e.target.value)}
+                  onBlur={handleBlurLessonName}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur();
+                  }}
+                  className="w-full font-sans font-semibold text-sm px-3 py-1.5 rounded-xl border border-[var(--line)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)] text-[var(--ink)]"
+                />
+              </div>
 
-      {/* Expanded Checklist of Video / Parts */}
-      {isExpanded && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="bg-[#FFFDF9] border-t border-[var(--line)] p-3.5 sm:p-4 animate-in fade-in slide-in-from-top-2 duration-150"
-        >
+              {/* Actions Row: Mark Completed / Pending + Delete Lesson */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleDone}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all cursor-pointer border ${
+                    lesson.done
+                      ? 'bg-[#5B8266]/15 text-[#2F5238] border-[#5B8266]/30 hover:bg-[#5B8266]/25'
+                      : 'bg-white text-[var(--ink-soft)] hover:text-[var(--ink)] border-[var(--line)] hover:bg-black/5'
+                  }`}
+                  title={lesson.done ? 'Mark lesson pending' : 'Mark entire lesson done'}
+                >
+                  {lesson.done ? (
+                    <CheckCircle2 size={15} className="text-[#5B8266]" />
+                  ) : (
+                    <Circle size={15} />
+                  )}
+                  <span>{lesson.done ? 'Marked Completed' : 'Mark Lesson Done'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteLesson(lesson.id);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-sans font-semibold text-red-600 hover:bg-red-50 border border-red-200/80 transition-colors ml-auto cursor-pointer"
+                  title="Delete this lesson"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Lesson</span>
+                </button>
+              </div>
+
+              {/* Confidence Rating row (when done) */}
+              {lesson.done && (
+                <div className="pt-2 border-t border-[var(--line)]/60 flex items-center justify-between">
+                  <span className="text-[0.7rem] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)]">
+                    Confidence Rating:
+                  </span>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => updateLesson(lesson.id, { confidence: 'L' })}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
+                        lesson.confidence === 'L'
+                          ? 'bg-[#FEF3C7] text-[#92400E] border border-[#F59E0B] shadow-xs'
+                          : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
+                      }`}
+                    >
+                      Low
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateLesson(lesson.id, { confidence: 'M' })}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
+                        lesson.confidence === 'M'
+                          ? 'bg-[#EFE8F5] text-[#5C3D77] border border-[#7A5C94] shadow-xs'
+                          : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
+                      }`}
+                    >
+                      Medium
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateLesson(lesson.id, { confidence: 'H' })}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
+                        lesson.confidence === 'H'
+                          ? 'bg-[#E4ECE0] text-[#2F5238] border border-[#5B8266] shadow-xs'
+                          : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
+                      }`}
+                    >
+                      High
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           <div className="flex items-center justify-between mb-2.5 px-1">
             <span className="text-[0.7rem] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)] flex items-center gap-1.5">
               <Video size={13} className="text-[var(--accent)]" />
@@ -587,5 +652,105 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         </div>
       )}
     </div>
+
+    {/* Long-Press Action Sheet Modal */}
+    {showActionMenu && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowActionMenu(false);
+        }}
+      >
+        <div
+          className="card paper-card max-w-sm w-full p-5 flex flex-col gap-4 shadow-xl border border-[var(--line)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-[var(--line)] pb-2.5">
+            <h3 className="font-caveat text-2xl font-bold text-[var(--accent)] truncate">
+              {lesson.name}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowActionMenu(false)}
+              className="p-1 rounded-lg text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                handleToggleDone(e);
+                setShowActionMenu(false);
+              }}
+              className={`btn flex items-center justify-center gap-2 !py-2.5 text-xs font-sans font-bold cursor-pointer ${
+                lesson.done
+                  ? '!bg-[#FAF7F0] !text-[var(--ink)] border border-[var(--line)] hover:!bg-black/5'
+                  : '!bg-[#5B8266] text-white'
+              }`}
+            >
+              {lesson.done ? <Circle size={15} /> : <CheckCircle2 size={15} />}
+              <span>{lesson.done ? 'Mark as Pending' : 'Mark as Completed'}</span>
+            </button>
+
+            {lesson.done && (
+              <div className="flex items-center justify-between py-1">
+                <span className="text-xs font-sans font-bold text-[var(--ink-soft)]">Confidence:</span>
+                <div className="flex gap-1.5">
+                  {(['L', 'M', 'H'] as const).map((conf) => (
+                    <button
+                      key={conf}
+                      type="button"
+                      onClick={() => updateLesson(lesson.id, { confidence: conf })}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold border transition-colors cursor-pointer ${
+                        lesson.confidence === conf
+                          ? conf === 'L'
+                            ? 'bg-[#FEF3C7] text-[#92400E] border-[#F59E0B]'
+                            : conf === 'M'
+                            ? 'bg-[#EFE8F5] text-[#5C3D77] border-[#7A5C94]'
+                            : 'bg-[#E4ECE0] text-[#2F5238] border-[#5B8266]'
+                          : 'bg-white text-[var(--ink-soft)] border-[var(--line)]'
+                      }`}
+                    >
+                      {conf === 'L' ? 'Low' : conf === 'M' ? 'Med' : 'High'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand();
+                setShowActionMenu(false);
+              }}
+              className="btn !bg-white !text-[var(--ink)] border border-[var(--line)] hover:!bg-black/5 flex items-center justify-center gap-2 !py-2.5 text-xs font-sans font-bold cursor-pointer"
+            >
+              <Layers size={15} />
+              <span>{isExpanded ? 'Collapse Parts' : 'View / Edit Parts'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteLesson(lesson.id);
+                setShowActionMenu(false);
+              }}
+              className="btn !bg-red-50 !text-red-700 hover:!bg-red-100 border border-red-200 flex items-center justify-center gap-2 !py-2.5 text-xs font-sans font-bold mt-1 cursor-pointer"
+            >
+              <Trash2 size={15} />
+              <span>Delete Lesson</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 };

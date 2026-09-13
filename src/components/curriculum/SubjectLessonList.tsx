@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Subject } from '../../types';
 import { useStore } from '../../store';
-import { CircularProgress } from '../ui/CircularProgress';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useNavigation } from '../../navigation';
 import { LessonCardItem } from './LessonCardItem';
@@ -76,45 +75,54 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
 
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-      {/* Top navigation row */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-xs font-sans font-bold text-[var(--accent)] hover:opacity-80 py-1.5 px-3 rounded-xl transition-all bg-[#FAF7F0] border border-[var(--line)] shadow-[0_1px_3px_rgba(120,100,70,0.08)] paper-card"
-        >
-          <ArrowLeft size={16} strokeWidth={2.5} />
-          <span>Curriculum Dashboard</span>
-        </button>
-      </div>
+      {/* Top navigation row & Subject Header */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-xs font-sans font-bold text-[var(--accent)] hover:opacity-80 py-1.5 px-3 rounded-xl transition-all bg-[#FAF7F0] border border-[var(--line)] shadow-[0_1px_3px_rgba(120,100,70,0.08)] paper-card cursor-pointer"
+          >
+            <ArrowLeft size={16} strokeWidth={2.5} />
+            <span>Curriculum Dashboard</span>
+          </button>
+          {targetCount && (
+            <span className="text-xs font-sans text-[var(--ink-soft)] bg-[#FAF7F0] px-2.5 py-1 rounded-xl border border-[var(--line)]">
+              Target: <strong className="text-[var(--ink)]">{targetCount}</strong> videos
+            </span>
+          )}
+        </div>
 
-      {/* Subject Summary Header Card */}
-      <div className="card !mb-0 paper-card p-4 sm:p-5 flex items-center justify-between gap-4">
-        <div className="flex-1">
+        <div className="px-1 mt-1">
           <div className="text-[0.7rem] uppercase tracking-wider font-sans font-bold text-[var(--ink-soft)]">
             Subject Drill-Down
           </div>
           <h1 className="font-caveat text-3xl sm:text-4xl font-bold text-[var(--accent)] leading-tight mt-0.5">
             {subject.name}
           </h1>
-          <div className="flex items-center gap-2 mt-2 text-xs font-sans text-[var(--ink-soft)]">
-            <span className="font-bold text-[var(--ink)]">
-              {watchedVideosCount} / {progressTarget}
-            </span>
-            <span>videos completed</span>
-            {targetCount && (
-              <span className="text-[0.7rem] bg-[var(--paper)] px-2 py-0.5 rounded-full border border-[var(--line)]">
-                Target: {targetCount}
-              </span>
-            )}
+        </div>
+      </div>
+
+      {/* Top summary card: SUBJECT PROGRESS (Matches Reference) */}
+      <div className="paper-card rounded-2xl sm:rounded-3xl border border-[var(--line)] bg-[#FAF7F0] p-4 sm:p-5 shadow-[0_2px_8px_rgba(120,100,70,0.06)]">
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+          <span className="text-[11px] sm:text-xs font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)]">
+            SUBJECT PROGRESS
+          </span>
+          <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)]">
+            <span className="font-bold text-[var(--ink)] text-sm sm:text-base">
+              {watchedVideosCount}/{progressTarget}
+            </span>{' '}
+            <span className="font-medium">videos</span>
           </div>
         </div>
 
-        <div className="flex-shrink-0">
-          <CircularProgress
-            progress={percentage}
-            centerText={progressTarget > 0 ? `${percentage}%` : `${watchedVideosCount}`}
-            size={74}
-            strokeWidth={7}
+        {/* Horizontal progress bar spanning the card */}
+        <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${
+              percentage >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
+            }`}
+            style={{ width: `${percentage}%` }}
           />
         </div>
       </div>
