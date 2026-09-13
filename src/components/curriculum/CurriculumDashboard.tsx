@@ -161,8 +161,8 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
       </div>
 
       {/* Subject Progress Section */}
-      <div className="card !mb-0 paper-card">
-        <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-center px-1">
           <h2 className="section !mb-0">Progress</h2>
           <span className="text-xs font-sans text-[var(--ink-soft)]">
             Tap a card to view lessons
@@ -170,11 +170,11 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         </div>
 
         {subjects.length === 0 ? (
-          <div className="empty-note text-center py-6">
+          <div className="card !mb-0 paper-card empty-note text-center py-6">
             No subjects yet. Add one below to start tracking your curriculum.
           </div>
         ) : (
-          <div className="flex flex-col gap-3 py-1">
+          <div className="flex flex-col gap-4 sm:gap-5">
             {subjects.map((subj, idx) => {
               const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
               const doneCount = subjLessons.filter((l) => l.done).length;
@@ -203,14 +203,14 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                     }
                   }}
                   title={`View ${subj.name} lessons`}
-                  className="w-full bg-[#FFFDF9] hover:bg-[#FAF7F0] border border-[var(--line)] hover:border-[var(--accent)] rounded-2xl p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(120,100,70,0.06)] hover:shadow-[0_4px_12px_rgba(120,100,70,0.1)] transition-all cursor-pointer group flex items-center gap-3.5 sm:gap-4 text-left"
+                  className="w-full bg-[#FFFDF9] hover:bg-[#FAF7F0] border border-[var(--line)] hover:border-[var(--accent)] rounded-2xl p-5 sm:p-6 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] hover:shadow-[0_6px_16px_rgba(120,100,70,0.12)] transition-all cursor-pointer group flex items-center gap-4 sm:gap-5 text-left"
                 >
-                  {/* Small colored icon block / solid-color swatch */}
+                  {/* Large colored icon block / solid-color swatch */}
                   <div
-                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl border flex-shrink-0 flex flex-col items-center justify-center ${swatch.bg} ${swatch.border} ${swatch.text} shadow-xs transition-transform group-hover:scale-[1.03]`}
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border flex-shrink-0 flex flex-col items-center justify-center ${swatch.bg} ${swatch.border} ${swatch.text} shadow-xs transition-transform group-hover:scale-[1.03]`}
                   >
-                    <BookOpen size={20} strokeWidth={2.2} className="opacity-85" />
-                    <span className="text-[10px] sm:text-[11px] font-sans font-bold uppercase tracking-wider mt-0.5 opacity-90">
+                    <BookOpen size={24} strokeWidth={2.2} className="opacity-90 sm:w-7 sm:h-7" />
+                    <span className="text-xs sm:text-sm font-sans font-bold uppercase tracking-wider mt-1 opacity-90">
                       {subj.name.trim().slice(0, 3)}
                     </span>
                   </div>
@@ -219,7 +219,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     {/* Top Row: Subject Name + Circular Checkmark */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-sans font-bold text-base sm:text-lg text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
+                      <div className="font-sans font-bold text-lg sm:text-xl text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
                         {subj.name}
                       </div>
 
@@ -234,7 +234,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                         }
                       >
                         <CheckCircle2
-                          size={19}
+                          size={22}
                           className={isClean ? 'text-[#5B8266]' : 'text-[var(--ink-soft)]/25'}
                           fill={isClean ? '#5B8266' : 'none'}
                           color={isClean ? '#FFFDF9' : 'currentColor'}
@@ -243,16 +243,16 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                     </div>
 
                     {/* Metadata line */}
-                    <div className="text-xs font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
+                    <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 truncate">
                       {subj.targetCount
                         ? `Target: ${subj.targetCount} · ${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`
                         : `${subjLessons.length} ${subjLessons.length === 1 ? 'lesson' : 'lessons'}`}
                     </div>
 
                     {/* Label + Progress Bar Row */}
-                    <div className="mt-2 sm:mt-2.5">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] sm:text-[11px] font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
+                    <div className="mt-3 sm:mt-4">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[11px] sm:text-xs font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
                           PROGRESS
                         </span>
                         <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
@@ -261,7 +261,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                       </div>
 
                       {/* Horizontal progress bar */}
-                      <div className="w-full h-2 rounded-full bg-[#EAE6DC] overflow-hidden">
+                      <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${
                             pct >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
