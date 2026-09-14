@@ -5,13 +5,8 @@ export interface SubjectProgressMetrics {
   totalLessons: number;
   totalPartsAdded: number;       // Live count of all parts currently existing across all lessons in this subject
   watchedPartsCount: number;     // Live sum of parts with watched === true across all lessons in this subject
-  targetCount?: number;          // User-defined goal number (if any)
-  progressDenominator: number;   // targetCount if set and > 0, otherwise totalPartsAdded
-  percentage: number;            // Math.min(100, Math.round((watchedPartsCount / progressDenominator) * 100)) or 0
-  exceedsTarget: boolean;        // true if totalPartsAdded > targetCount
-  partsOverTarget: number;       // Math.max(0, totalPartsAdded - targetCount)
-  partsUnderTarget: number;      // Math.max(0, targetCount - totalPartsAdded)
-  videosRemaining: number;       // Math.max(0, progressDenominator - watchedPartsCount)
+  percentage: number;            // Math.min(100, Math.round((watchedPartsCount / totalPartsAdded) * 100)) or 0
+  partsRemaining: number;        // Math.max(0, totalPartsAdded - watchedPartsCount)
 }
 
 /**
@@ -35,58 +30,39 @@ export function calculateSubjectMetrics(subject: Subject, lessons: Lesson[]): Su
     }
   }
 
-  const targetCount =
-    typeof subject.targetCount === 'number' && subject.targetCount > 0
-      ? subject.targetCount
-      : undefined;
-
-  const progressDenominator = targetCount ?? totalPartsAdded;
-  const percentage = progressDenominator > 0
-    ? Math.min(100, Math.round((watchedPartsCount / progressDenominator) * 100))
+  const percentage = totalPartsAdded > 0
+    ? Math.min(100, Math.round((watchedPartsCount / totalPartsAdded) * 100))
     : 0;
 
-  const exceedsTarget = !!(targetCount && totalPartsAdded > targetCount);
-  const partsOverTarget = targetCount && totalPartsAdded > targetCount ? totalPartsAdded - targetCount : 0;
-  const partsUnderTarget = targetCount && totalPartsAdded < targetCount ? targetCount - totalPartsAdded : 0;
-  const videosRemaining = Math.max(0, progressDenominator - watchedPartsCount);
+  const partsRemaining = Math.max(0, totalPartsAdded - watchedPartsCount);
 
   return {
     subjectId: subject.id,
     totalLessons,
     totalPartsAdded,
     watchedPartsCount,
-    targetCount,
-    progressDenominator,
     percentage,
-    exceedsTarget,
-    partsOverTarget,
-    partsUnderTarget,
-    videosRemaining,
+    partsRemaining,
   };
 }
 
 export interface CurriculumOverallMetrics {
   totalWatchedVideos: number;
   totalPartsAdded: number;
-  totalTargetVideos: number;
   videosRemaining: number;
 }
 
 /**
- * Calculates overall curriculum-wide metrics across all subjects and lessons.
+ * Calculates overall curriculum-wide metrics across all subjects and lessons purely from actual parts.
  */
 export function calculateCurriculumMetrics(subjects: Subject[], lessons: Lesson[]): CurriculumOverallMetrics {
   let totalWatchedVideos = 0;
   let totalPartsAdded = 0;
-  let totalTargetVideos = 0;
-  let videosRemaining = 0;
 
   for (const subject of subjects) {
     const m = calculateSubjectMetrics(subject, lessons);
     totalWatchedVideos += m.watchedPartsCount;
     totalPartsAdded += m.totalPartsAdded;
-    totalTargetVideos += m.progressDenominator;
-    videosRemaining += m.videosRemaining;
   }
 
   // Also include any lessons not belonging to an active subject
@@ -98,13 +74,13 @@ export function calculateCurriculumMetrics(subjects: Subject[], lessons: Lesson[
     for (const p of parts) {
       if (p.watched) totalWatchedVideos++;
     }
-    totalTargetVideos += parts.length;
   }
+
+  const videosRemaining = Math.max(0, totalPartsAdded - totalWatchedVideos);
 
   return {
     totalWatchedVideos,
     totalPartsAdded,
-    totalTargetVideos,
     videosRemaining,
   };
 }

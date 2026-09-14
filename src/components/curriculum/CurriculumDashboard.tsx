@@ -212,21 +212,9 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
 
         {/* Metadata line */}
         <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] font-medium mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          {metrics.targetCount ? (
-            <>
-              <span>Target: <strong className="text-[var(--ink)] font-semibold">{metrics.targetCount}</strong></span>
-              <span>·</span>
-              <span>Total parts added: <strong className="text-[var(--ink)] font-semibold">{metrics.totalPartsAdded}</strong></span>
-              <span>·</span>
-              <span>{metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}</span>
-            </>
-          ) : (
-            <>
-              <span>Total parts added: <strong className="text-[var(--ink)] font-semibold">{metrics.totalPartsAdded}</strong></span>
-              <span>·</span>
-              <span>{metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}</span>
-            </>
-          )}
+          <span>{metrics.totalPartsAdded} {metrics.totalPartsAdded === 1 ? 'part' : 'parts'}</span>
+          <span>·</span>
+          <span>{metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}</span>
         </div>
 
         {/* Label + Progress Bar Row */}
@@ -237,7 +225,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
             </span>
             <div className="text-right">
               <span className="text-xs sm:text-sm font-sans font-semibold text-[var(--ink)]">
-                {metrics.watchedPartsCount} / {metrics.progressDenominator}
+                {metrics.watchedPartsCount} / {metrics.totalPartsAdded} parts completed
               </span>
               <span className="text-xs font-sans text-[var(--ink-soft)] ml-1">
                 ({metrics.percentage}%)
@@ -249,7 +237,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
           <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                metrics.percentage >= 100 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
+                metrics.percentage >= 100 && metrics.totalPartsAdded > 0 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
               }`}
               style={{ width: `${metrics.percentage}%` }}
             />
@@ -319,9 +307,8 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile
           icon={Video}
-          value={`${overallMetrics.totalWatchedVideos} / ${overallMetrics.totalTargetVideos}`}
+          value={`${overallMetrics.totalWatchedVideos} / ${overallMetrics.totalPartsAdded}`}
           label="Videos completed"
-          sublabel={`${overallMetrics.totalPartsAdded} parts added so far`}
           iconColor="text-[var(--ok)]"
           bgColor="bg-[#FAF7F0]"
         />
@@ -524,18 +511,6 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         subject={editingSubject}
         isOpen={!!editingSubject}
         onClose={closeOverlay}
-        currentPartsCount={
-          editingSubject
-            ? lessons
-                .filter((l) => l.subjectId === editingSubject.id)
-                .reduce((acc, l) => acc + (l.parts ? l.parts.length : 0), 0)
-            : 0
-        }
-        lessonCount={
-          editingSubject
-            ? lessons.filter((l) => l.subjectId === editingSubject.id).length
-            : 0
-        }
         onSave={(id, updates) => {
           updateSubject(id, updates);
           closeOverlay();
