@@ -314,13 +314,13 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         {isExpanded && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#FFFDF9] border-t border-[var(--line)] p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-150"
+            className="bg-[var(--paper)] bg-[radial-gradient(var(--dot)_1.5px,transparent_1.5px)] [background-size:24px_24px] border-t border-[var(--line)] p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-150"
           >
             {/* Expanded Lesson Controls Bar: Rename, Mark Done & Delete */}
-            <div className="flex flex-col gap-3 pb-3.5 mb-3.5 border-b border-[var(--line)]">
+            <div className="flex flex-col gap-3 pb-3.5 mb-3.5 border-b border-[var(--line)]/70">
               {/* Rename Lesson input */}
               <div>
-                <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)] mb-1">
+                <label className="block text-[11px] sm:text-xs font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase mb-1.5">
                   Lesson Title (Click to edit)
                 </label>
                 <input
@@ -331,26 +331,26 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') e.currentTarget.blur();
                   }}
-                  className="w-full font-sans font-semibold text-sm px-3 py-1.5 rounded-xl border border-[var(--line)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)] text-[var(--ink)]"
+                  className="w-full font-sans font-semibold text-sm sm:text-base px-3.5 py-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] hover:border-[var(--accent-line)] focus:outline-none focus:border-[var(--accent)] focus:ring-3 focus:ring-[var(--accent-soft)] shadow-xs text-[var(--ink)] transition-all placeholder:text-[var(--ink-soft)]/60"
                 />
               </div>
 
               {/* Actions Row: Mark Completed / Pending + Delete Lesson */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
                 <button
                   type="button"
                   onClick={handleToggleDone}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sans font-bold transition-all cursor-pointer border ${
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-sans font-bold transition-all cursor-pointer active:scale-95 border ${
                     lesson.done
-                      ? 'bg-[#5B8266]/15 text-[#2F5238] border-[#5B8266]/30 hover:bg-[#5B8266]/25'
-                      : 'bg-white text-[var(--ink-soft)] hover:text-[var(--ink)] border-[var(--line)] hover:bg-black/5'
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_2px_8px_rgba(122,92,148,0.25)] hover:bg-[#684c80]'
+                      : 'bg-[#FFFDF9] text-[var(--accent)] border-1.5 border-[var(--accent)] hover:bg-[var(--accent-soft)] shadow-xs'
                   }`}
                   title={lesson.done ? 'Mark lesson pending' : 'Mark entire lesson done'}
                 >
                   {lesson.done ? (
-                    <CheckCircle2 size={15} className="text-[#5B8266]" />
+                    <CheckCircle2 size={15} className="text-white" />
                   ) : (
-                    <Circle size={15} />
+                    <Circle size={15} className="text-[var(--accent)]" />
                   )}
                   <span>{lesson.done ? 'Marked Completed' : 'Mark Lesson Done'}</span>
                 </button>
@@ -361,28 +361,28 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     e.stopPropagation();
                     deleteLesson(lesson.id);
                   }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-sans font-semibold text-red-600 hover:bg-red-50 border border-red-200/80 transition-colors ml-auto cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-sans font-semibold text-[#A64B2A] bg-[#FFFDF9] hover:bg-[#FDF3EE] border border-[#D99B82]/80 hover:border-[#A64B2A] transition-all ml-auto cursor-pointer shadow-xs active:scale-95"
                   title="Delete this lesson"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={13} className="text-[#A64B2A]" />
                   <span>Delete Lesson</span>
                 </button>
               </div>
 
               {/* Confidence Rating row (when done) */}
               {lesson.done && (
-                <div className="pt-2 border-t border-[var(--line)]/60 flex items-center justify-between">
-                  <span className="text-[0.7rem] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)]">
+                <div className="pt-2.5 border-t border-[var(--line)]/60 flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-[11px] font-sans font-bold tracking-wider text-[var(--ink-soft)] uppercase">
                     Confidence Rating:
                   </span>
                   <div className="flex gap-1.5">
                     <button
                       type="button"
                       onClick={() => updateLesson(lesson.id, { confidence: 'L' })}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded-full text-xs font-sans font-bold transition-all cursor-pointer ${
                         lesson.confidence === 'L'
                           ? 'bg-[#FEF3C7] text-[#92400E] border border-[#F59E0B] shadow-xs'
-                          : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
+                          : 'bg-[#FFFDF9] text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
                       }`}
                     >
                       Low
@@ -390,10 +390,10 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     <button
                       type="button"
                       onClick={() => updateLesson(lesson.id, { confidence: 'M' })}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded-full text-xs font-sans font-bold transition-all cursor-pointer ${
                         lesson.confidence === 'M'
                           ? 'bg-[#EFE8F5] text-[#5C3D77] border border-[#7A5C94] shadow-xs'
-                          : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
+                          : 'bg-[#FFFDF9] text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
                       }`}
                     >
                       Medium
@@ -401,10 +401,10 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     <button
                       type="button"
                       onClick={() => updateLesson(lesson.id, { confidence: 'H' })}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-sans font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded-full text-xs font-sans font-bold transition-all cursor-pointer ${
                         lesson.confidence === 'H'
                           ? 'bg-[#E4ECE0] text-[#2F5238] border border-[#5B8266] shadow-xs'
-                          : 'bg-white/70 text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
+                          : 'bg-[#FFFDF9] text-[var(--ink-soft)] border border-[var(--line)] hover:bg-white'
                       }`}
                     >
                       High
@@ -413,244 +413,250 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 </div>
               )}
             </div>
-          <div className="flex items-center justify-between mb-2.5 px-1">
-            <span className="text-[0.7rem] font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)] flex items-center gap-1.5">
-              <Video size={13} className="text-[var(--accent)]" />
-              <span>Video & Topic Parts Checklist ({parts.length})</span>
-            </span>
 
-            {allPartsComplete && (
-              <span className="text-[0.7rem] font-sans font-bold text-[#5B8266] flex items-center gap-1 bg-[#5B8266]/10 px-2 py-0.5 rounded-full">
-                <Sparkles size={11} />
-                <span>All Parts Complete</span>
-              </span>
-            )}
-          </div>
+            {/* Video & Topic Parts Checklist Header */}
+            <div className="flex items-center justify-between mb-3 px-0.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[var(--accent-soft)] border border-[var(--accent-line)]/40 flex items-center justify-center text-[var(--accent)] flex-shrink-0">
+                  <Video size={13} strokeWidth={2.2} />
+                </div>
+                <span className="text-xs font-sans font-bold tracking-wider text-[var(--ink)] uppercase">
+                  Video & Topic Parts Checklist ({parts.length})
+                </span>
+              </div>
 
-          {/* Parts List */}
-          {parts.length === 0 ? (
-            <div className="p-3 text-center rounded-xl border border-dashed border-[var(--line)] text-xs font-sans text-[var(--ink-soft)] mb-3 bg-[#FAF7F0]/60">
-              No parts added yet. Add individual videos or sub-topics below to track your progress.
+              {allPartsComplete && parts.length > 0 && (
+                <span className="text-[0.72rem] font-sans font-bold text-[#2F5238] flex items-center gap-1.5 bg-[#E8F1EA] border border-[#9DBCA4]/60 px-2.5 py-0.5 rounded-full shadow-2xs">
+                  <Sparkles size={12} className="text-[#5B8266]" />
+                  <span>All Parts Complete</span>
+                </span>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col gap-2 mb-3">
-              {parts.map((part, index) => {
-                const isPartComplete = part.watched && part.pastPaper;
-                const displayName =
-                  editingPartNames[part.id] !== undefined
-                    ? editingPartNames[part.id]
-                    : part.name;
 
-                return (
-                  <div
-                    key={part.id}
-                    className={`rounded-xl border p-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 transition-all ${
-                      isPartComplete
-                        ? 'border-[#5B8266]/30 bg-[#F4F8F2]'
-                        : 'border-[var(--line)] bg-[#FAF7F0] hover:bg-[#FAF7F0]/90'
-                    }`}
-                  >
-                    {/* Part Name (Editable) */}
-                    <div className="flex-1 min-w-[140px] flex items-center gap-1.5">
-                      <span className="text-xs font-mono font-bold text-[var(--ink-soft)] select-none">
-                        {index + 1}.
-                      </span>
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={(e) =>
-                          setEditingPartNames((prev) => ({
-                            ...prev,
-                            [part.id]: e.target.value,
-                          }))
-                        }
-                        onBlur={() => handleBlurPartName(part.id, part.name)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur();
+            {/* Parts List */}
+            {parts.length === 0 ? (
+              <div className="p-4 text-center rounded-2xl border border-dashed border-[var(--line)] text-xs font-sans text-[var(--ink-soft)] mb-3 bg-[#FAF7F0] paper-card shadow-xs">
+                No parts added yet. Add individual videos or sub-topics below to track your progress.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5 mb-3.5">
+                {parts.map((part, index) => {
+                  const isPartComplete = part.watched && part.pastPaper;
+                  const displayName =
+                    editingPartNames[part.id] !== undefined
+                      ? editingPartNames[part.id]
+                      : part.name;
+
+                  return (
+                    <div
+                      key={part.id}
+                      className={`paper-card rounded-2xl border p-2.5 sm:p-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 transition-all shadow-[0_2px_8px_rgba(120,100,70,0.08)] ${
+                        isPartComplete
+                          ? 'border-[#9DBCA4] bg-[#F4F8F2] shadow-[0_2px_8px_rgba(91,130,102,0.12)]'
+                          : 'border-[var(--line)] bg-[#FAF7F0] hover:bg-[#FFFDF9] hover:border-[var(--accent-line)]/70 hover:shadow-[0_4px_12px_rgba(120,100,70,0.12)]'
+                      }`}
+                    >
+                      {/* Part Name (Editable) */}
+                      <div className="flex-1 min-w-[140px] flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-[#EAE6DC]/80 border border-[var(--line)]/70 text-[var(--ink-soft)] font-mono font-bold text-xs flex items-center justify-center flex-shrink-0 select-none">
+                          {index + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={displayName}
+                          onChange={(e) =>
+                            setEditingPartNames((prev) => ({
+                              ...prev,
+                              [part.id]: e.target.value,
+                            }))
                           }
-                        }}
-                        placeholder={`Part ${index + 1}`}
-                        className={`w-full font-sans text-xs px-2 py-1 rounded-lg border border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] focus:bg-white transition-colors ${
-                          isPartComplete
-                            ? 'font-semibold text-[#2F5238]'
-                            : 'font-medium text-[var(--ink)]'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Checkboxes: Watched & Past Paper Done */}
-                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                      {/* Watched Checkbox */}
-                      <label className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-[var(--ink)] cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-black/5 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={part.watched}
-                          onChange={(e) => handleToggleWatched(part.id, e.target.checked)}
-                          className="cursor-pointer w-3.5 h-3.5 rounded accent-[var(--accent)]"
+                          onBlur={() => handleBlurPartName(part.id, part.name)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          placeholder={`Part ${index + 1}`}
+                          className={`w-full font-sans text-xs sm:text-sm px-2.5 py-1.5 rounded-xl border border-transparent hover:border-[var(--line)] focus:border-[var(--accent)] focus:bg-[#FFFDF9] focus:ring-2 focus:ring-[var(--accent-soft)] transition-all ${
+                            isPartComplete
+                              ? 'font-semibold text-[#2F5238]'
+                              : 'font-medium text-[var(--ink)]'
+                          }`}
                         />
-                        <span className={part.watched ? 'font-semibold text-[var(--accent)]' : 'text-[var(--ink-soft)]'}>
-                          Watched
-                        </span>
-                      </label>
+                      </div>
 
-                      {/* Past Paper Done Checkbox */}
-                      <label className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-[var(--ink)] cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-black/5 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={part.pastPaper}
-                          onChange={(e) => handleTogglePastPaper(part.id, e.target.checked)}
-                          className="cursor-pointer w-3.5 h-3.5 rounded accent-[#5B8266]"
-                        />
-                        <span className={part.pastPaper ? 'font-semibold text-[#4A6B53]' : 'text-[var(--ink-soft)]'}>
-                          Past paper done
-                        </span>
-                      </label>
+                      {/* Checkboxes: Watched & Past Paper Done */}
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        {/* Watched Checkbox */}
+                        <label className="inline-flex items-center gap-2 text-xs font-sans font-medium text-[var(--ink)] cursor-pointer select-none py-1 px-2 rounded-xl hover:bg-black/5 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={part.watched}
+                            onChange={(e) => handleToggleWatched(part.id, e.target.checked)}
+                            className="cursor-pointer"
+                          />
+                          <span className={part.watched ? 'font-semibold text-[#2F5238]' : 'text-[var(--ink-soft)]'}>
+                            Watched
+                          </span>
+                        </label>
 
-                      {/* Delete Part Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePart(part.id)}
-                        title="Delete part"
-                        className="p-1 text-[var(--ink-soft)] hover:text-red-600 rounded-lg hover:bg-black/5 transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                        {/* Past Paper Done Checkbox */}
+                        <label className="inline-flex items-center gap-2 text-xs font-sans font-medium text-[var(--ink)] cursor-pointer select-none py-1 px-2 rounded-xl hover:bg-black/5 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={part.pastPaper}
+                            onChange={(e) => handleTogglePastPaper(part.id, e.target.checked)}
+                            className="cursor-pointer"
+                          />
+                          <span className={part.pastPaper ? 'font-semibold text-[#2F5238]' : 'text-[var(--ink-soft)]'}>
+                            Past paper done
+                          </span>
+                        </label>
+
+                        {/* Delete Part Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePart(part.id)}
+                          title="Delete part"
+                          className="p-1.5 text-[var(--ink-soft)] hover:text-[#A64B2A] rounded-lg hover:bg-black/5 transition-colors cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
 
-          {/* Add Part Section: Single input + Add multiple toggle */}
-          <div className="flex flex-col gap-2.5">
-            <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
-              {/* Existing single Add Part input */}
-              <form onSubmit={handleAddPart} className="flex-1 flex gap-2 items-center min-w-[200px]">
-                <input
-                  type="text"
-                  value={newPartName}
-                  onChange={(e) => setNewPartName(e.target.value)}
-                  placeholder={`Add single part (e.g. Part ${parts.length + 1})...`}
-                  className="flex-1 font-sans text-xs p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-                />
+            {/* Add Part Section: Single input + Add multiple toggle */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                {/* Single Add Part input */}
+                <form onSubmit={handleAddPart} className="flex-1 flex gap-2 items-center min-w-[200px]">
+                  <input
+                    type="text"
+                    value={newPartName}
+                    onChange={(e) => setNewPartName(e.target.value)}
+                    placeholder={`Add single part (e.g. Part ${parts.length + 1})...`}
+                    className="flex-1 font-sans text-xs sm:text-sm px-3.5 py-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] hover:border-[var(--accent-line)] focus:outline-none focus:border-[var(--accent)] focus:ring-3 focus:ring-[var(--accent-soft)] shadow-xs text-[var(--ink)] transition-all placeholder:text-[var(--ink-soft)]/60"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-full bg-[var(--accent)] text-white hover:bg-[#684c80] text-xs font-sans font-semibold shadow-[0_2px_8px_rgba(122,92,148,0.25)] flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+                  >
+                    <Plus size={14} strokeWidth={2.4} />
+                    <span>Add Part</span>
+                  </button>
+                </form>
+
+                {/* Add multiple toggle button */}
                 <button
-                  type="submit"
-                  className="btn !py-2 !px-3.5 !text-xs whitespace-nowrap flex items-center gap-1"
+                  type="button"
+                  onClick={() => setShowBulkAdd((prev) => !prev)}
+                  className={`px-4 py-2 text-xs font-sans font-semibold rounded-full border transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 ${
+                    showBulkAdd
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_2px_8px_rgba(122,92,148,0.25)]'
+                      : 'bg-[#FFFDF9] text-[var(--accent)] border-1.5 border-[var(--accent)] hover:bg-[var(--accent-soft)] shadow-xs'
+                  }`}
+                  title="Generate multiple numbered parts at once"
                 >
-                  <Plus size={14} />
-                  <span>Add Part</span>
+                  <ListPlus size={14} />
+                  <span>{showBulkAdd ? 'Hide multiple' : 'Add multiple'}</span>
                 </button>
-              </form>
+              </div>
 
-              {/* Add multiple toggle button */}
-              <button
-                type="button"
-                onClick={() => setShowBulkAdd((prev) => !prev)}
-                className={`px-3 py-2 text-xs font-sans font-semibold rounded-xl border transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  showBulkAdd
-                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-xs'
-                    : 'bg-[#FAF7F0] text-[var(--accent)] border-[var(--accent)]/30 hover:bg-[#7A5C94]/10'
-                }`}
-                title="Generate multiple numbered parts at once"
-              >
-                <ListPlus size={14} />
-                <span>{showBulkAdd ? 'Hide multiple' : 'Add multiple'}</span>
-              </button>
-            </div>
-
-            {/* Bulk Add Generator Form Panel */}
-            {showBulkAdd && (
-              <div className="p-3.5 bg-[#FAF7F0] rounded-2xl border border-[var(--accent)]/25 flex flex-col gap-3 shadow-[0_2px_8px_rgba(122,92,148,0.06)] animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-sans font-bold text-[var(--accent)] flex items-center gap-1.5 uppercase tracking-wider">
-                    <ListPlus size={14} />
-                    <span>Bulk Generate Parts</span>
-                  </span>
-                  <span className="text-[11px] font-sans text-[var(--ink-soft)] font-medium">
-                    {isValidRange && bulkCount > 0
-                      ? `${bulkCount} ${bulkCount === 1 ? 'part' : 'parts'} will be created`
-                      : 'Please specify a valid range'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-sans font-bold text-[var(--ink)] mb-1">
-                      From
-                    </label>
-                    <input
-                      type="number"
-                      value={bulkFrom}
-                      onChange={(e) => setBulkFrom(e.target.value)}
-                      min="1"
-                      placeholder="1"
-                      className="w-full font-sans text-xs p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-sans font-bold text-[var(--ink)] mb-1">
-                      To
-                    </label>
-                    <input
-                      type="number"
-                      value={bulkTo}
-                      onChange={(e) => setBulkTo(e.target.value)}
-                      min="1"
-                      placeholder="12"
-                      className="w-full font-sans text-xs p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-sans font-bold text-[var(--ink)] mb-1">
-                      Pattern <span className="font-normal text-[10px] text-[var(--ink-soft)]">({'{n}'} = number)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={bulkPattern}
-                      onChange={(e) => setBulkPattern(e.target.value)}
-                      placeholder="Day {n}"
-                      className="w-full font-sans text-xs p-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)]"
-                    />
-                  </div>
-                </div>
-
-                {/* Live Preview + Generate Button Row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--line)]/60">
-                  <div className="text-[11px] font-sans text-[var(--ink)] flex items-center gap-1.5 min-w-0">
-                    <span className="font-bold text-[var(--ink-soft)] flex-shrink-0">Preview:</span>
-                    <span className="font-medium bg-white px-2 py-0.5 rounded-lg border border-[var(--line)] text-[var(--accent)] truncate">
-                      {previewText}
+              {/* Bulk Add Generator Form Panel */}
+              {showBulkAdd && (
+                <div className="p-4 bg-[#FAF7F0] paper-card rounded-2xl border border-[var(--accent-line)]/50 flex flex-col gap-3 shadow-[0_4px_16px_rgba(122,92,148,0.08)] animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-sans font-bold text-[var(--accent)] flex items-center gap-1.5 uppercase tracking-wider">
+                      <ListPlus size={14} />
+                      <span>Bulk Generate Parts</span>
+                    </span>
+                    <span className="text-[11px] font-sans text-[var(--ink-soft)] font-medium">
+                      {isValidRange && bulkCount > 0
+                        ? `${bulkCount} ${bulkCount === 1 ? 'part' : 'parts'} will be created`
+                        : 'Please specify a valid range'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                    <button
-                      type="button"
-                      onClick={() => setShowBulkAdd(false)}
-                      className="text-xs font-sans font-medium text-[var(--ink-soft)] hover:text-[var(--ink)] px-2.5 py-1.5 transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleBulkGenerate}
-                      disabled={!isValidRange || bulkCount <= 0}
-                      className="btn !py-1.5 !px-3.5 !text-xs flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Sparkles size={13} />
-                      <span>Generate {bulkCount > 0 ? `${bulkCount} Parts` : ''}</span>
-                    </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[var(--ink)] mb-1">
+                        From
+                      </label>
+                      <input
+                        type="number"
+                        value={bulkFrom}
+                        onChange={(e) => setBulkFrom(e.target.value)}
+                        min="1"
+                        placeholder="1"
+                        className="w-full font-sans text-xs px-3 py-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] hover:border-[var(--accent-line)] focus:outline-none focus:border-[var(--accent)] focus:ring-3 focus:ring-[var(--accent-soft)] shadow-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[var(--ink)] mb-1">
+                        To
+                      </label>
+                      <input
+                        type="number"
+                        value={bulkTo}
+                        onChange={(e) => setBulkTo(e.target.value)}
+                        min="1"
+                        placeholder="12"
+                        className="w-full font-sans text-xs px-3 py-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] hover:border-[var(--accent-line)] focus:outline-none focus:border-[var(--accent)] focus:ring-3 focus:ring-[var(--accent-soft)] shadow-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[var(--ink)] mb-1">
+                        Pattern <span className="font-normal text-[10px] text-[var(--ink-soft)]">({'{n}'} = number)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bulkPattern}
+                        onChange={(e) => setBulkPattern(e.target.value)}
+                        placeholder="Day {n}"
+                        className="w-full font-sans text-xs px-3 py-2 rounded-xl border border-[var(--line)] bg-[#FFFDF9] hover:border-[var(--accent-line)] focus:outline-none focus:border-[var(--accent)] focus:ring-3 focus:ring-[var(--accent-soft)] shadow-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Preview + Generate Button Row */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--line)]/60">
+                    <div className="text-[11px] font-sans text-[var(--ink)] flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-[var(--ink-soft)] flex-shrink-0">Preview:</span>
+                      <span className="font-medium bg-[#FFFDF9] px-2 py-0.5 rounded-lg border border-[var(--line)] text-[var(--accent)] truncate">
+                        {previewText}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => setShowBulkAdd(false)}
+                        className="text-xs font-sans font-medium text-[var(--ink-soft)] hover:text-[var(--ink)] px-2.5 py-1.5 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBulkGenerate}
+                        disabled={!isValidRange || bulkCount <= 0}
+                        className="px-4 py-2 rounded-full bg-[var(--accent)] text-white hover:bg-[#684c80] text-xs font-sans font-semibold shadow-[0_2px_8px_rgba(122,92,148,0.25)] flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:scale-95 transition-all"
+                      >
+                        <Sparkles size={13} />
+                        <span>Generate {bulkCount > 0 ? `${bulkCount} Parts` : ''}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
 
     {/* Long-Press Action Sheet Modal */}
