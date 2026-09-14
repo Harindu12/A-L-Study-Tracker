@@ -231,18 +231,6 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         )}
       </div>
 
-      {/* Floating Action Button */}
-      <button
-        type="button"
-        onClick={() => openOverlay('curriculum-add-lesson')}
-        className="fixed bottom-24 z-40 w-14 h-14 rounded-full bg-[#1A1A1A] text-white shadow-[0_8px_25px_rgba(0,0,0,0.25)] hover:bg-black hover:scale-105 active:scale-95 transition-all flex items-center justify-center border-2 border-white focus:outline-none focus:ring-4 focus:ring-black/20 cursor-pointer"
-        style={{ right: 'max(1.25rem, calc(50% - 204px))' }}
-        aria-label="Add Lesson"
-        title="Add Lesson"
-      >
-        <Plus size={28} strokeWidth={2.5} />
-      </button>
-
       {/* Add Lesson Modal */}
       <AddLessonModal
         isOpen={isAddModalOpen}

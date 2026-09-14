@@ -1,9 +1,9 @@
 import React from 'react';
-import { BookOpen, ListTodo, CalendarDays, BarChart2 } from 'lucide-react';
 import { CalendarTab } from './components/CalendarTab';
 import { StatsTab } from './components/StatsTab';
 import { RevisitTab } from './components/RevisitTab';
 import { LessonsTab } from './components/LessonsTab';
+import { BottomNav } from './components/BottomNav';
 import { NavigationProvider, useNavigation } from './navigation';
 
 function AppContent() {
@@ -32,39 +32,8 @@ function AppContent() {
           {tab === 'lessons' && <LessonsTab />}
         </main>
 
-        {/* Bottom Navigation: Clean Black & White */}
-        <nav className="fixed bottom-4 left-4 right-4 max-w-[416px] mx-auto bg-white/95 backdrop-blur-md border border-[#EAEAEA] rounded-[28px] shadow-[0_4px_24px_rgba(0,0,0,0.06)] z-50 py-1.5 px-3">
-          <div className="flex justify-between items-center">
-            <button 
-              className={`nav-btn ${tab === 'calendar' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
-              onClick={() => setTab('calendar')}
-            >
-              <CalendarDays size={22} strokeWidth={tab === 'calendar' ? 2.5 : 2} />
-              <span className={tab === 'calendar' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Calendar</span>
-            </button>
-            <button 
-              className={`nav-btn ${tab === 'stats' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
-              onClick={() => setTab('stats')}
-            >
-              <BarChart2 size={22} strokeWidth={tab === 'stats' ? 2.5 : 2} />
-              <span className={tab === 'stats' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Stats</span>
-            </button>
-            <button 
-              className={`nav-btn ${tab === 'revisit' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
-              onClick={() => setTab('revisit')}
-            >
-              <ListTodo size={22} strokeWidth={tab === 'revisit' ? 2.5 : 2} />
-              <span className={tab === 'revisit' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Revisit</span>
-            </button>
-            <button 
-              className={`nav-btn ${tab === 'lessons' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
-              onClick={() => setTab('lessons')}
-            >
-              <BookOpen size={22} strokeWidth={tab === 'lessons' ? 2.5 : 2} />
-              <span className={tab === 'lessons' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Lessons</span>
-            </button>
-          </div>
-        </nav>
+        {/* Floating Bottom Navigation Cluster */}
+        <BottomNav />
       </div>
     </div>
   );

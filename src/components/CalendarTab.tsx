@@ -496,10 +496,32 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             </span>
           </div>
 
+          {/* Search tasks */}
+          <button
+            type="button"
+            onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
+            className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+              isSearchOpen ? 'text-[#1A1A1A] bg-[#EAEAEA]' : 'text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2]'
+            }`}
+            title="Search tasks"
+          >
+            <Search size={18} strokeWidth={2.2} />
+          </button>
+
+          {/* Notes & Teach-back */}
+          <button
+            type="button"
+            onClick={() => openOverlay('calendar-notes')}
+            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-full transition-colors cursor-pointer"
+            title="Teach-back & Daily Reflections"
+          >
+            <PenTool size={18} strokeWidth={2.2} />
+          </button>
+
           {/* Month calendar jump icon */}
           <button
             onClick={() => openOverlay('calendar-month')}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-full transition-colors ml-0.5 cursor-pointer"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-full transition-colors cursor-pointer"
             title="Choose date"
           >
             <CalendarIcon size={18} strokeWidth={2.2} />
@@ -584,53 +606,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           eveningTasks,
           'evening'
         )}
-      </div>
-
-      {/* 4. Floating bottom toolbar: solid black rounded pill floating above the bottom nav, containing icon buttons matching image 2 */}
-      <div className="fixed bottom-[84px] left-1/2 -translate-x-1/2 z-40">
-        <div className="bg-[#1A1A1A] text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)] rounded-full px-6 py-2.5 flex items-center justify-center gap-7 border border-neutral-800 backdrop-blur-md">
-          {/* 1. Search */}
-          <button
-            type="button"
-            onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
-            className={`transition-transform active:scale-95 cursor-pointer ${
-              isSearchOpen ? 'text-white scale-110' : 'text-neutral-400 hover:text-white'
-            }`}
-            title="Search tasks"
-          >
-            <Search size={20} strokeWidth={2.2} />
-          </button>
-
-          {/* 2. Checklist (Jump to Revisit List) */}
-          <button
-            type="button"
-            onClick={onNavigateToRevisit}
-            className="text-neutral-400 hover:text-white transition-transform active:scale-95 cursor-pointer"
-            title="Revisit List"
-          >
-            <CheckSquare size={20} strokeWidth={2.2} />
-          </button>
-
-          {/* 3. Edit (Open notes / teach-back) */}
-          <button
-            type="button"
-            onClick={() => openOverlay('calendar-notes')}
-            className="text-neutral-400 hover:text-white transition-transform active:scale-95 cursor-pointer"
-            title="Teach-back & Notes"
-          >
-            <PenTool size={20} strokeWidth={2.2} />
-          </button>
-
-          {/* 4. Plus (Add new task) */}
-          <button
-            type="button"
-            onClick={() => openOverlay('calendar-add-task')}
-            className="text-white hover:text-neutral-200 transition-transform active:scale-95 hover:scale-110 cursor-pointer"
-            title="Add task or log"
-          >
-            <Plus size={22} strokeWidth={2.6} />
-          </button>
-        </div>
       </div>
 
       {/* Notes & Teach-back Modal */}
