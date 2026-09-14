@@ -37,11 +37,13 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
   };
 
   return (
-    <div className="card !mb-0 border border-[var(--line)] shadow-sm">
-      <h2 className="section">Saturday test</h2>
-      <div className="flex flex-col gap-4 mt-2">
+    <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-4">Saturday Test</h2>
+      <div className="flex flex-col gap-3">
         <div>
-          <label>Subject</label>
+          <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
+            Subject
+          </label>
           <select 
             value={testSubj} 
             onChange={e => setTestSubj(e.target.value)}
@@ -55,13 +57,16 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
                 closeOverlay();
               }
             }}
+            className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
           >
-            <option value="">-- subject --</option>
+            <option value="">-- select subject --</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         <div>
-          <label>Score</label>
+          <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
+            Score
+          </label>
           <input 
             type="text" 
             value={testScore} 
@@ -77,12 +82,17 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
               }
             }}
             placeholder="e.g. 72%" 
+            className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
           />
         </div>
         <div className="mt-2 flex items-center">
-          <button className="btn w-full flex justify-center gap-2" onClick={handleSaveTest}>
-            Save test result
-            {saveMsg && <span className="font-sans font-normal opacity-90 ml-2">{saveMsg}</span>}
+          <button 
+            type="button"
+            className="w-full py-2.5 px-4 bg-[#1A1A1A] text-white font-sans font-bold text-xs rounded-xl hover:bg-black transition-colors cursor-pointer flex items-center justify-center gap-2" 
+            onClick={handleSaveTest}
+          >
+            <span>Save Test Result</span>
+            {saveMsg && <span className="font-normal opacity-80">{saveMsg}</span>}
           </button>
         </div>
       </div>
@@ -91,7 +101,7 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
 };
 
 export const StatsTab = () => {
-  const { dailyEntries, subjects, lessons, weeklyTests, saveWeeklyTest, revisits } = useStore();
+  const { dailyEntries, subjects, lessons, weeklyTests, revisits } = useStore();
   const [mode, setMode] = useState<'weekly' | 'monthly'>('weekly');
   
   // Weekly State
@@ -121,27 +131,27 @@ export const StatsTab = () => {
 
     return (
       <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-        <div className="card !mb-0 !pt-2 border border-[var(--line)] shadow-sm">
+        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
           <DateChipStrip currentDate={anchorDate} onDateSelect={setAnchorDate} />
           <div className="mt-4 text-center">
-             <h2 className="font-caveat text-xl text-[var(--ink)]">Week of {monday}</h2>
+             <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0">Week of {monday}</h2>
           </div>
-          <div className="mt-6">
-            <h3 className="font-sans font-bold text-[var(--ink)] text-sm mb-2">Subjects Studied</h3>
+          <div className="mt-5">
+            <h3 className="font-sans font-bold text-[#8A8A8A] text-xs uppercase tracking-wider mb-2">Subjects Studied</h3>
             <BarChart data={chartData} />
           </div>
         </div>
         
-        <div className="card !mb-0 border border-[var(--line)] shadow-sm">
-          <h2 className="section">Activity Log</h2>
+        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+          <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-3">Activity Log</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-xs sm:text-sm">
               <thead>
-                <tr>
-                  <th className="w-16 py-2 px-1 text-left">Day</th>
-                  <th className="py-2 px-2 text-left">Subjects logged</th>
-                  <th className="w-14 py-2 px-1 text-center whitespace-nowrap">Revisit</th>
-                  <th className="w-14 py-2 px-1 text-center whitespace-nowrap">Teach</th>
+                <tr className="border-b border-[#F0F0F0] text-[#8A8A8A]">
+                  <th className="w-16 py-2 px-1 text-left font-semibold">Day</th>
+                  <th className="py-2 px-2 text-left font-semibold">Subjects logged</th>
+                  <th className="w-14 py-2 px-1 text-center whitespace-nowrap font-semibold">Revisit</th>
+                  <th className="w-14 py-2 px-1 text-center whitespace-nowrap font-semibold">Teach</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,22 +161,22 @@ export const StatsTab = () => {
                   const revCount = getRevisitsDoneOnDate(d);
                   
                   return (
-                    <tr key={d}>
-                      <td className="py-2 px-1 font-medium whitespace-nowrap">
+                    <tr key={d} className="border-b border-[#F7F7F7] last:border-b-0">
+                      <td className="py-2.5 px-1 font-medium text-[#1A1A1A] whitespace-nowrap">
                         {new Date(d).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
                       </td>
-                      <td className="py-2 px-2 text-[var(--ink)]">
+                      <td className="py-2.5 px-2 text-[#1A1A1A]">
                         {subjs.length > 0 
                           ? subjs.map(s => subjects.find(sx => sx.id === s.subjectId)?.name || '?').join(', ')
                           : '—'}
                       </td>
-                      <td className="py-2 px-1 text-center font-medium">
+                      <td className="py-2.5 px-1 text-center font-semibold">
                         {revCount > 0 ? (
-                          <span className="text-[var(--accent)] font-bold">{revCount}</span>
+                          <span className="text-[#1A1A1A]">{revCount}</span>
                         ) : '—'}
                       </td>
-                      <td className="py-2 px-1 text-center font-medium">
-                        {rec?.teachback ? <span className="text-[var(--ok)] font-bold">✓</span> : '—'}
+                      <td className="py-2.5 px-1 text-center font-semibold">
+                        {rec?.teachback ? <span className="text-[#1A1A1A]">✓</span> : '—'}
                       </td>
                     </tr>
                   );
@@ -176,47 +186,61 @@ export const StatsTab = () => {
           </div>
         </div>
 
-        <div className="card !mb-0 overflow-x-auto border border-[var(--line)] shadow-sm">
-          <h2 className="section">Habit tracker</h2>
-          <div className="min-w-[500px]">
-            <table>
+        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-x-auto">
+          <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-3">Habit Tracker</h2>
+          <div className="min-w-[460px]">
+            <table className="w-full text-xs">
               <thead>
-                <tr>
-                  <th></th>
+                <tr className="border-b border-[#F0F0F0] text-[#8A8A8A]">
+                  <th className="text-left py-2"></th>
                   {days.map(d => (
-                    <th key={d} className="text-center">{d.slice(8, 10)}</th>
+                    <th key={d} className="text-center py-2 font-semibold">{d.slice(8, 10)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>Studied</td>
+                <tr className="border-b border-[#F7F7F7]">
+                  <td className="py-2 font-medium text-[#1A1A1A]">Studied</td>
                   {days.map(d => {
                     const rec = getDaily(d);
                     const on = rec && rec.subjects.some(s => s.studied);
-                    return <td key={d}><div className={`tracker-cell ${on ? 'on' : ''}`}></div></td>;
+                    return (
+                      <td key={d} className="text-center py-2">
+                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                      </td>
+                    );
                   })}
                 </tr>
-                <tr>
-                  <td>Past papers</td>
+                <tr className="border-b border-[#F7F7F7]">
+                  <td className="py-2 font-medium text-[#1A1A1A]">Past papers</td>
                   {days.map(d => {
                     const rec = getDaily(d);
                     const on = rec && rec.subjects.some(s => s.pastPaper);
-                    return <td key={d}><div className={`tracker-cell ${on ? 'on' : ''}`}></div></td>;
+                    return (
+                      <td key={d} className="text-center py-2">
+                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                      </td>
+                    );
                   })}
                 </tr>
-                <tr>
-                  <td>Revisit done</td>
+                <tr className="border-b border-[#F7F7F7]">
+                  <td className="py-2 font-medium text-[#1A1A1A]">Revisit done</td>
                   {days.map(d => (
-                    <td key={d}><div className={`tracker-cell ${getRevisitsDoneOnDate(d) > 0 ? 'on' : ''}`}></div></td>
+                    <td key={d} className="text-center py-2">
+                      <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${getRevisitsDoneOnDate(d) > 0 ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                    </td>
                   ))}
                 </tr>
                 <tr>
-                  <td>Teach-back</td>
+                  <td className="py-2 font-medium text-[#1A1A1A]">Teach-back</td>
                   {days.map(d => {
                     const rec = getDaily(d);
                     const on = !!rec?.teachback;
-                    return <td key={d}><div className={`tracker-cell ${on ? 'on' : ''}`}></div></td>;
+                    return (
+                      <td key={d} className="text-center py-2">
+                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                      </td>
+                    );
                   })}
                 </tr>
               </tbody>
@@ -271,19 +295,27 @@ export const StatsTab = () => {
 
     return (
       <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-        <div className="card !mb-0 border border-[var(--line)] shadow-sm">
-          <div className="flex justify-between items-center mb-6 px-2 pt-2">
-            <button onClick={prevMonth} className="p-2 text-[var(--ink-soft)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-full transition-colors">
-              <ChevronLeft size={24} strokeWidth={2.5} />
+        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+          <div className="flex justify-between items-center mb-6">
+            <button 
+              type="button"
+              onClick={prevMonth} 
+              className="p-2 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
-            <h2 className="font-caveat text-3xl font-bold text-[var(--accent)] m-0">{monthLabel}</h2>
-            <button onClick={nextMonth} className="p-2 text-[var(--ink-soft)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-full transition-colors">
-              <ChevronRight size={24} strokeWidth={2.5} />
+            <h2 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">{monthLabel}</h2>
+            <button 
+              type="button"
+              onClick={nextMonth} 
+              className="p-2 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+            >
+              <ChevronRight size={20} strokeWidth={2.5} />
             </button>
           </div>
           
-          <h2 className="section">Overall progress</h2>
-          <div className="flex overflow-x-auto gap-4 pb-4">
+          <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#8A8A8A] mb-3">Overall progress</h2>
+          <div className="flex overflow-x-auto gap-4 pb-2">
             {subjects.map(s => {
               const subjLessons = lessons.filter(l => l.subjectId === s.id);
               const total = subjLessons.length;
@@ -291,97 +323,65 @@ export const StatsTab = () => {
               const percent = total > 0 ? Math.round((done / total) * 100) : 0;
               
               return (
-                <div key={s.id} className="flex flex-col items-center gap-2 min-w-[80px]">
-                  <CircularProgress percentage={percent} size={64} strokeWidth={6} />
-                  <span className="text-[0.7rem] font-sans font-bold text-[var(--ink)] text-center line-clamp-1">{s.name}</span>
+                <div key={s.id} className="flex flex-col items-center gap-2 min-w-[76px]">
+                  <CircularProgress percentage={percent} size={60} strokeWidth={5} />
+                  <span className="text-[0.72rem] font-sans font-bold text-[#1A1A1A] text-center line-clamp-1">{s.name}</span>
                 </div>
               );
             })}
           </div>
 
-          <h2 className="section mt-4">Study consistency</h2>
+          <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#8A8A8A] mt-5 mb-2">Study consistency</h2>
           <BarChart data={chartData} />
           
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="bg-[#FAF7F0] border border-[var(--line)] rounded-2xl p-4 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] flex flex-col items-center justify-center text-center">
-              <span className="font-caveat text-3xl font-bold text-[var(--accent)]">{Object.values(completedThisMonth).reduce((a, b) => a + b, 0)}</span>
-              <span className="text-[0.7rem] font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider">Lessons completed</span>
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            <div className="bg-[#FAFAFA] border border-[#EBEBEB] rounded-xl p-4 flex flex-col items-center justify-center text-center">
+              <span className="font-sans text-2xl font-extrabold text-[#1A1A1A]">
+                {Object.values(completedThisMonth).reduce((a, b) => a + b, 0)}
+              </span>
+              <span className="text-[0.68rem] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-0.5">
+                Lessons completed
+              </span>
             </div>
-            <div className="bg-[#FAF7F0] border border-[var(--line)] rounded-2xl p-4 paper-card shadow-[0_2px_8px_rgba(120,100,70,0.08)] flex flex-col items-center justify-center text-center">
-              <span className="font-caveat text-3xl font-bold text-[var(--accent)]">{testResults.length}</span>
-              <span className="text-[0.7rem] font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider">Tests taken</span>
+            <div className="bg-[#FAFAFA] border border-[#EBEBEB] rounded-xl p-4 flex flex-col items-center justify-center text-center">
+              <span className="font-sans text-2xl font-extrabold text-[#1A1A1A]">
+                {testResults.length}
+              </span>
+              <span className="text-[0.68rem] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-0.5">
+                Tests taken
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="card !mb-0 overflow-x-auto border border-[var(--line)] shadow-sm">
-          <h2 className="section">Saturday test scores</h2>
-          <div className="min-w-[400px]">
-            <table>
+        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-x-auto">
+          <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-3">Saturday Test Scores</h2>
+          <div className="min-w-[360px]">
+            <table className="w-full text-xs">
               <thead>
-                <tr>
-                  <th>Week of</th>
-                  <th>Subject</th>
-                  <th>Score</th>
+                <tr className="border-b border-[#F0F0F0] text-[#8A8A8A]">
+                  <th className="text-left py-2 font-semibold">Week of</th>
+                  <th className="text-left py-2 font-semibold">Subject</th>
+                  <th className="text-right py-2 font-semibold">Score</th>
                 </tr>
               </thead>
               <tbody>
                 {testResults.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center italic opacity-60">No tests logged this month</td>
+                    <td colSpan={3} className="text-center py-4 text-[#8A8A8A]">No tests logged this month</td>
                   </tr>
                 ) : (
                   testResults.map((t, i) => {
                     const subj = subjects.find(s => s.id === t.subjectId);
                     return (
-                      <tr key={i}>
-                        <td>{t.weekStartDate}</td>
-                        <td>{subj?.name || 'Unknown'}</td>
-                        <td className="font-bold text-[var(--accent)]">{t.score}</td>
+                      <tr key={i} className="border-b border-[#F7F7F7] last:border-b-0">
+                        <td className="py-2.5 text-[#8A8A8A]">{t.weekStartDate}</td>
+                        <td className="py-2.5 font-medium text-[#1A1A1A]">{subj?.name || 'Unknown'}</td>
+                        <td className="py-2.5 text-right font-bold text-[#1A1A1A]">{t.score}</td>
                       </tr>
                     );
                   })
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="card !mb-0 overflow-x-auto border border-[var(--line)] shadow-sm">
-          <h2 className="section">Monthly habit tracker</h2>
-          <div className="min-w-[800px]">
-            <table>
-              <thead>
-                <tr>
-                  <th></th>
-                  {days.map(d => (
-                    <th key={d} className="text-center px-1">{d.slice(8, 10)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Studied</td>
-                  {days.map(d => {
-                    const rec = getDaily(d);
-                    const on = rec && rec.subjects.some(s => s.studied);
-                    return <td key={d} className="px-1"><div className={`tracker-cell ${on ? 'on' : ''} mx-auto`}></div></td>;
-                  })}
-                </tr>
-                <tr>
-                  <td>Past papers</td>
-                  {days.map(d => {
-                    const rec = getDaily(d);
-                    const on = rec && rec.subjects.some(s => s.pastPaper);
-                    return <td key={d} className="px-1"><div className={`tracker-cell ${on ? 'on' : ''} mx-auto`}></div></td>;
-                  })}
-                </tr>
-                <tr>
-                  <td>Revisit done</td>
-                  {days.map(d => (
-                    <td key={d} className="px-1"><div className={`tracker-cell ${getRevisitsDoneOnDate(d) > 0 ? 'on' : ''} mx-auto`}></div></td>
-                  ))}
-                </tr>
               </tbody>
             </table>
           </div>
@@ -392,16 +392,29 @@ export const StatsTab = () => {
 
   return (
     <div className="flex flex-col gap-4 pb-6 h-full">
-      <div className="sticky top-0 z-30 pt-3 pb-2 bg-[#F6F2E7]/90 backdrop-blur-md">
-        <div className="flex bg-[#EAE4D5] p-1 rounded-xl border border-[var(--line)] shadow-[0_2px_6px_rgba(120,100,70,0.08)] max-w-sm mx-auto">
+      <div className="pt-2 pb-1 flex items-center justify-between">
+        <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1A1A1A] tracking-tight m-0">
+          Analytics & Progress
+        </h1>
+        <div className="flex bg-[#F5F5F5] p-1 rounded-xl border border-[#EAEAEA]">
           <button 
-            className={`flex-1 py-2 rounded-lg font-sans font-bold text-sm transition-all ${mode === 'weekly' ? 'bg-[#FAF7F0] shadow-sm text-[var(--accent)] border border-[#D8CEBA]' : 'text-[var(--ink-soft)] hover:bg-black/5 border border-transparent'}`}
+            type="button"
+            className={`py-1.5 px-3 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
+              mode === 'weekly' 
+                ? 'bg-[#1A1A1A] text-white shadow-2xs' 
+                : 'text-[#8A8A8A] hover:text-[#1A1A1A]'
+            }`}
             onClick={() => setMode('weekly')}
           >
             Weekly
           </button>
           <button 
-            className={`flex-1 py-2 rounded-lg font-sans font-bold text-sm transition-all ${mode === 'monthly' ? 'bg-[#FAF7F0] shadow-sm text-[var(--accent)] border border-[#D8CEBA]' : 'text-[var(--ink-soft)] hover:bg-black/5 border border-transparent'}`}
+            type="button"
+            className={`py-1.5 px-3 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
+              mode === 'monthly' 
+                ? 'bg-[#1A1A1A] text-white shadow-2xs' 
+                : 'text-[#8A8A8A] hover:text-[#1A1A1A]'
+            }`}
             onClick={() => setMode('monthly')}
           >
             Monthly

@@ -10,13 +10,13 @@ function AppContent() {
   const { tab, setTab } = useNavigation();
 
   return (
-    <div className="min-h-screen bg-[var(--paper)] bg-[radial-gradient(var(--dot)_1.5px,transparent_1.5px)] [background-size:24px_24px] relative">
-      <div className="max-w-md mx-auto min-h-screen relative shadow-[0_12px_40px_rgba(120,100,70,0.14)] bg-[var(--paper)] border-x border-[var(--line)]/40 overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A] relative font-sans antialiased">
+      <div className="max-w-md mx-auto min-h-screen relative bg-[#FAFAFA] border-x border-[#EAEAEA] flex flex-col">
         {/* Header - only for stats and revisit; Calendar and Lessons render their own headers */}
         {tab !== 'calendar' && tab !== 'lessons' && (
-          <header className="pt-10 pb-4 px-6 relative z-10">
-            <div className="flex justify-center items-center">
-              <h1 className="font-caveat text-4xl font-bold text-[var(--accent)] tracking-wide">
+          <header className="pt-8 pb-3 px-6 relative z-10">
+            <div className="flex justify-between items-center">
+              <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1A1A1A] tracking-tight m-0">
                 {tab === 'stats' && 'Analytics'}
                 {tab === 'revisit' && 'Spaced Repetition'}
               </h1>
@@ -25,43 +25,43 @@ function AppContent() {
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-y-auto px-4 pb-32 relative z-10 scrollbar-hide ${tab === 'calendar' || tab === 'lessons' ? 'pt-6' : ''}`}>
+        <main className={`flex-1 overflow-y-auto px-4 pb-32 relative z-10 scrollbar-hide ${tab === 'calendar' || tab === 'lessons' ? 'pt-5' : ''}`}>
           {tab === 'calendar' && <CalendarTab onNavigateToRevisit={() => setTab('revisit')} />}
           {tab === 'stats' && <StatsTab />}
           {tab === 'revisit' && <RevisitTab />}
           {tab === 'lessons' && <LessonsTab />}
         </main>
 
-        {/* Bottom Navigation */}
-        <nav className="fixed bottom-4 left-4 right-4 max-w-[416px] mx-auto bg-[#FAF7F0]/95 backdrop-blur-md border border-[var(--line)] rounded-[24px] shadow-[0_8px_25px_rgba(120,100,70,0.12)] z-50 p-1.5">
-          <div className="flex justify-between items-center px-2">
+        {/* Bottom Navigation: Clean Black & White */}
+        <nav className="fixed bottom-4 left-4 right-4 max-w-[416px] mx-auto bg-white/95 backdrop-blur-md border border-[#EAEAEA] rounded-[28px] shadow-[0_4px_24px_rgba(0,0,0,0.06)] z-50 py-1.5 px-3">
+          <div className="flex justify-between items-center">
             <button 
-              className={`nav-btn ${tab === 'calendar' ? 'active' : ''}`}
+              className={`nav-btn ${tab === 'calendar' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
               onClick={() => setTab('calendar')}
             >
-              <CalendarDays size={24} strokeWidth={2.5} />
-              <span>Calendar</span>
+              <CalendarDays size={22} strokeWidth={tab === 'calendar' ? 2.5 : 2} />
+              <span className={tab === 'calendar' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Calendar</span>
             </button>
             <button 
-              className={`nav-btn ${tab === 'stats' ? 'active' : ''}`}
+              className={`nav-btn ${tab === 'stats' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
               onClick={() => setTab('stats')}
             >
-              <BarChart2 size={24} strokeWidth={2.5} />
-              <span>Stats</span>
+              <BarChart2 size={22} strokeWidth={tab === 'stats' ? 2.5 : 2} />
+              <span className={tab === 'stats' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Stats</span>
             </button>
             <button 
-              className={`nav-btn ${tab === 'revisit' ? 'active' : ''}`}
+              className={`nav-btn ${tab === 'revisit' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
               onClick={() => setTab('revisit')}
             >
-              <ListTodo size={24} strokeWidth={2.5} />
-              <span>Revisit</span>
+              <ListTodo size={22} strokeWidth={tab === 'revisit' ? 2.5 : 2} />
+              <span className={tab === 'revisit' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Revisit</span>
             </button>
             <button 
-              className={`nav-btn ${tab === 'lessons' ? 'active' : ''}`}
+              className={`nav-btn ${tab === 'lessons' ? 'active !text-[#1A1A1A]' : '!text-[#8A8A8A]'}`}
               onClick={() => setTab('lessons')}
             >
-              <BookOpen size={24} strokeWidth={2.5} />
-              <span>Lessons</span>
+              <BookOpen size={22} strokeWidth={tab === 'lessons' ? 2.5 : 2} />
+              <span className={tab === 'lessons' ? 'font-bold text-[#1A1A1A]' : 'font-medium'}>Lessons</span>
             </button>
           </div>
         </nav>

@@ -18,8 +18,8 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   centerText,
   label, 
   subtitle,
-  size = 90,
-  strokeWidth = 8,
+  size = 80,
+  strokeWidth = 7,
   onClick,
   className = ''
 }) => {
@@ -29,8 +29,8 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   const strokeDashoffset = circumference - (actualProgress / 100) * circumference;
   const isComplete = actualProgress >= 100;
   
-  const strokeColor = isComplete ? 'var(--ok)' : 'var(--accent)';
-  const trackColor = isComplete ? 'rgba(91, 130, 102, 0.15)' : 'var(--accent-soft)';
+  const strokeColor = '#1A1A1A';
+  const trackColor = '#F0F0F0';
 
   return (
     <div 
@@ -38,7 +38,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
       onClick={onClick}
     >
       <div 
-        className={`relative flex items-center justify-center transition-transform duration-200 ${onClick ? 'group-hover:scale-105 group-active:scale-95' : ''}`}
+        className={`relative flex items-center justify-center transition-transform duration-200 ${onClick ? 'group-hover:scale-105' : ''}`}
         style={{ width: size, height: size }}
       >
         <svg width={size} height={size} className="-rotate-90">
@@ -60,12 +60,14 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
             strokeDasharray={circumference} 
             strokeDashoffset={strokeDashoffset} 
             strokeLinecap="round" 
-            className="transition-all duration-700 ease-out"
+            className="transition-all duration-500 ease-out"
           />
         </svg>
         <div className="absolute flex flex-col items-center justify-center text-center px-1">
           <span 
-            className={`font-bold font-sans leading-none ${isComplete ? 'text-[var(--ok)]' : 'text-[var(--ink)]'} ${centerText && centerText.length > 4 ? 'text-xs' : size < 70 ? 'text-sm' : 'text-lg'}`}
+            className={`font-bold font-sans leading-none text-[#1A1A1A] ${
+              centerText && centerText.length > 4 ? 'text-xs' : size < 70 ? 'text-xs' : 'text-base'
+            }`}
           >
             {centerText ?? `${actualProgress}%`}
           </span>
@@ -74,11 +76,11 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
       {(label || subtitle) && (
         <div className="text-center">
           {label && (
-            <div className={`text-[0.85rem] font-bold text-[var(--ink)] font-sans leading-tight text-center break-words max-w-[110px] ${onClick ? 'group-hover:text-[var(--accent)] transition-colors' : ''}`}>
+            <div className="text-[0.8rem] font-bold text-[#1A1A1A] font-sans leading-tight text-center break-words max-w-[100px]">
               {label}
             </div>
           )}
-          {subtitle && <div className="text-[0.75rem] text-[var(--ink-soft)] font-sans mt-0.5">{subtitle}</div>}
+          {subtitle && <div className="text-[0.7rem] text-[#8A8A8A] font-sans mt-0.5">{subtitle}</div>}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { useNavigation } from '../navigation';
 import { DailyEntry, DailySubjectLog, HourBlock } from '../types';
 import { todayStr, uid, addDays, mondayOf } from '../utils';
+import { getSubjectColorById } from '../utils/colors';
 import { 
   Sun, 
   CloudSun, 
@@ -18,8 +19,7 @@ import {
   Calendar as CalendarIcon, 
   ChevronLeft, 
   ChevronRight,
-  Sparkles,
-  BookOpen
+  Sparkles
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -35,10 +35,11 @@ interface AgendaTask {
   duration: string;
   period: 'morning' | 'afternoon' | 'evening';
   done: boolean;
+  color: string;
 }
 
 export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit }) => {
-  const { dailyEntries, saveDailyEntry, updateDailyEntry, subjects, lessons, revisits } = useStore();
+  const { dailyEntries, saveDailyEntry, updateDailyEntry, subjects, lessons } = useStore();
   const today = todayStr();
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
@@ -104,7 +105,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     return h;
   };
 
-  // Parse duration string into decimal hours (e.g. "50 min" -> 0.83, "1 hr" -> 1.0)
+  // Parse duration string into decimal hours
   const parseDurationToHours = (dur: string): number => {
     if (!dur) return 0.8;
     const minMatch = dur.match(/(\d+)\s*min/i);
@@ -119,8 +120,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     const tasks: AgendaTask[] = [];
 
     // 1. Hourly schedule blocks
-    (entry.hours || []).forEach((h) => {
-      // Determine period from time if not explicit
+    (entry.hours || []).forEach((h, hIdx) => {
       let period: 'morning' | 'afternoon' | 'evening' = 'morning';
       const hour = parseTimeToHour(h.time || '');
       if (hour >= 5 && hour < 12) {
@@ -131,7 +131,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         period = 'evening';
       }
 
-      // Check if task string has colon format (e.g. "@coinbase: design user registration")
       let title = h.task;
       let detail: string | undefined = undefined;
       const colonIdx = h.task.indexOf(':');
@@ -140,7 +139,18 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         detail = h.task.slice(colonIdx + 1).trim();
       }
 
-      // Default duration
+      // Check if title matches a subject
+      const matchingSubj = subjects.find(
+        (s) =>
+          title.toLowerCase().includes(s.name.toLowerCase()) ||
+          (detail && detail.toLowerCase().includes(s.name.toLowerCase()))
+      );
+      const color = matchingSubj
+        ? getSubjectColorById(matchingSubj.id, subjects)
+        : hIdx % 2 === 0
+        ? '#EF4444'
+        : '#3B82F6';
+
       const duration = (h as any).duration || '50 min';
 
       tasks.push({
@@ -152,6 +162,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         duration,
         period: (h as any).period || period,
         done: !!h.done,
+        color,
       });
     });
 
@@ -169,10 +180,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         detail = 'Study & Revision';
       }
 
-      // Default period distribute if not stored: 1st morning, 2nd afternoon, 3rd evening
       const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
       const period = (s as any).period || defaultPeriod;
       const duration = (s as any).duration || (s.pastPaper ? '60 min' : '45 min');
+      const color = getSubjectColorById(s.subjectId, subjects);
 
       tasks.push({
         id: `s_${s.id}`,
@@ -183,6 +194,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         duration,
         period,
         done: !!(s.studied || s.pastPaper),
+        color,
       });
     });
 
@@ -220,7 +232,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
   };
 
-  // Filter tasks by search query if search is active
+  // Filter tasks by search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) return allTasks;
     const q = searchQuery.toLowerCase();
@@ -236,7 +248,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
   const afternoonTasks = filteredTasks.filter((t) => t.period === 'afternoon');
   const eveningTasks = filteredTasks.filter((t) => t.period === 'evening');
 
-  // Week days calculation (Mon - Sun matching reference)
+  // Week days calculation (Mon - Sun)
   const monday = mondayOf(selectedDate);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 
@@ -310,7 +322,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     return (
       <div className="grid grid-cols-7 gap-y-2">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-          <div key={i} className="text-center text-[0.65rem] font-sans font-bold text-[var(--ink-soft)] uppercase pb-2">
+          <div key={i} className="text-center text-[0.65rem] font-sans font-bold text-[#8A8A8A] uppercase pb-2">
             {d}
           </div>
         ))}
@@ -335,13 +347,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                   !dayObj.isCurrentMonth ? 'opacity-30' : ''
                 } ${
                   isSelected
-                    ? 'bg-[#7A5C94] text-white shadow-sm font-bold'
-                    : 'text-[var(--ink)] hover:bg-[var(--accent-soft)]'
-                } ${isDateToday && !isSelected ? 'ring-1 ring-[#7A5C94] text-[#7A5C94] font-bold' : ''}`}
+                    ? 'bg-[#1A1A1A] text-white shadow-sm font-bold'
+                    : 'text-[#1A1A1A] hover:bg-[#F2F2F2]'
+                } ${isDateToday && !isSelected ? 'ring-1 ring-[#1A1A1A] text-[#1A1A1A] font-bold' : ''}`}
               >
                 <span className="font-sans text-[0.85rem]">{dayObj.date.getDate()}</span>
               </div>
-              {hasActivity && <div className="w-1 h-1 rounded-full bg-[#7A5C94] mt-0.5" />}
+              {hasActivity && <div className="w-1 h-1 rounded-full bg-[#1A1A1A] mt-0.5" />}
             </div>
           );
         })}
@@ -350,35 +362,43 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
   };
 
   // Render individual task row matching reference image card structure
+  // (white background, thin colored left-edge accent bar, bold title, gray subtitle, small duration pill, and solid black checkmark circle)
   const renderTaskRow = (task: AgendaTask) => {
     return (
       <div
         key={task.id}
-        className="bg-[#FAF7F0] hover:bg-[#FFFDF9] border border-[#E3D8C3] rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(120,100,70,0.08)] hover:shadow-[0_4px_12px_rgba(120,100,70,0.12)] transition-all paper-card"
+        className="bg-white hover:bg-[#FAFAFA] border border-[#EBEBEB] hover:border-[#D4D4D4] rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all relative overflow-hidden group"
       >
-        {/* Checkbox - Sage Green when done */}
+        {/* Left edge colored bar (subject / category accent) */}
+        <div 
+          className="w-1 self-stretch rounded-full flex-shrink-0 my-0.5"
+          style={{ backgroundColor: task.color }}
+        />
+
+        {/* Checkbox - Solid black fill with white checkmark when done */}
         <button
           type="button"
           onClick={() => handleToggleTask(task)}
-          className={`w-5 h-5 rounded-[6px] border-2 flex items-center justify-center cursor-pointer transition-colors flex-shrink-0 ${
+          className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center cursor-pointer transition-colors flex-shrink-0 ${
             task.done
-              ? 'bg-[#5B8266] border-[#5B8266] text-white shadow-sm'
-              : 'border-[#cfc8b8] hover:border-[#7A5C94] bg-[#FAF7F0]'
+              ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white'
+              : 'border-[#D4D4D4] hover:border-[#1A1A1A] bg-white'
           }`}
+          aria-label={task.done ? 'Mark task incomplete' : 'Mark task complete'}
         >
-          {task.done && <Check size={12} strokeWidth={3} />}
+          {task.done && <Check size={11} strokeWidth={3} />}
         </button>
 
         {/* Title + Detail */}
         <div className="flex-1 min-w-0 pr-1 leading-snug">
           <span
-            className={`font-sans text-[0.92rem] text-[var(--ink)] transition-opacity ${
-              task.done ? 'line-through opacity-45 text-[var(--ink-soft)]' : ''
+            className={`font-sans text-[0.92rem] transition-opacity ${
+              task.done ? 'line-through text-[#8A8A8A] opacity-50' : 'text-[#1A1A1A]'
             }`}
           >
-            <strong className="font-bold text-[var(--ink)]">{task.title}</strong>
+            <strong className="font-bold text-[#1A1A1A]">{task.title}</strong>
             {task.detail && (
-              <span className="text-[var(--ink)] opacity-90 font-normal">
+              <span className="text-[#8A8A8A] font-normal">
                 {task.title.endsWith(':') ? ' ' : ': '}
                 {task.detail}
               </span>
@@ -387,14 +407,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         </div>
 
         {/* Duration pill badge */}
-        <div className="bg-[#EFE9DC] text-[var(--ink-soft)] text-[0.72rem] font-sans font-semibold px-2.5 py-1 rounded-full border border-[#DCD3C1] whitespace-nowrap flex-shrink-0 shadow-[0_1px_2px_rgba(120,100,70,0.06)]">
+        <div className="bg-[#F5F5F5] text-[#8A8A8A] text-[0.72rem] font-sans font-semibold px-2.5 py-1 rounded-full border border-[#EAEAEA] whitespace-nowrap flex-shrink-0">
           {task.duration}
         </div>
       </div>
     );
   };
 
-  // Render section
+  // Render section (Morning, Afternoon, Evening)
   const renderSection = (
     title: string,
     icon: React.ReactNode,
@@ -404,8 +424,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     return (
       <div className="mb-4">
         {/* Section Header */}
-        <div className="flex items-center justify-between px-1 mb-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-soft)] uppercase tracking-wider">
+        <div className="flex items-center justify-between px-1 mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#8A8A8A] uppercase tracking-wider">
             {icon}
             <span>{title}</span>
           </div>
@@ -416,9 +436,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               setNewSubjPeriod(period);
               openOverlay('calendar-add-task');
             }}
-            className="text-[0.7rem] text-[#7A5C94] hover:underline font-sans font-bold flex items-center gap-0.5 opacity-85 hover:opacity-100"
+            className="text-xs text-[#1A1A1A] hover:underline font-sans font-bold flex items-center gap-0.5 cursor-pointer"
           >
-            <Plus size={12} /> add
+            <Plus size={13} strokeWidth={2.5} /> add
           </button>
         </div>
 
@@ -430,12 +450,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               setNewSubjPeriod(period);
               openOverlay('calendar-add-task');
             }}
-            className="border border-dashed border-[#D8CDAE] rounded-2xl p-3.5 text-center text-xs text-[var(--ink-soft)]/70 hover:text-[#7A5C94] hover:border-[#7A5C94]/50 cursor-pointer transition-colors bg-[#FAF7F0]/60 shadow-[0_1px_3px_rgba(120,100,70,0.04)]"
+            className="border border-dashed border-[#E5E5E5] rounded-2xl p-3.5 text-center text-xs text-[#8A8A8A] hover:text-[#1A1A1A] hover:border-[#1A1A1A] cursor-pointer transition-colors bg-white/60"
           >
             No {title.toLowerCase()} tasks — tap + to add
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">{tasks.map(renderTaskRow)}</div>
+          <div className="flex flex-col gap-2">{tasks.map(renderTaskRow)}</div>
         )}
       </div>
     );
@@ -448,11 +468,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {/* 1. Header row: Large title "Today" + small rounded pill badges */}
       <div className="flex items-center justify-between px-1 pt-1 pb-1">
         <div className="flex items-baseline gap-2">
-          <h1 className="font-caveat text-4xl sm:text-5xl font-bold text-[#7A5C94] tracking-tight leading-none m-0">
+          <h1 className="font-sans text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] tracking-tight leading-none m-0">
             {isToday ? 'Today' : 'Agenda'}
           </h1>
           {!isToday && (
-            <span className="text-xs font-sans font-medium text-[var(--ink-soft)]">
+            <span className="text-xs font-sans font-semibold text-[#8A8A8A]">
               {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           )}
@@ -460,18 +480,18 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
         {/* Two small rounded pill badges */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Badge 1: checkmark circle + completed count (Sage Green for done) */}
-          <div className="bg-[#EAE6DA] border border-[#D5CDBC] rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-[0_1px_3px_rgba(120,100,70,0.12)]">
-            <CheckCircle2 size={13} className="text-[#5B8266]" strokeWidth={2.5} />
-            <span className="font-sans font-bold text-[0.75rem] text-[#3B6649]">
+          {/* Badge 1: checkmark circle + completed count (solid black checkmark) */}
+          <div className="bg-white border border-[#EBEBEB] rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+            <CheckCircle2 size={13} className="text-[#1A1A1A]" strokeWidth={2.5} />
+            <span className="font-sans font-bold text-[0.75rem] text-[#1A1A1A]">
               {completedTasks} done
             </span>
           </div>
 
           {/* Badge 2: clock icon + hours studied vs planned */}
-          <div className="bg-[#EAE6DA] border border-[#D5CDBC] rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-[0_1px_3px_rgba(120,100,70,0.12)]">
-            <Clock size={13} className="text-[var(--ink-soft)]" strokeWidth={2.5} />
-            <span className="font-sans font-bold text-[0.75rem] text-[var(--ink)]">
+          <div className="bg-white border border-[#EBEBEB] rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+            <Clock size={13} className="text-[#8A8A8A]" strokeWidth={2.5} />
+            <span className="font-sans font-bold text-[0.75rem] text-[#1A1A1A]">
               {formatHours(doneHours)} of {formatHours(totalHours || 6)} hrs
             </span>
           </div>
@@ -479,15 +499,15 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           {/* Month calendar jump icon */}
           <button
             onClick={() => openOverlay('calendar-month')}
-            className="p-1.5 text-[var(--ink-soft)] hover:text-[#7A5C94] hover:bg-[var(--accent-soft)] rounded-full transition-colors ml-0.5"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-full transition-colors ml-0.5 cursor-pointer"
             title="Choose date"
           >
-            <CalendarIcon size={18} strokeWidth={2.3} />
+            <CalendarIcon size={18} strokeWidth={2.2} />
           </button>
         </div>
       </div>
 
-      {/* 2. Week date strip (Mon - Sun) */}
+      {/* 2. Week date strip (Mon - Sun matching reference image) */}
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1 px-1 -mx-1">
         {weekDays.map((d) => {
           const isSelected = d === selectedDate;
@@ -499,22 +519,22 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             <button
               key={d}
               onClick={() => setSelectedDate(d)}
-              className={`flex-1 min-w-[44px] py-2 px-1 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+              className={`flex-1 min-w-[44px] py-2 px-1 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer select-none ${
                 isSelected
-                  ? 'bg-[#7A5C94] text-white shadow-[0_2px_8px_rgba(122,92,148,0.3)]'
-                  : 'text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[#EAE4D5]'
+                  ? 'bg-[#1A1A1A] text-white shadow-sm'
+                  : 'text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2]'
               }`}
             >
               <span
-                className={`text-[0.72rem] font-sans font-medium mb-0.5 ${
-                  isSelected ? 'text-white' : 'text-[var(--ink-soft)]'
+                className={`text-[0.68rem] font-sans font-medium mb-0.5 ${
+                  isSelected ? 'text-white/80' : 'text-[#8A8A8A]'
                 }`}
               >
                 {dayAbbr}
               </span>
               <span
                 className={`text-base font-sans font-bold leading-none ${
-                  isSelected ? 'text-white font-extrabold' : 'text-[var(--ink)]'
+                  isSelected ? 'text-white' : 'text-[#1A1A1A]'
                 }`}
               >
                 {dayNum}
@@ -526,18 +546,18 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
       {/* Optional Search bar */}
       {isSearchOpen && (
-        <div className="flex items-center gap-2 bg-[#FAF7F0] border border-[var(--line)] rounded-full px-3.5 py-1.5 shadow-[0_2px_8px_rgba(120,100,70,0.08)] mt-1 animate-in fade-in duration-150">
-          <Search size={16} className="text-[var(--ink-soft)]" />
+        <div className="flex items-center gap-2 bg-white border border-[#EBEBEB] rounded-full px-3.5 py-1.5 shadow-sm mt-1 animate-in fade-in duration-150">
+          <Search size={16} className="text-[#8A8A8A]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search this day's tasks..."
-            className="flex-1 bg-transparent border-none text-sm text-[var(--ink)] focus:outline-none placeholder-[var(--ink-soft)]"
+            className="flex-1 bg-transparent border-none text-sm text-[#1A1A1A] focus:outline-none placeholder-[#8A8A8A]"
             autoFocus
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-[var(--ink-soft)] hover:text-[var(--ink)]">
+            <button onClick={() => setSearchQuery('')} className="text-[#8A8A8A] hover:text-[#1A1A1A] cursor-pointer">
               <X size={14} />
             </button>
           )}
@@ -548,64 +568,64 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       <div className="flex flex-col mt-1">
         {renderSection(
           'Morning',
-          <Sun size={15} className="text-[#dfa145]" strokeWidth={2.3} />,
+          <Sun size={15} className="text-[#1A1A1A]" strokeWidth={2.2} />,
           morningTasks,
           'morning'
         )}
         {renderSection(
           'Afternoon',
-          <CloudSun size={15} className="text-[#d27575]" strokeWidth={2.3} />,
+          <CloudSun size={15} className="text-[#1A1A1A]" strokeWidth={2.2} />,
           afternoonTasks,
           'afternoon'
         )}
         {renderSection(
           'Evening',
-          <Moon size={15} className="text-[#7A5C94]" strokeWidth={2.3} />,
+          <Moon size={15} className="text-[#1A1A1A]" strokeWidth={2.2} />,
           eveningTasks,
           'evening'
         )}
       </div>
 
-      {/* 4. Floating bottom toolbar: Search, Checklist, Edit, Plus in purple pill */}
-      <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 z-40">
-        <div className="bg-[#7A5C94] text-white shadow-[0_8px_25px_rgba(122,92,148,0.35),0_3px_10px_rgba(120,100,70,0.2)] rounded-full px-6 py-2.5 flex items-center justify-center gap-7 border border-white/20 backdrop-blur-md">
+      {/* 4. Floating bottom toolbar: solid black rounded pill floating above the bottom nav, containing icon buttons matching image 2 */}
+      <div className="fixed bottom-[84px] left-1/2 -translate-x-1/2 z-40">
+        <div className="bg-[#1A1A1A] text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)] rounded-full px-6 py-2.5 flex items-center justify-center gap-7 border border-neutral-800 backdrop-blur-md">
           {/* 1. Search */}
           <button
             type="button"
             onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
-            className={`transition-transform active:scale-95 ${
-              isSearchOpen ? 'text-white scale-110' : 'text-white/80 hover:text-white'
+            className={`transition-transform active:scale-95 cursor-pointer ${
+              isSearchOpen ? 'text-white scale-110' : 'text-neutral-400 hover:text-white'
             }`}
             title="Search tasks"
           >
-            <Search size={20} strokeWidth={2.3} />
+            <Search size={20} strokeWidth={2.2} />
           </button>
 
           {/* 2. Checklist (Jump to Revisit List) */}
           <button
             type="button"
             onClick={onNavigateToRevisit}
-            className="text-white/80 hover:text-white transition-transform active:scale-95"
+            className="text-neutral-400 hover:text-white transition-transform active:scale-95 cursor-pointer"
             title="Revisit List"
           >
-            <CheckSquare size={20} strokeWidth={2.3} />
+            <CheckSquare size={20} strokeWidth={2.2} />
           </button>
 
           {/* 3. Edit (Open notes / teach-back) */}
           <button
             type="button"
             onClick={() => openOverlay('calendar-notes')}
-            className="text-white/80 hover:text-white transition-transform active:scale-95"
+            className="text-neutral-400 hover:text-white transition-transform active:scale-95 cursor-pointer"
             title="Teach-back & Notes"
           >
-            <PenTool size={20} strokeWidth={2.3} />
+            <PenTool size={20} strokeWidth={2.2} />
           </button>
 
           {/* 4. Plus (Add new task) */}
           <button
             type="button"
             onClick={() => openOverlay('calendar-add-task')}
-            className="text-white/90 hover:text-white transition-transform active:scale-95 hover:scale-110"
+            className="text-white hover:text-neutral-200 transition-transform active:scale-95 hover:scale-110 cursor-pointer"
             title="Add task or log"
           >
             <Plus size={22} strokeWidth={2.6} />
@@ -616,21 +636,21 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {/* Notes & Teach-back Modal */}
       {isNotesModalOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
           onClick={closeOverlay}
         >
           <div
-            className="bg-[#FAF7F0] rounded-3xl shadow-[0_16px_40px_rgba(120,100,70,0.22)] border border-[var(--line)] w-full max-w-sm p-5 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto paper-card"
+            className="bg-white rounded-3xl shadow-2xl border border-[#EBEBEB] w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-[#7A5C94]" />
-                <h3 className="font-caveat text-2xl font-bold text-[#7A5C94] m-0">Daily Reflections</h3>
+                <Sparkles size={18} className="text-[#1A1A1A]" />
+                <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Daily Reflections</h3>
               </div>
               <button
                 onClick={closeOverlay}
-                className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-full"
+                className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -638,11 +658,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-sans font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
                   Teach-back summary
                 </label>
                 <textarea
-                  className="w-full bg-[#FFFDF9] border border-[var(--line)] focus:border-[#7A5C94] transition-colors rounded-xl p-3 text-sm min-h-[90px] focus:outline-none"
+                  className="w-full bg-[#FAFAFA] border border-[#E5E5E5] focus:border-[#1A1A1A] transition-colors rounded-xl p-3 text-sm min-h-[90px] focus:outline-none text-[#1A1A1A]"
                   value={entry.teachback}
                   onChange={(e) => updateEntry({ teachback: e.target.value })}
                   placeholder="Explain 3-4 concepts learned today from memory..."
@@ -650,11 +670,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               </div>
 
               <div>
-                <label className="block text-xs font-sans font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
                   Notes / Fix tomorrow
                 </label>
                 <textarea
-                  className="w-full bg-[#FFFDF9] border border-[var(--line)] focus:border-[#7A5C94] transition-colors rounded-xl p-3 text-sm min-h-[80px] focus:outline-none"
+                  className="w-full bg-[#FAFAFA] border border-[#E5E5E5] focus:border-[#1A1A1A] transition-colors rounded-xl p-3 text-sm min-h-[80px] focus:outline-none text-[#1A1A1A]"
                   value={entry.notes}
                   onChange={(e) => updateEntry({ notes: e.target.value })}
                   placeholder="Any difficult topics, questions to ask, or priorities..."
@@ -665,7 +685,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                 <button
                   type="button"
                   onClick={closeOverlay}
-                  className="w-full py-2.5 bg-[#7A5C94] text-white font-sans font-bold text-sm rounded-full shadow-sm hover:opacity-95 transition-opacity"
+                  className="w-full py-3 bg-[#1A1A1A] text-white font-sans font-bold text-sm rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   Done
                 </button>
@@ -678,31 +698,31 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {/* Add Task / Subject Log Modal */}
       {isAddModalOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
           onClick={closeOverlay}
         >
           <div
-            className="bg-[#FAF7F0] rounded-3xl shadow-[0_16px_40px_rgba(120,100,70,0.22)] border border-[var(--line)] w-full max-w-sm p-5 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto paper-card"
+            className="bg-white rounded-3xl shadow-2xl border border-[#EBEBEB] w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-caveat text-2xl font-bold text-[#7A5C94] m-0">Add to Agenda</h3>
+              <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Add to Agenda</h3>
               <button
                 onClick={closeOverlay}
-                className="p-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-full"
+                className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Toggle Mode: Task vs Subject Log */}
-            <div className="flex bg-[var(--paper)] p-1 rounded-xl border border-[var(--line)] mb-4">
+            <div className="flex bg-[#F5F5F5] p-1 rounded-xl border border-[#EAEAEA] mb-4">
               <button
                 type="button"
-                className={`flex-1 py-1.5 rounded-lg font-sans font-bold text-xs transition-all ${
+                className={`flex-1 py-1.5 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
                   addMode === 'task'
-                    ? 'bg-[#FAF7F0] shadow-sm text-[#7A5C94]'
-                    : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
+                    ? 'bg-[#1A1A1A] text-white shadow-xs'
+                    : 'text-[#8A8A8A] hover:text-[#1A1A1A]'
                 }`}
                 onClick={() => setAddMode('task')}
               >
@@ -710,10 +730,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               </button>
               <button
                 type="button"
-                className={`flex-1 py-1.5 rounded-lg font-sans font-bold text-xs transition-all ${
+                className={`flex-1 py-1.5 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
                   addMode === 'subject'
-                    ? 'bg-[#FAF7F0] shadow-sm text-[#7A5C94]'
-                    : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
+                    ? 'bg-[#1A1A1A] text-white shadow-xs'
+                    : 'text-[#8A8A8A] hover:text-[#1A1A1A]'
                 }`}
                 onClick={() => setAddMode('subject')}
               >
@@ -725,7 +745,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               {addMode === 'task' ? (
                 <>
                   <div>
-                    <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                       Label / Subject (Bold prefix)
                     </label>
                     <input
@@ -733,13 +753,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       value={newTaskTitle}
                       onChange={(e) => setNewTaskTitle(e.target.value)}
                       placeholder="@Chemistry or Focus Task"
-                      className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2.5 text-sm focus:border-[#7A5C94] focus:outline-none"
+                      className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2.5 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                       Task Description
                     </label>
                     <input
@@ -747,19 +767,19 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       value={newTaskDetail}
                       onChange={(e) => setNewTaskDetail(e.target.value)}
                       placeholder="e.g. solve 2022 past paper questions"
-                      className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2.5 text-sm focus:border-[#7A5C94] focus:outline-none"
+                      className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2.5 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                         Time of Day
                       </label>
                       <select
                         value={newTaskPeriod}
                         onChange={(e) => setNewTaskPeriod(e.target.value as any)}
-                        className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2 text-sm focus:border-[#7A5C94] focus:outline-none"
+                        className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                       >
                         <option value="morning">Morning</option>
                         <option value="afternoon">Afternoon</option>
@@ -768,13 +788,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     </div>
 
                     <div>
-                      <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                         Duration Badge
                       </label>
                       <select
                         value={newTaskDuration}
                         onChange={(e) => setNewTaskDuration(e.target.value)}
-                        className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2 text-sm focus:border-[#7A5C94] focus:outline-none"
+                        className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                       >
                         <option value="25 min">25 min</option>
                         <option value="30 min">30 min</option>
@@ -791,7 +811,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                       Subject
                     </label>
                     <select
@@ -800,7 +820,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         setNewSubjId(e.target.value);
                         setNewLessonId('');
                       }}
-                      className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2 text-sm focus:border-[#7A5C94] focus:outline-none"
+                      className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                       required
                     >
                       <option value="">-- Choose Subject --</option>
@@ -813,13 +833,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                   </div>
 
                   <div>
-                    <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                       Lesson (Optional)
                     </label>
                     <select
                       value={newLessonId}
                       onChange={(e) => setNewLessonId(e.target.value)}
-                      className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2 text-sm focus:border-[#7A5C94] focus:outline-none"
+                      className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                     >
                       <option value="">-- Choose Lesson --</option>
                       {newSubjId &&
@@ -835,13 +855,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                         Time of Day
                       </label>
                       <select
                         value={newSubjPeriod}
                         onChange={(e) => setNewSubjPeriod(e.target.value as any)}
-                        className="w-full bg-[#FFFDF9] border border-[var(--line)] rounded-xl p-2 text-sm focus:border-[#7A5C94] focus:outline-none"
+                        className="w-full bg-[#FAFAFA] border border-[#E5E5E5] rounded-xl p-2 text-sm focus:border-[#1A1A1A] focus:outline-none text-[#1A1A1A]"
                       >
                         <option value="morning">Morning</option>
                         <option value="afternoon">Afternoon</option>
@@ -850,7 +870,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     </div>
 
                     <div>
-                      <label className="block text-xs font-sans font-bold text-[var(--ink-soft)] uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                         Confidence
                       </label>
                       <div className="flex gap-2 pt-1">
@@ -859,10 +879,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                             key={lvl}
                             type="button"
                             onClick={() => setNewSubjConfidence(lvl)}
-                            className={`flex-1 py-1 rounded-lg border text-xs font-bold transition-all ${
+                            className={`flex-1 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                               newSubjConfidence === lvl
-                                ? 'bg-[#7A5C94] text-white border-[#7A5C94]'
-                                : 'bg-[#FFFDF9] text-[var(--ink-soft)] border-[var(--line)]'
+                                ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]'
+                                : 'bg-[#FAFAFA] text-[#8A8A8A] border-[#E5E5E5]'
                             }`}
                           >
                             {lvl}
@@ -873,22 +893,20 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                   </div>
 
                   <div className="flex items-center gap-4 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-sans font-medium text-[var(--ink)]">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-sans font-medium text-[#1A1A1A]">
                       <input
                         type="checkbox"
                         checked={newSubjStudied}
                         onChange={(e) => setNewSubjStudied(e.target.checked)}
-                        className="w-4 h-4 rounded border-[var(--line)] text-[#5B8266] accent-[#5B8266]"
                       />
                       Studied
                     </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-sans font-medium text-[var(--ink)]">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-sans font-medium text-[#1A1A1A]">
                       <input
                         type="checkbox"
                         checked={newSubjPastPaper}
                         onChange={(e) => setNewSubjPastPaper(e.target.checked)}
-                        className="w-4 h-4 rounded border-[var(--line)] text-[#5B8266] accent-[#5B8266]"
                       />
                       Past Paper
                     </label>
@@ -899,7 +917,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-[#7A5C94] text-white font-sans font-bold text-sm rounded-full shadow-sm hover:opacity-95 transition-opacity"
+                  className="w-full py-3 bg-[#1A1A1A] text-white font-sans font-bold text-sm rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   Add Task
                 </button>
@@ -912,34 +930,34 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {/* Month Picker Modal */}
       {isMonthModalOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
           onClick={closeOverlay}
         >
           <div
-            className="bg-[#FAF7F0] rounded-3xl shadow-[0_16px_40px_rgba(120,100,70,0.22)] border border-[var(--line)] w-full max-w-sm p-5 animate-in fade-in zoom-in-95 duration-200 paper-card"
+            className="bg-white rounded-3xl shadow-2xl border border-[#EBEBEB] w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
               <button
                 onClick={prevMonth}
-                className="p-2 text-[var(--ink-soft)] hover:text-[#7A5C94] hover:bg-[var(--accent-soft)] rounded-full transition-colors"
+                className="p-2 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-full transition-colors cursor-pointer"
               >
-                <ChevronLeft size={22} strokeWidth={2.5} />
+                <ChevronLeft size={22} strokeWidth={2.2} />
               </button>
-              <h2 className="font-caveat text-2xl font-bold text-[#7A5C94] m-0">
+              <h2 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">
                 {modalMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </h2>
               <button
                 onClick={nextMonth}
-                className="p-2 text-[var(--ink-soft)] hover:text-[#7A5C94] hover:bg-[var(--accent-soft)] rounded-full transition-colors"
+                className="p-2 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-full transition-colors cursor-pointer"
               >
-                <ChevronRight size={22} strokeWidth={2.5} />
+                <ChevronRight size={22} strokeWidth={2.2} />
               </button>
             </div>
             {renderMonthGrid()}
             <div className="mt-5 flex justify-center">
               <button
-                className="text-xs font-sans font-bold text-[#7A5C94] hover:underline"
+                className="text-xs font-sans font-bold text-[#1A1A1A] hover:underline cursor-pointer"
                 onClick={() => {
                   setSelectedDate(today);
                   closeOverlay();

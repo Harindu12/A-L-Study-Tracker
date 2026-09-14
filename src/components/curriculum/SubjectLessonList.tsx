@@ -37,38 +37,38 @@ export const AddLessonModal: React.FC<AddLessonModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl p-5 border border-[var(--line)] shadow-[0_12px_36px_rgba(120,100,70,0.18)] paper-card bg-[#FAF7F0] animate-in zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
-            <Plus size={20} className="text-[var(--accent)]" />
-            <h3 className="font-caveat text-2xl font-bold text-[var(--accent)] m-0">Add Lesson</h3>
+            <Plus size={20} className="text-[#1A1A1A]" />
+            <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Add Lesson</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-full hover:bg-black/5 transition-colors cursor-pointer"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
             aria-label="Close"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-sans font-bold text-[var(--ink)] mb-1">
+            <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
               Lesson Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[var(--line)] bg-[#FFFDF9] focus:outline-none focus:ring-2 focus:ring-[var(--accent-line)] text-[var(--ink)]"
+              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
               placeholder="e.g. Chemical Bonding"
               autoFocus
               required
@@ -79,14 +79,14 @@ export const AddLessonModal: React.FC<AddLessonModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="btn ghost !py-2 !px-3 !text-xs cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="btn !py-2 !px-4 !text-xs disabled:opacity-50 cursor-pointer"
+              className="px-5 py-2 text-xs font-bold bg-[#1A1A1A] text-white rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
             >
               Add Lesson
             </button>
@@ -137,7 +137,7 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-xs font-sans font-bold text-[var(--accent)] hover:opacity-80 py-1.5 px-3 rounded-xl transition-all bg-[#FAF7F0] border border-[var(--line)] shadow-[0_1px_3px_rgba(120,100,70,0.08)] paper-card cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-sans font-bold text-[#1A1A1A] hover:bg-[#F2F2F2] py-2 px-3.5 rounded-xl transition-all bg-white border border-[#EBEBEB] shadow-[0_1px_3px_rgba(0,0,0,0.02)] cursor-pointer"
           >
             <ArrowLeft size={16} strokeWidth={2.5} />
             <span>Curriculum Dashboard</span>
@@ -146,28 +146,28 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
           {/* Total Parts Added Badge */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <span
-              className="text-xs font-sans text-[var(--ink-soft)] bg-[#FAF7F0] px-2.5 py-1 rounded-xl border border-[var(--line)] shadow-xs"
+              className="text-xs font-sans text-[#8A8A8A] bg-white px-3 py-1.5 rounded-xl border border-[#EBEBEB] shadow-2xs"
               title="Live count of parts across all lessons in this subject"
             >
-              Total parts: <strong className="text-[var(--ink)] font-bold">{metrics.totalPartsAdded}</strong>
+              Total parts: <strong className="text-[#1A1A1A] font-bold">{metrics.totalPartsAdded}</strong>
             </span>
           </div>
         </div>
 
         <div className="px-1 mt-1">
-          <div className="text-[0.7rem] uppercase tracking-wider font-sans font-bold text-[var(--ink-soft)]">
+          <div className="text-[0.68rem] uppercase tracking-wider font-sans font-bold text-[#8A8A8A]">
             Subject Drill-Down
           </div>
-          <h1 className="font-caveat text-3xl sm:text-4xl font-bold text-[var(--accent)] leading-tight mt-0.5">
+          <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1A1A1A] tracking-tight leading-tight mt-0.5">
             {subject.name}
           </h1>
 
           {/* Live parts completed summary */}
-          <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)] mt-1 flex flex-wrap items-center gap-1.5">
-            <span className="font-bold text-[var(--ink)]">
+          <div className="text-xs sm:text-sm font-sans text-[#8A8A8A] mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-[#1A1A1A]">
               {metrics.watchedPartsCount} / {metrics.totalPartsAdded} parts completed
             </span>
-            <span className="text-[var(--ink-soft)]">
+            <span className="text-[#8A8A8A]">
               ({metrics.percentage}%) · {metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}
             </span>
           </div>
@@ -175,13 +175,13 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
       </div>
 
       {/* Top summary card: SUBJECT PROGRESS */}
-      <div className="paper-card rounded-2xl sm:rounded-3xl border border-[var(--line)] bg-[#FAF7F0] p-4 sm:p-5 shadow-[0_2px_8px_rgba(120,100,70,0.06)]">
+      <div className="rounded-2xl border border-[#EBEBEB] bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="flex items-center justify-between mb-2.5 sm:mb-3">
-          <span className="text-[11px] sm:text-xs font-sans font-bold uppercase tracking-wider text-[var(--ink-soft)]">
+          <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#8A8A8A]">
             SUBJECT PROGRESS
           </span>
-          <div className="text-xs sm:text-sm font-sans text-[var(--ink-soft)]">
-            <span className="font-bold text-[var(--ink)] text-sm sm:text-base">
+          <div className="text-xs sm:text-sm font-sans text-[#8A8A8A]">
+            <span className="font-bold text-[#1A1A1A] text-sm sm:text-base">
               {metrics.watchedPartsCount} / {metrics.totalPartsAdded}
             </span>{' '}
             <span className="font-medium">parts completed</span>
@@ -189,17 +189,15 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         </div>
 
         {/* Horizontal progress bar spanning the card */}
-        <div className="w-full h-2.5 sm:h-3 rounded-full bg-[#EAE6DC] overflow-hidden">
+        <div className="w-full h-2.5 rounded-full bg-[#F0F0F0] overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              metrics.percentage >= 100 && metrics.totalPartsAdded > 0 ? 'bg-[#5B8266]' : 'bg-[var(--accent)]'
-            }`}
+            className="h-full rounded-full transition-all duration-300 bg-[#1A1A1A]"
             style={{ width: `${metrics.percentage}%` }}
           />
         </div>
 
         {/* Detail footer breakdown row */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[var(--line)]/60 text-xs font-sans text-[var(--ink-soft)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[#F0F0F0] text-xs font-sans text-[#8A8A8A]">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span>
               {metrics.totalPartsAdded === 0
@@ -207,7 +205,7 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
                 : `${metrics.partsRemaining} ${metrics.partsRemaining === 1 ? 'part' : 'parts'} remaining to watch`}
             </span>
           </div>
-          <span className="font-bold text-[var(--accent)] whitespace-nowrap">
+          <span className="font-bold text-[#1A1A1A] whitespace-nowrap">
             {metrics.percentage}% completed
           </span>
         </div>
@@ -216,9 +214,9 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
       {/* Lesson List */}
       <div className="flex flex-col gap-2.5">
         {subjectLessons.length === 0 ? (
-          <div className="card paper-card text-center py-10 px-4">
-            <p className="text-sm font-sans text-[var(--ink-soft)]">
-              No lessons added yet. Tap the <strong className="text-[var(--accent)]">+</strong> button below to add your first lesson.
+          <div className="rounded-2xl border border-[#EBEBEB] bg-white text-center py-10 px-4">
+            <p className="text-sm font-sans text-[#8A8A8A]">
+              No lessons added yet. Tap the <strong className="text-[#1A1A1A]">+</strong> button below to add your first lesson.
             </p>
           </div>
         ) : (
@@ -233,16 +231,16 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
         )}
       </div>
 
-      {/* Floating Action Button (above the bottom navigation bar) */}
+      {/* Floating Action Button */}
       <button
         type="button"
         onClick={() => openOverlay('curriculum-add-lesson')}
-        className="fixed bottom-24 z-40 w-14 h-14 rounded-full bg-[var(--accent)] text-white shadow-[0_6px_20px_rgba(122,92,148,0.35)] hover:bg-[#684c80] hover:scale-105 active:scale-95 transition-all flex items-center justify-center border-2 border-[#FAF7F0] focus:outline-none focus:ring-4 focus:ring-[var(--accent)]/30 cursor-pointer"
+        className="fixed bottom-24 z-40 w-14 h-14 rounded-full bg-[#1A1A1A] text-white shadow-[0_8px_25px_rgba(0,0,0,0.25)] hover:bg-black hover:scale-105 active:scale-95 transition-all flex items-center justify-center border-2 border-white focus:outline-none focus:ring-4 focus:ring-black/20 cursor-pointer"
         style={{ right: 'max(1.25rem, calc(50% - 204px))' }}
         aria-label="Add Lesson"
         title="Add Lesson"
       >
-        <Plus size={28} strokeWidth={2.6} />
+        <Plus size={28} strokeWidth={2.5} />
       </button>
 
       {/* Add Lesson Modal */}
@@ -257,4 +255,3 @@ export const SubjectLessonList: React.FC<SubjectLessonListProps> = ({ subject, o
     </div>
   );
 };
-
