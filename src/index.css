@@ -2,18 +2,18 @@
 
 :root {
   --paper: #FAFAFA;
-  --ink: #1A1A1A;
+  --ink: #111111;
   --ink-soft: #8A8A8A;
-  --ink-light: #B8B8B8;
-  --accent: #1A1A1A;
-  --accent-soft: #F2F2F2;
-  --accent-line: #D4D4D4;
-  --accent-red: #E11D48;
-  --ok: #1A1A1A;
-  --ok-soft: #F2F2F2;
-  --ok-line: #D4D4D4;
-  --warn: #E11D48;
-  --line: #EBEBEB;
+  --ink-light: #D4D4D4;
+  --accent: #111111;
+  --accent-soft: #F5F5F5;
+  --accent-line: #E0E0E0;
+  --accent-red: #EF4444;
+  --ok: #16A34A;
+  --ok-soft: #DCFCE7;
+  --ok-line: #BBF7D0;
+  --warn: #EF4444;
+  --line: #E0E0E0;
   --card-bg: #FFFFFF;
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   --card-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -86,7 +86,7 @@ input[type="text"], input[type="date"], input[type="month"], input[type="number"
   font-family: inherit;
   font-size: 0.95rem;
   padding: 10px 14px;
-  border: 1px solid #E2E2E2;
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: #FFFFFF;
   color: var(--ink);
@@ -96,8 +96,8 @@ input[type="text"], input[type="date"], input[type="month"], input[type="number"
 
 input[type="text"]:focus, input[type="date"]:focus, input[type="month"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: #1A1A1A;
-  box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.08);
+  border-color: #111111;
+  box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.08);
 }
 
 textarea {
@@ -111,8 +111,8 @@ button.btn {
   font-size: 0.9rem;
   padding: 10px 18px;
   border-radius: 12px;
-  border: 1px solid #1A1A1A;
-  background: #1A1A1A;
+  border: 1px solid #111111;
+  background: #111111;
   color: #FFFFFF;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s, background-color 0.15s;
@@ -123,7 +123,8 @@ button.btn:active {
 }
 
 button.btn:hover {
-  opacity: 0.92;
+  background-color: #262626;
+  border-color: #262626;
 }
 
 button.btn:disabled {
@@ -195,12 +196,12 @@ td {
   height: 8px;
   border-radius: 9999px;
   overflow: hidden;
-  background: #EAEAEA;
+  background: #E5E5E5;
 }
 
 .progress-fill {
   height: 100%;
-  background: #1A1A1A;
+  background: #111111;
   border-radius: 9999px;
   transition: width 0.3s ease;
 }
@@ -208,18 +209,18 @@ td {
 .tracker-cell {
   width: 18px;
   height: 18px;
-  border: 1px solid #D4D4D4;
+  border: 1px solid #E0E0E0;
   border-radius: 4px;
   margin: 0 auto;
   transition: all 0.2s;
 }
 
 .tracker-cell.on {
-  background: #1A1A1A;
-  border-color: #1A1A1A;
+  background: #16A34A;
+  border-color: #16A34A;
 }
 
-/* Custom Minimalist Checkbox - Circle with Solid Black Check */
+/* Custom Minimalist Checkbox - Circle with Solid Green Check when done */
 input[type="checkbox"] {
   appearance: none;
   background-color: #FFFFFF;
@@ -237,7 +238,7 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:hover {
-  border-color: #1A1A1A;
+  border-color: #111111;
 }
 
 input[type="checkbox"]::before {
@@ -246,15 +247,15 @@ input[type="checkbox"]::before {
   height: 0.65em;
   transform: scale(0);
   transition: 100ms transform ease-in-out;
-  box-shadow: inset 1em 1em white;
-  background-color: white;
+  box-shadow: inset 1em 1em #FFFFFF;
+  background-color: #FFFFFF;
   transform-origin: center;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
 
 input[type="checkbox"]:checked {
-  background-color: #1A1A1A;
-  border-color: #1A1A1A;
+  background-color: #16A34A;
+  border-color: #16A34A;
 }
 
 input[type="checkbox"]:checked::before {

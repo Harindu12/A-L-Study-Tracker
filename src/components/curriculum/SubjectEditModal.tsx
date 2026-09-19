@@ -35,22 +35,22 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
-            <Plus size={20} className="text-[#1A1A1A]" />
-            <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Add Subject</h3>
+            <Plus size={20} className="text-[#111111]" />
+            <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Add Subject</h3>
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X size={18} />
@@ -66,7 +66,7 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)}
-              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
+              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
               placeholder="e.g. Chemistry"
               autoFocus
               required
@@ -77,14 +77,14 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="px-5 py-2 text-xs font-bold bg-[#1A1A1A] text-white rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
+              className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
             >
               Add Subject
             </button>
@@ -114,20 +114,20 @@ export const SubjectActionSheetModal: React.FC<SubjectActionSheetModalProps> = (
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#EBEBEB]">
+        <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#E0E0E0]">
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
-            <div className="w-9 h-9 rounded-xl bg-[#F0F0F0] text-[#1A1A1A] flex items-center justify-center font-bold text-xs flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] flex items-center justify-center font-bold text-xs flex-shrink-0">
               {subject.name.trim().slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <h3 className="font-sans text-base font-bold text-[#1A1A1A] truncate m-0">
+              <h3 className="font-sans text-base font-bold text-[#111111] truncate m-0">
                 {subject.name}
               </h3>
               <p className="text-xs font-sans text-[#8A8A8A] m-0">
@@ -138,7 +138,7 @@ export const SubjectActionSheetModal: React.FC<SubjectActionSheetModalProps> = (
           <button 
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X size={18} />
@@ -153,13 +153,13 @@ export const SubjectActionSheetModal: React.FC<SubjectActionSheetModalProps> = (
               onClose();
               onEdit(subject);
             }}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#EBEBEB] bg-white hover:bg-[#F8F8F8] hover:border-[#1A1A1A] text-left transition-colors cursor-pointer group"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:bg-[#F5F5F5] hover:border-[#111111] text-left transition-colors cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#F0F0F0] text-[#1A1A1A] flex items-center justify-center flex-shrink-0 group-hover:bg-[#1A1A1A] group-hover:text-white transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111111] group-hover:text-[#FFFFFF] transition-colors">
               <Pencil size={18} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-sans font-bold text-sm text-[#1A1A1A] transition-colors">
+              <div className="font-sans font-bold text-sm text-[#111111] transition-colors">
                 Edit Subject
               </div>
               <div className="text-xs font-sans text-[#8A8A8A]">
@@ -175,7 +175,7 @@ export const SubjectActionSheetModal: React.FC<SubjectActionSheetModalProps> = (
               onClose();
               onDelete(subject);
             }}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-white hover:bg-red-50/50 hover:border-red-400 text-left transition-colors cursor-pointer group"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-[#FFFFFF] hover:bg-red-50/50 hover:border-red-400 text-left transition-colors cursor-pointer group"
           >
             <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 group-hover:bg-red-600 group-hover:text-white transition-colors">
               <Trash2 size={18} />
@@ -191,11 +191,11 @@ export const SubjectActionSheetModal: React.FC<SubjectActionSheetModalProps> = (
           </button>
         </div>
 
-        <div className="mt-4 pt-2 border-t border-[#EBEBEB]">
+        <div className="mt-4 pt-2 border-t border-[#E0E0E0]">
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2.5 text-center text-xs font-sans font-semibold text-[#8A8A8A] hover:text-[#1A1A1A] transition-colors cursor-pointer"
+            className="w-full py-2.5 text-center text-xs font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -238,22 +238,22 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
-            <Pencil size={18} className="text-[#1A1A1A]" />
-            <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Edit Subject</h3>
+            <Pencil size={18} className="text-[#111111]" />
+            <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Edit Subject</h3>
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X size={18} />
@@ -269,7 +269,7 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)}
-              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
+              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
               placeholder="e.g. Physics"
               autoFocus
               required
@@ -280,14 +280,14 @@ export const SubjectEditModal: React.FC<SubjectEditModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="px-5 py-2 text-xs font-bold bg-[#1A1A1A] text-white rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
+              className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
             >
               Save Changes
             </button>
@@ -316,11 +316,11 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 mb-3">
@@ -328,7 +328,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             <AlertTriangle size={20} />
           </div>
           <div>
-            <h3 className="font-sans text-base font-bold text-[#1A1A1A] m-0">
+            <h3 className="font-sans text-base font-bold text-[#111111] m-0">
               Delete {subject.name}?
             </h3>
             <p className="text-xs font-sans text-[#8A8A8A] mt-1.5 leading-relaxed">
@@ -341,7 +341,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
+            className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
           >
             Cancel
           </button>

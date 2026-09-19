@@ -52,7 +52,7 @@ export const BottomNav: React.FC = () => {
         <nav
           id="main-nav-pill"
           aria-label="Main Navigation"
-          className="flex-1 bg-[#141414] border border-white/10 rounded-full h-[58px] sm:h-[62px] p-1.5 flex items-center justify-between shadow-[0_12px_36px_rgba(0,0,0,0.32)] backdrop-blur-md"
+          className="flex-1 bg-[#111111] border border-[#262626] rounded-full h-[68px] sm:h-[74px] p-2 flex items-center justify-between shadow-[0_14px_40px_rgba(0,0,0,0.28)] backdrop-blur-md"
         >
           {TABS.map((item) => {
             const isActive = tab === item.id;
@@ -68,18 +68,18 @@ export const BottomNav: React.FC = () => {
                 aria-current={isActive ? 'page' : undefined}
                 className={`relative flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
                   isActive
-                    ? 'bg-[#2A2A2A] text-white rounded-full px-3.5 sm:px-4 h-full shadow-xs'
-                    : 'flex-1 text-[#8E8E93] hover:text-white h-full px-2 rounded-full active:scale-95'
+                    ? 'bg-[#262626] text-[#FFFFFF] rounded-full px-3.5 sm:px-4.5 h-full shadow-xs'
+                    : 'flex-1 text-[#8A8A8A] hover:text-[#FFFFFF] h-full px-2 rounded-full active:scale-95'
                 }`}
               >
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <Icon
-                    size={21}
-                    strokeWidth={isActive ? 2.3 : 2.0}
-                    className={`transition-colors ${isActive ? 'text-white' : 'text-[#8E8E93] group-hover:text-white'}`}
+                    size={24}
+                    strokeWidth={isActive ? 2.4 : 2.0}
+                    className={`transition-colors ${isActive ? 'text-[#FFFFFF]' : 'text-[#8A8A8A] group-hover:text-[#FFFFFF]'}`}
                   />
                   {isActive && (
-                    <span className="font-bold text-xs sm:text-[13px] tracking-tight text-white whitespace-nowrap">
+                    <span className="font-bold text-xs sm:text-sm tracking-tight text-[#FFFFFF] whitespace-nowrap">
                       {item.label}
                     </span>
                   )}
@@ -96,9 +96,9 @@ export const BottomNav: React.FC = () => {
           onClick={handleQuickAction}
           title={getQuickActionTitle()}
           aria-label={getQuickActionTitle()}
-          className="h-[58px] w-[58px] sm:h-[62px] sm:w-[62px] rounded-full aspect-square flex-shrink-0 flex items-center justify-center bg-[#1A1A1A] text-white border border-neutral-700/60 shadow-[0_12px_36px_rgba(0,0,0,0.3)] hover:bg-black hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-black/30"
+          className="h-[68px] w-[68px] sm:h-[74px] sm:w-[74px] rounded-full aspect-square flex-shrink-0 flex items-center justify-center bg-[#111111] text-[#FFFFFF] border border-[#262626] shadow-[0_14px_40px_rgba(0,0,0,0.28)] hover:bg-[#262626] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#111111]/30"
         >
-          <Plus size={24} strokeWidth={2.6} />
+          <Plus size={28} strokeWidth={2.6} />
         </button>
       </div>
     </div>

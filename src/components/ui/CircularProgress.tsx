@@ -29,8 +29,8 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   const strokeDashoffset = circumference - (actualProgress / 100) * circumference;
   const isComplete = actualProgress >= 100;
   
-  const strokeColor = '#1A1A1A';
-  const trackColor = '#F0F0F0';
+  const strokeColor = isComplete ? '#16A34A' : '#111111';
+  const trackColor = '#E5E5E5';
 
   return (
     <div 
@@ -65,7 +65,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
         </svg>
         <div className="absolute flex flex-col items-center justify-center text-center px-1">
           <span 
-            className={`font-bold font-sans leading-none text-[#1A1A1A] ${
+            className={`font-bold font-sans leading-none text-[#111111] ${
               centerText && centerText.length > 4 ? 'text-xs' : size < 70 ? 'text-xs' : 'text-base'
             }`}
           >
@@ -76,7 +76,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
       {(label || subtitle) && (
         <div className="text-center">
           {label && (
-            <div className="text-[0.8rem] font-bold text-[#1A1A1A] font-sans leading-tight text-center break-words max-w-[100px]">
+            <div className="text-[0.8rem] font-bold text-[#111111] font-sans leading-tight text-center break-words max-w-[100px]">
               {label}
             </div>
           )}

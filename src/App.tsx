@@ -10,13 +10,13 @@ function AppContent() {
   const { tab, setTab } = useNavigation();
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A] relative font-sans antialiased">
-      <div className="max-w-md mx-auto min-h-screen relative bg-[#FAFAFA] border-x border-[#EAEAEA] flex flex-col">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#111111] relative font-sans antialiased">
+      <div className="max-w-md mx-auto min-h-screen relative bg-[#FAFAFA] border-x border-[#E0E0E0] flex flex-col">
         {/* Header - only for stats and revisit; Calendar and Lessons render their own headers */}
         {tab !== 'calendar' && tab !== 'lessons' && (
           <header className="pt-8 pb-3 px-6 relative z-10">
             <div className="flex justify-between items-center">
-              <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1A1A1A] tracking-tight m-0">
+              <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight m-0">
                 {tab === 'stats' && 'Analytics'}
                 {tab === 'revisit' && 'Spaced Repetition'}
               </h1>
@@ -25,7 +25,7 @@ function AppContent() {
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-y-auto px-4 pb-32 relative z-10 scrollbar-hide ${tab === 'calendar' || tab === 'lessons' ? 'pt-5' : ''}`}>
+        <main className={`flex-1 overflow-y-auto px-4 pb-36 relative z-10 scrollbar-hide ${tab === 'calendar' || tab === 'lessons' ? 'pt-5' : ''}`}>
           {tab === 'calendar' && <CalendarTab onNavigateToRevisit={() => setTab('revisit')} />}
           {tab === 'stats' && <StatsTab />}
           {tab === 'revisit' && <RevisitTab />}

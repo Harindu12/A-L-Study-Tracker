@@ -28,21 +28,21 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-[#1A1A1A]" />
-            <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Target Exam Date</h3>
+            <Calendar size={18} className="text-[#111111]" />
+            <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Target Exam Date</h3>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -61,7 +61,7 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
               type="date" 
               value={date} 
               onChange={(e) => setDate(e.target.value)}
-              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
+              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
               required
             />
           </div>
@@ -70,14 +70,14 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!date}
-              className="px-5 py-2 text-xs font-bold bg-[#1A1A1A] text-white rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
+              className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
             >
               Save Exam Date
             </button>

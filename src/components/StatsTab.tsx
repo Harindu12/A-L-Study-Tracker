@@ -37,8 +37,8 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
   };
 
   return (
-    <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-      <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-4">Saturday Test</h2>
+    <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <h2 className="font-sans text-base font-bold text-[#111111] m-0 mb-4">Saturday Test</h2>
       <div className="flex flex-col gap-3">
         <div>
           <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
@@ -57,7 +57,7 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
                 closeOverlay();
               }
             }}
-            className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
+            className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
           >
             <option value="">-- select subject --</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -82,13 +82,13 @@ const SaturdayTestSection: React.FC<SaturdayTestSectionProps> = ({ monday }) => 
               }
             }}
             placeholder="e.g. 72%" 
-            className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
+            className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
           />
         </div>
         <div className="mt-2 flex items-center">
           <button 
             type="button"
-            className="w-full py-2.5 px-4 bg-[#1A1A1A] text-white font-sans font-bold text-xs rounded-xl hover:bg-black transition-colors cursor-pointer flex items-center justify-center gap-2" 
+            className="w-full py-2.5 px-4 bg-[#111111] text-[#FFFFFF] font-sans font-bold text-xs rounded-xl hover:bg-[#262626] transition-colors cursor-pointer flex items-center justify-center gap-2" 
             onClick={handleSaveTest}
           >
             <span>Save Test Result</span>
@@ -131,10 +131,10 @@ export const StatsTab = () => {
 
     return (
       <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <DateChipStrip currentDate={anchorDate} onDateSelect={setAnchorDate} />
           <div className="mt-4 text-center">
-             <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0">Week of {monday}</h2>
+             <h2 className="font-sans text-base font-bold text-[#111111] m-0">Week of {monday}</h2>
           </div>
           <div className="mt-5">
             <h3 className="font-sans font-bold text-[#8A8A8A] text-xs uppercase tracking-wider mb-2">Subjects Studied</h3>
@@ -142,12 +142,12 @@ export const StatsTab = () => {
           </div>
         </div>
         
-        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-          <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-3">Activity Log</h2>
+        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <h2 className="font-sans text-base font-bold text-[#111111] m-0 mb-3">Activity Log</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-xs sm:text-sm">
               <thead>
-                <tr className="border-b border-[#F0F0F0] text-[#8A8A8A]">
+                <tr className="border-b border-[#E0E0E0] text-[#8A8A8A]">
                   <th className="w-16 py-2 px-1 text-left font-semibold">Day</th>
                   <th className="py-2 px-2 text-left font-semibold">Subjects logged</th>
                   <th className="w-14 py-2 px-1 text-center whitespace-nowrap font-semibold">Revisit</th>
@@ -161,22 +161,22 @@ export const StatsTab = () => {
                   const revCount = getRevisitsDoneOnDate(d);
                   
                   return (
-                    <tr key={d} className="border-b border-[#F7F7F7] last:border-b-0">
-                      <td className="py-2.5 px-1 font-medium text-[#1A1A1A] whitespace-nowrap">
+                    <tr key={d} className="border-b border-[#F0F0F0] last:border-b-0">
+                      <td className="py-2.5 px-1 font-medium text-[#111111] whitespace-nowrap">
                         {new Date(d).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
                       </td>
-                      <td className="py-2.5 px-2 text-[#1A1A1A]">
+                      <td className="py-2.5 px-2 text-[#111111]">
                         {subjs.length > 0 
                           ? subjs.map(s => subjects.find(sx => sx.id === s.subjectId)?.name || '?').join(', ')
                           : '—'}
                       </td>
                       <td className="py-2.5 px-1 text-center font-semibold">
                         {revCount > 0 ? (
-                          <span className="text-[#1A1A1A]">{revCount}</span>
+                          <span className="text-[#16A34A] font-bold">{revCount}</span>
                         ) : '—'}
                       </td>
                       <td className="py-2.5 px-1 text-center font-semibold">
-                        {rec?.teachback ? <span className="text-[#1A1A1A]">✓</span> : '—'}
+                        {rec?.teachback ? <span className="text-[#16A34A] font-bold">✓</span> : '—'}
                       </td>
                     </tr>
                   );
@@ -186,12 +186,12 @@ export const StatsTab = () => {
           </div>
         </div>
 
-        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-x-auto">
-          <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-3">Habit Tracker</h2>
+        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-x-auto">
+          <h2 className="font-sans text-base font-bold text-[#111111] m-0 mb-3">Habit Tracker</h2>
           <div className="min-w-[460px]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#F0F0F0] text-[#8A8A8A]">
+                <tr className="border-b border-[#E0E0E0] text-[#8A8A8A]">
                   <th className="text-left py-2"></th>
                   {days.map(d => (
                     <th key={d} className="text-center py-2 font-semibold">{d.slice(8, 10)}</th>
@@ -199,46 +199,46 @@ export const StatsTab = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-[#F7F7F7]">
-                  <td className="py-2 font-medium text-[#1A1A1A]">Studied</td>
+                <tr className="border-b border-[#F0F0F0]">
+                  <td className="py-2 font-medium text-[#111111]">Studied</td>
                   {days.map(d => {
                     const rec = getDaily(d);
                     const on = rec && rec.subjects.some(s => s.studied);
                     return (
                       <td key={d} className="text-center py-2">
-                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#16A34A]' : 'bg-[#E5E5E5]'}`} />
                       </td>
                     );
                   })}
                 </tr>
-                <tr className="border-b border-[#F7F7F7]">
-                  <td className="py-2 font-medium text-[#1A1A1A]">Past papers</td>
+                <tr className="border-b border-[#F0F0F0]">
+                  <td className="py-2 font-medium text-[#111111]">Past papers</td>
                   {days.map(d => {
                     const rec = getDaily(d);
                     const on = rec && rec.subjects.some(s => s.pastPaper);
                     return (
                       <td key={d} className="text-center py-2">
-                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#16A34A]' : 'bg-[#E5E5E5]'}`} />
                       </td>
                     );
                   })}
                 </tr>
-                <tr className="border-b border-[#F7F7F7]">
-                  <td className="py-2 font-medium text-[#1A1A1A]">Revisit done</td>
+                <tr className="border-b border-[#F0F0F0]">
+                  <td className="py-2 font-medium text-[#111111]">Revisit done</td>
                   {days.map(d => (
                     <td key={d} className="text-center py-2">
-                      <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${getRevisitsDoneOnDate(d) > 0 ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                      <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${getRevisitsDoneOnDate(d) > 0 ? 'bg-[#16A34A]' : 'bg-[#E5E5E5]'}`} />
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td className="py-2 font-medium text-[#1A1A1A]">Teach-back</td>
+                  <td className="py-2 font-medium text-[#111111]">Teach-back</td>
                   {days.map(d => {
                     const rec = getDaily(d);
                     const on = !!rec?.teachback;
                     return (
                       <td key={d} className="text-center py-2">
-                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#1A1A1A]' : 'bg-[#F0F0F0]'}`} />
+                        <div className={`w-3.5 h-3.5 rounded-sm mx-auto transition-colors ${on ? 'bg-[#16A34A]' : 'bg-[#E5E5E5]'}`} />
                       </td>
                     );
                   })}
@@ -295,20 +295,20 @@ export const StatsTab = () => {
 
     return (
       <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="flex justify-between items-center mb-6">
             <button 
               type="button"
               onClick={prevMonth} 
-              className="p-2 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+              className="p-2 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-xl transition-colors cursor-pointer"
             >
               <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
-            <h2 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">{monthLabel}</h2>
+            <h2 className="font-sans text-xl font-extrabold text-[#111111] m-0">{monthLabel}</h2>
             <button 
               type="button"
               onClick={nextMonth} 
-              className="p-2 text-[#8A8A8A] hover:text-[#1A1A1A] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer"
+              className="p-2 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-xl transition-colors cursor-pointer"
             >
               <ChevronRight size={20} strokeWidth={2.5} />
             </button>
@@ -325,7 +325,7 @@ export const StatsTab = () => {
               return (
                 <div key={s.id} className="flex flex-col items-center gap-2 min-w-[76px]">
                   <CircularProgress percentage={percent} size={60} strokeWidth={5} />
-                  <span className="text-[0.72rem] font-sans font-bold text-[#1A1A1A] text-center line-clamp-1">{s.name}</span>
+                  <span className="text-[0.72rem] font-sans font-bold text-[#111111] text-center line-clamp-1">{s.name}</span>
                 </div>
               );
             })}
@@ -335,16 +335,16 @@ export const StatsTab = () => {
           <BarChart data={chartData} />
           
           <div className="grid grid-cols-2 gap-3 mt-6">
-            <div className="bg-[#FAFAFA] border border-[#EBEBEB] rounded-xl p-4 flex flex-col items-center justify-center text-center">
-              <span className="font-sans text-2xl font-extrabold text-[#1A1A1A]">
+            <div className="bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-4 flex flex-col items-center justify-center text-center">
+              <span className="font-sans text-2xl font-extrabold text-[#111111]">
                 {Object.values(completedThisMonth).reduce((a, b) => a + b, 0)}
               </span>
               <span className="text-[0.68rem] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-0.5">
                 Lessons completed
               </span>
             </div>
-            <div className="bg-[#FAFAFA] border border-[#EBEBEB] rounded-xl p-4 flex flex-col items-center justify-center text-center">
-              <span className="font-sans text-2xl font-extrabold text-[#1A1A1A]">
+            <div className="bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-4 flex flex-col items-center justify-center text-center">
+              <span className="font-sans text-2xl font-extrabold text-[#111111]">
                 {testResults.length}
               </span>
               <span className="text-[0.68rem] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-0.5">
@@ -354,12 +354,12 @@ export const StatsTab = () => {
           </div>
         </div>
 
-        <div className="bg-white border border-[#EBEBEB] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-x-auto">
-          <h2 className="font-sans text-base font-bold text-[#1A1A1A] m-0 mb-3">Saturday Test Scores</h2>
+        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-x-auto">
+          <h2 className="font-sans text-base font-bold text-[#111111] m-0 mb-3">Saturday Test Scores</h2>
           <div className="min-w-[360px]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#F0F0F0] text-[#8A8A8A]">
+                <tr className="border-b border-[#E0E0E0] text-[#8A8A8A]">
                   <th className="text-left py-2 font-semibold">Week of</th>
                   <th className="text-left py-2 font-semibold">Subject</th>
                   <th className="text-right py-2 font-semibold">Score</th>
@@ -374,10 +374,10 @@ export const StatsTab = () => {
                   testResults.map((t, i) => {
                     const subj = subjects.find(s => s.id === t.subjectId);
                     return (
-                      <tr key={i} className="border-b border-[#F7F7F7] last:border-b-0">
+                      <tr key={i} className="border-b border-[#F0F0F0] last:border-b-0">
                         <td className="py-2.5 text-[#8A8A8A]">{t.weekStartDate}</td>
-                        <td className="py-2.5 font-medium text-[#1A1A1A]">{subj?.name || 'Unknown'}</td>
-                        <td className="py-2.5 text-right font-bold text-[#1A1A1A]">{t.score}</td>
+                        <td className="py-2.5 font-medium text-[#111111]">{subj?.name || 'Unknown'}</td>
+                        <td className="py-2.5 text-right font-bold text-[#111111]">{t.score}</td>
                       </tr>
                     );
                   })
@@ -393,16 +393,16 @@ export const StatsTab = () => {
   return (
     <div className="flex flex-col gap-4 pb-6 h-full">
       <div className="pt-2 pb-1 flex items-center justify-between">
-        <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1A1A1A] tracking-tight m-0">
+        <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight m-0">
           Analytics & Progress
         </h1>
-        <div className="flex bg-[#F5F5F5] p-1 rounded-xl border border-[#EAEAEA]">
+        <div className="flex bg-[#F0F0F0] p-1 rounded-xl border border-[#E0E0E0]">
           <button 
             type="button"
             className={`py-1.5 px-3 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
               mode === 'weekly' 
-                ? 'bg-[#1A1A1A] text-white shadow-2xs' 
-                : 'text-[#8A8A8A] hover:text-[#1A1A1A]'
+                ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs' 
+                : 'text-[#8A8A8A] hover:text-[#111111]'
             }`}
             onClick={() => setMode('weekly')}
           >
@@ -412,8 +412,8 @@ export const StatsTab = () => {
             type="button"
             className={`py-1.5 px-3 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
               mode === 'monthly' 
-                ? 'bg-[#1A1A1A] text-white shadow-2xs' 
-                : 'text-[#8A8A8A] hover:text-[#1A1A1A]'
+                ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs' 
+                : 'text-[#8A8A8A] hover:text-[#111111]'
             }`}
             onClick={() => setMode('monthly')}
           >

@@ -272,7 +272,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        className="rounded-2xl border border-[#EBEBEB] bg-white hover:border-[#D4D4D4] transition-all cursor-pointer select-none overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+        className="rounded-2xl border border-[#E0E0E0] bg-[#FFFFFF] hover:border-[#BDBDBD] transition-all cursor-pointer select-none overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
       >
         {/* Collapsed Card Main Row */}
         <div className="p-4 sm:p-4.5 flex items-center justify-between gap-3.5 sm:gap-4">
@@ -280,8 +280,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
               isFullyComplete
-                ? 'bg-[#1A1A1A] text-white shadow-2xs'
-                : 'bg-[#F5F5F5] text-[#1A1A1A] border border-[#EAEAEA]'
+                ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs'
+                : 'bg-[#F5F5F5] text-[#111111] border border-[#E0E0E0]'
             }`}
           >
             {isFullyComplete ? (
@@ -295,7 +295,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
           {/* Title & Parts Count */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-sans font-bold text-base text-[#1A1A1A] truncate leading-snug">
+            <h3 className="font-sans font-bold text-base text-[#111111] truncate leading-snug">
               {lesson.name}
             </h3>
             <p className="text-xs font-sans text-[#8A8A8A] font-medium mt-0.5">
@@ -306,7 +306,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
           {/* Chevron to expand/collapse */}
           <div className="flex-shrink-0 text-[#8A8A8A] pl-1">
             {isExpanded ? (
-              <ChevronUp size={18} strokeWidth={2.2} className="text-[#1A1A1A]" />
+              <ChevronUp size={18} strokeWidth={2.2} className="text-[#111111]" />
             ) : (
               <ChevronDown size={18} strokeWidth={2.2} />
             )}
@@ -317,17 +317,17 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         {isExpanded && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#FAFAFA] border-t border-[#EBEBEB] p-3.5 sm:p-4 animate-in fade-in duration-150"
+            className="bg-[#F5F5F5] border-t border-[#E0E0E0] p-3.5 sm:p-4 animate-in fade-in duration-150"
           >
             {/* Shrunk, Clean Section Header */}
             <div className="flex items-center justify-between mb-2 px-0.5">
               <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#8A8A8A] flex items-center gap-1.5">
-                <Video size={12} className="text-[#1A1A1A]" />
+                <Video size={12} className="text-[#111111]" />
                 <span>Video & Topic Parts Checklist ({parts.length})</span>
               </span>
 
               {allPartsComplete && parts.length > 0 && (
-                <span className="text-[10px] font-sans font-bold text-[#1A1A1A] flex items-center gap-1 bg-white border border-[#E0E0E0] px-2 py-0.5 rounded-full shadow-2xs">
+                <span className="text-[10px] font-sans font-bold text-[#111111] flex items-center gap-1 bg-[#FFFFFF] border border-[#E0E0E0] px-2 py-0.5 rounded-full shadow-2xs">
                   <Check size={10} strokeWidth={3} />
                   <span>All Parts Complete</span>
                 </span>
@@ -336,7 +336,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
             {/* Compact Parts List */}
             {parts.length === 0 ? (
-              <div className="p-3 text-center rounded-xl border border-dashed border-[#E0E0E0] text-xs font-sans text-[#8A8A8A] mb-2.5 bg-white">
+              <div className="p-3 text-center rounded-xl border border-dashed border-[#E0E0E0] text-xs font-sans text-[#8A8A8A] mb-2.5 bg-[#FFFFFF]">
                 No parts added yet. Add individual videos or sub-topics below to track your progress.
               </div>
             ) : (
@@ -351,15 +351,15 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   return (
                     <div
                       key={part.id}
-                      className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 transition-all bg-white shadow-2xs ${
+                      className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 transition-all bg-[#FFFFFF] shadow-2xs ${
                         isPartComplete
-                          ? 'border-[#D4D4D4]'
-                          : 'border-[#EBEBEB] hover:border-[#CCCCCC]'
+                          ? 'border-[#BDBDBD]'
+                          : 'border-[#E0E0E0] hover:border-[#BDBDBD]'
                       }`}
                     >
                       {/* Part Number & Name on One Line */}
                       <div className="flex-1 min-w-[100px] flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-[#F5F5F5] text-[#8A8A8A] font-mono font-bold text-[10px] flex items-center justify-center flex-shrink-0 select-none">
+                        <span className="w-5 h-5 rounded-md bg-[#F5F5F5] text-[#8A8A8A] font-mono font-bold text-[10px] flex items-center justify-center flex-shrink-0 select-none border border-[#E0E0E0]">
                           {index + 1}
                         </span>
                         <input
@@ -378,7 +378,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                             }
                           }}
                           placeholder={`Part ${index + 1}`}
-                          className={`w-full font-sans text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#E5E5E5] focus:border-[#1A1A1A] focus:bg-white focus:outline-none transition-all truncate text-[#1A1A1A] ${
+                          className={`w-full font-sans text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#E0E0E0] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-all truncate text-[#111111] ${
                             isPartComplete ? 'font-semibold' : 'font-medium'
                           }`}
                         />
@@ -386,26 +386,26 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
                       {/* Checkboxes + Delete */}
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#1A1A1A] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F5F5F5] transition-colors">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
                           <input
                             type="checkbox"
                             checked={part.watched}
                             onChange={(e) => handleToggleWatched(part.id, e.target.checked)}
-                            className="cursor-pointer accent-[#1A1A1A]"
+                            className="cursor-pointer accent-[#111111]"
                           />
-                          <span className={`text-[11px] font-sans ${part.watched ? 'font-semibold text-[#1A1A1A]' : 'text-[#8A8A8A]'}`}>
+                          <span className={`text-[11px] font-sans ${part.watched ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
                             Watched
                           </span>
                         </label>
 
-                        <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#1A1A1A] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F5F5F5] transition-colors">
+                        <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
                           <input
                             type="checkbox"
                             checked={part.pastPaper}
                             onChange={(e) => handleTogglePastPaper(part.id, e.target.checked)}
-                            className="cursor-pointer accent-[#1A1A1A]"
+                            className="cursor-pointer accent-[#111111]"
                           />
-                          <span className={`text-[11px] font-sans ${part.pastPaper ? 'font-semibold text-[#1A1A1A]' : 'text-[#8A8A8A]'}`}>
+                          <span className={`text-[11px] font-sans ${part.pastPaper ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
                             Past paper done
                           </span>
                         </label>
@@ -414,7 +414,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                           type="button"
                           onClick={() => handleDeletePart(part.id)}
                           title="Delete part"
-                          className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                          className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F0F0F0] transition-colors cursor-pointer"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -435,11 +435,11 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     value={newPartName}
                     onChange={(e) => setNewPartName(e.target.value)}
                     placeholder={`Add single part (e.g. Part ${parts.length + 1})...`}
-                    className="flex-1 font-sans text-xs px-3 py-2 rounded-xl border border-[#E5E5E5] bg-white hover:border-[#CCCCCC] focus:outline-none focus:border-[#1A1A1A] shadow-2xs text-[#1A1A1A] transition-all placeholder:text-[#8A8A8A]"
+                    className="flex-1 font-sans text-xs px-3 py-2 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:border-[#BDBDBD] focus:outline-none focus:border-[#111111] shadow-2xs text-[#111111] transition-all placeholder:text-[#8A8A8A]"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#1A1A1A] text-white hover:bg-black text-xs font-sans font-semibold shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+                    className="px-4 py-2 rounded-xl bg-[#111111] text-[#FFFFFF] hover:bg-[#262626] text-xs font-sans font-semibold shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
                   >
                     <Plus size={13} strokeWidth={2.4} />
                     <span>Add Part</span>
@@ -452,8 +452,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   onClick={() => setShowBulkAdd((prev) => !prev)}
                   className={`px-3.5 py-2 text-xs font-sans font-semibold rounded-xl border transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer active:scale-95 ${
                     showBulkAdd
-                      ? 'bg-[#1A1A1A] text-white border-[#1A1A1A] shadow-2xs'
-                      : 'bg-white text-[#1A1A1A] border-[#E5E5E5] hover:bg-[#F5F5F5] shadow-2xs'
+                      ? 'bg-[#111111] text-[#FFFFFF] border-[#111111] shadow-2xs'
+                      : 'bg-[#FFFFFF] text-[#111111] border-[#E0E0E0] hover:bg-[#F0F0F0] shadow-2xs'
                   }`}
                   title="Generate multiple numbered parts at once"
                 >
@@ -464,9 +464,9 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
               {/* Bulk Add Generator Form Panel */}
               {showBulkAdd && (
-                <div className="p-3.5 bg-white rounded-xl border border-[#E5E5E5] flex flex-col gap-2.5 shadow-2xs animate-in fade-in duration-150">
+                <div className="p-3.5 bg-[#FFFFFF] rounded-xl border border-[#E0E0E0] flex flex-col gap-2.5 shadow-2xs animate-in fade-in duration-150">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-sans font-bold text-[#1A1A1A] flex items-center gap-1.5 uppercase tracking-wider">
+                    <span className="text-[11px] font-sans font-bold text-[#111111] flex items-center gap-1.5 uppercase tracking-wider">
                       <ListPlus size={13} />
                       <span>Bulk Generate Parts</span>
                     </span>
@@ -488,7 +488,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                         onChange={(e) => setBulkFrom(e.target.value)}
                         min="1"
                         placeholder="1"
-                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A]"
+                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:outline-none focus:border-[#111111]"
                       />
                     </div>
 
@@ -502,7 +502,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                         onChange={(e) => setBulkTo(e.target.value)}
                         min="1"
                         placeholder="12"
-                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A]"
+                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:outline-none focus:border-[#111111]"
                       />
                     </div>
 
@@ -515,16 +515,16 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                         value={bulkPattern}
                         onChange={(e) => setBulkPattern(e.target.value)}
                         placeholder="Day {n}"
-                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:outline-none focus:border-[#1A1A1A]"
+                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:outline-none focus:border-[#111111]"
                       />
                     </div>
                   </div>
 
                   {/* Live Preview + Generate Button Row */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#F0F0F0]">
-                    <div className="text-[10px] font-sans text-[#1A1A1A] flex items-center gap-1.5 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#E0E0E0]">
+                    <div className="text-[10px] font-sans text-[#111111] flex items-center gap-1.5 min-w-0">
                       <span className="font-bold text-[#8A8A8A] flex-shrink-0">Preview:</span>
-                      <span className="font-medium bg-[#F5F5F5] px-2 py-0.5 rounded border border-[#E5E5E5] text-[#1A1A1A] truncate">
+                      <span className="font-medium bg-[#F5F5F5] px-2 py-0.5 rounded border border-[#E0E0E0] text-[#111111] truncate">
                         {previewText}
                       </span>
                     </div>
@@ -533,7 +533,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowBulkAdd(false)}
-                        className="text-xs font-sans font-medium text-[#8A8A8A] hover:text-[#1A1A1A] px-2.5 py-1 transition-colors cursor-pointer"
+                        className="text-xs font-sans font-medium text-[#8A8A8A] hover:text-[#111111] px-2.5 py-1 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -541,7 +541,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                         type="button"
                         onClick={handleBulkGenerate}
                         disabled={!isValidRange || bulkCount <= 0}
-                        className="px-3.5 py-1.5 rounded-xl bg-[#1A1A1A] text-white hover:bg-black text-xs font-sans font-semibold shadow-2xs flex items-center gap-1 disabled:opacity-40 cursor-pointer active:scale-95 transition-all"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#111111] text-[#FFFFFF] hover:bg-[#262626] text-xs font-sans font-semibold shadow-2xs flex items-center gap-1 disabled:opacity-40 cursor-pointer active:scale-95 transition-all"
                       >
                         <Sparkles size={12} />
                         <span>Generate {bulkCount > 0 ? `${bulkCount} Parts` : ''}</span>
@@ -558,24 +558,24 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       {/* Long-Press Action Sheet Modal */}
       {showActionMenu && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={(e) => {
             e.stopPropagation();
             setShowActionMenu(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#EBEBEB]">
+            <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#E0E0E0]">
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div className="w-9 h-9 rounded-xl bg-[#F0F0F0] text-[#1A1A1A] flex items-center justify-center font-bold text-xs flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] text-[#111111] border border-[#E0E0E0] flex items-center justify-center font-bold text-xs flex-shrink-0">
                   <BookOpen size={16} />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-sans text-base font-bold text-[#1A1A1A] truncate m-0">
+                  <h3 className="font-sans text-base font-bold text-[#111111] truncate m-0">
                     {lesson.name}
                   </h3>
                   <p className="text-xs font-sans text-[#8A8A8A] m-0">
@@ -586,7 +586,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
               <button
                 type="button"
                 onClick={() => setShowActionMenu(false)}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
+                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -603,13 +603,13 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   setShowActionMenu(false);
                   setShowEditTitleModal(true);
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#EBEBEB] bg-white hover:bg-[#F8F8F8] hover:border-[#1A1A1A] text-left transition-colors cursor-pointer group"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:bg-[#F5F5F5] hover:border-[#111111] text-left transition-colors cursor-pointer group"
               >
-                <div className="w-9 h-9 rounded-xl bg-[#F0F0F0] text-[#1A1A1A] flex items-center justify-center flex-shrink-0 group-hover:bg-[#1A1A1A] group-hover:text-white transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111111] group-hover:text-[#FFFFFF] transition-colors">
                   <Pencil size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-sans font-bold text-sm text-[#1A1A1A] transition-colors">
+                  <div className="font-sans font-bold text-sm text-[#111111] transition-colors">
                     Edit Title
                   </div>
                   <div className="text-xs font-sans text-[#8A8A8A]">
@@ -625,19 +625,19 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   setShowActionMenu(false);
                   handleToggleDone();
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#EBEBEB] bg-white hover:bg-[#F8F8F8] hover:border-[#1A1A1A] text-left transition-colors cursor-pointer group"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:bg-[#F5F5F5] hover:border-[#111111] text-left transition-colors cursor-pointer group"
               >
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                     lesson.done
-                      ? 'bg-[#F0F0F0] text-[#8A8A8A]'
-                      : 'bg-[#1A1A1A] text-white'
+                      ? 'bg-[#F5F5F5] border border-[#E0E0E0] text-[#8A8A8A]'
+                      : 'bg-[#111111] text-[#FFFFFF]'
                   }`}
                 >
                   {lesson.done ? <Circle size={18} /> : <Check size={18} strokeWidth={2.8} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-sans font-bold text-sm text-[#1A1A1A] transition-colors">
+                  <div className="font-sans font-bold text-sm text-[#111111] transition-colors">
                     {lesson.done ? 'Mark Incomplete' : 'Mark Done'}
                   </div>
                   <div className="text-xs font-sans text-[#8A8A8A]">
@@ -653,7 +653,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   setShowActionMenu(false);
                   setShowDeleteConfirmModal(true);
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-white hover:bg-red-50/50 hover:border-red-400 text-left transition-colors cursor-pointer group"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-[#FFFFFF] hover:bg-red-50/50 hover:border-red-400 text-left transition-colors cursor-pointer group"
               >
                 <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 group-hover:bg-red-600 group-hover:text-white transition-colors">
                   <Trash2 size={18} />
@@ -670,11 +670,11 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
             </div>
 
             {/* Cancel Button */}
-            <div className="mt-4 pt-2 border-t border-[#EBEBEB]">
+            <div className="mt-4 pt-2 border-t border-[#E0E0E0]">
               <button
                 type="button"
                 onClick={() => setShowActionMenu(false)}
-                className="w-full py-2.5 text-center text-xs font-sans font-semibold text-[#8A8A8A] hover:text-[#1A1A1A] transition-colors cursor-pointer"
+                className="w-full py-2.5 text-center text-xs font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -686,25 +686,25 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       {/* Edit Title Modal */}
       {showEditTitleModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={(e) => {
             e.stopPropagation();
             setShowEditTitleModal(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
+            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <Pencil size={18} className="text-[#1A1A1A]" />
-                <h3 className="font-sans text-xl font-extrabold text-[#1A1A1A] m-0">Edit Lesson Title</h3>
+                <Pencil size={18} className="text-[#111111]" />
+                <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Edit Lesson Title</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowEditTitleModal(false)}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#1A1A1A] rounded-full transition-colors cursor-pointer"
+                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -720,7 +720,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   type="text"
                   value={editTitleValue}
                   onChange={(e) => setEditTitleValue(e.target.value)}
-                  className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] text-[#1A1A1A] focus:border-[#1A1A1A] focus:outline-none"
+                  className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
                   placeholder="e.g. Chemical Bonding"
                   autoFocus
                   required
@@ -731,14 +731,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowEditTitleModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!editTitleValue.trim()}
-                  className="px-5 py-2 text-xs font-bold bg-[#1A1A1A] text-white rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity cursor-pointer"
+                  className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -751,14 +751,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       {/* Delete Lesson Confirmation Modal */}
       {showDeleteConfirmModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteConfirmModal(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-3xl p-6 border border-[#EBEBEB] shadow-2xl bg-white animate-in zoom-in-95 duration-200"
+            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-3">
@@ -766,11 +766,11 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 <AlertTriangle size={20} />
               </div>
               <div>
-                <h3 className="font-sans text-base font-bold text-[#1A1A1A] m-0">
+                <h3 className="font-sans text-base font-bold text-[#111111] m-0">
                   Delete Lesson?
                 </h3>
                 <p className="text-xs font-sans text-[#8A8A8A] mt-1.5 leading-relaxed">
-                  Delete <strong className="text-[#1A1A1A] font-semibold">{lesson.name}</strong> and all its parts? This cannot be undone.
+                  Delete <strong className="text-[#111111] font-semibold">{lesson.name}</strong> and all its parts? This cannot be undone.
                 </p>
               </div>
             </div>
@@ -779,7 +779,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirmModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#F2F2F2] rounded-xl cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
