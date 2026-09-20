@@ -52,7 +52,7 @@ export const BottomNav: React.FC = () => {
         <nav
           id="main-nav-pill"
           aria-label="Main Navigation"
-          className="flex-1 bg-[#111111] border border-[#262626] rounded-full h-[68px] sm:h-[74px] p-2 flex items-center justify-between shadow-[0_14px_40px_rgba(0,0,0,0.28)] backdrop-blur-md"
+          className="flex-1 bg-[#111111] border border-[#262626] rounded-full h-[78px] sm:h-[84px] p-2.5 sm:p-3 flex items-center justify-between shadow-[0_16px_40px_rgba(0,0,0,0.32)] backdrop-blur-md"
         >
           {TABS.map((item) => {
             const isActive = tab === item.id;
@@ -68,18 +68,18 @@ export const BottomNav: React.FC = () => {
                 aria-current={isActive ? 'page' : undefined}
                 className={`relative flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
                   isActive
-                    ? 'bg-[#262626] text-[#FFFFFF] rounded-full px-3.5 sm:px-4.5 h-full shadow-xs'
-                    : 'flex-1 text-[#8A8A8A] hover:text-[#FFFFFF] h-full px-2 rounded-full active:scale-95'
+                    ? 'bg-[#262626] text-[#FFFFFF] rounded-full px-4 sm:px-5 h-full shadow-xs'
+                    : 'flex-1 text-[#8A8A8A] hover:text-[#FFFFFF] h-full px-2.5 sm:px-3 rounded-full active:scale-95'
                 }`}
               >
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-2 sm:gap-2.5">
                   <Icon
-                    size={24}
-                    strokeWidth={isActive ? 2.4 : 2.0}
+                    size={26}
+                    strokeWidth={isActive ? 2.5 : 2.1}
                     className={`transition-colors ${isActive ? 'text-[#FFFFFF]' : 'text-[#8A8A8A] group-hover:text-[#FFFFFF]'}`}
                   />
                   {isActive && (
-                    <span className="font-bold text-xs sm:text-sm tracking-tight text-[#FFFFFF] whitespace-nowrap">
+                    <span className="font-bold text-sm sm:text-[15px] tracking-tight text-[#FFFFFF] whitespace-nowrap">
                       {item.label}
                     </span>
                   )}
@@ -96,9 +96,9 @@ export const BottomNav: React.FC = () => {
           onClick={handleQuickAction}
           title={getQuickActionTitle()}
           aria-label={getQuickActionTitle()}
-          className="h-[68px] w-[68px] sm:h-[74px] sm:w-[74px] rounded-full aspect-square flex-shrink-0 flex items-center justify-center bg-[#111111] text-[#FFFFFF] border border-[#262626] shadow-[0_14px_40px_rgba(0,0,0,0.28)] hover:bg-[#262626] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#111111]/30"
+          className="h-[78px] w-[78px] sm:h-[84px] sm:w-[84px] rounded-full aspect-square flex-shrink-0 flex items-center justify-center bg-[#111111] text-[#FFFFFF] border border-[#262626] shadow-[0_16px_40px_rgba(0,0,0,0.32)] hover:bg-[#262626] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#111111]/30"
         >
-          <Plus size={28} strokeWidth={2.6} />
+          <Plus size={32} strokeWidth={2.6} />
         </button>
       </div>
     </div>

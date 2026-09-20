@@ -25,7 +25,7 @@ function AppContent() {
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-y-auto px-4 pb-36 relative z-10 scrollbar-hide ${tab === 'calendar' || tab === 'lessons' ? 'pt-5' : ''}`}>
+        <main className={`flex-1 overflow-y-auto px-4 pb-44 relative z-10 scrollbar-hide ${tab === 'calendar' || tab === 'lessons' ? 'pt-5' : ''}`}>
           {tab === 'calendar' && <CalendarTab onNavigateToRevisit={() => setTab('revisit')} />}
           {tab === 'stats' && <StatsTab />}
           {tab === 'revisit' && <RevisitTab />}
