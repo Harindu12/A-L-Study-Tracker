@@ -11,6 +11,7 @@ import {
   Calendar as CalendarIcon, 
   ChevronLeft, 
   ChevronRight,
+  ChevronDown,
   Sparkles,
   MapPin,
   Search,
@@ -56,7 +57,18 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
   const { dailyEntries, saveDailyEntry, updateDailyEntry, subjects, lessons, revisits, updateRevisit } = useStore();
   const today = todayStr();
   const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [filterMode, setFilterMode] = useState<'today' | 'tomorrow' | 'all'>('today');
+  const [filterMode, setFilterMode] = useState<'today' | 'tomorrow' | 'all' | 'custom'>('today');
+
+  // Expandable month calendar grid state
+  const [isMonthGridExpanded, setIsMonthGridExpanded] = useState<boolean>(false);
+  const [viewingYear, setViewingYear] = useState<number>(() => {
+    const d = new Date(today.replace(/-/g, '/'));
+    return !isNaN(d.getFullYear()) ? d.getFullYear() : new Date().getFullYear();
+  });
+  const [viewingMonth, setViewingMonth] = useState<number>(() => {
+    const d = new Date(today.replace(/-/g, '/'));
+    return !isNaN(d.getMonth()) ? d.getMonth() : new Date().getMonth();
+  });
 
   const { activeOverlay, openOverlay, closeOverlay } = useNavigation();
 
@@ -81,6 +93,17 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
   }, [isMonthModalOpen, selectedDate]);
 
+  // Keep viewingYear & viewingMonth in sync when selectedDate changes and grid is closed
+  useEffect(() => {
+    if (!isMonthGridExpanded) {
+      const d = new Date(selectedDate.replace(/-/g, '/'));
+      if (!isNaN(d.getFullYear())) {
+        setViewingYear(d.getFullYear());
+        setViewingMonth(d.getMonth());
+      }
+    }
+  }, [selectedDate, isMonthGridExpanded]);
+
   // Keep filterMode in sync when selectedDate changes outside of chips
   useEffect(() => {
     if (selectedDate === today) {
@@ -89,6 +112,141 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       setFilterMode('tomorrow');
     }
   }, [selectedDate, today]);
+
+  // Helpers for expandable month calendar
+  const viewingMonthName = useMemo(() => {
+    return new Date(viewingYear, viewingMonth, 1).toLocaleDateString('en-US', { month: 'long' });
+  }, [viewingYear, viewingMonth]);
+
+  const handlePrevMonth = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (viewingMonth === 0) {
+      setViewingMonth(11);
+      setViewingYear((prev) => prev - 1);
+    } else {
+      setViewingMonth((prev) => prev - 1);
+    }
+  };
+
+  const handleNextMonth = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (viewingMonth === 11) {
+      setViewingMonth(0);
+      setViewingYear((prev) => prev + 1);
+    } else {
+      setViewingMonth((prev) => prev + 1);
+    }
+  };
+
+  const handleToggleMonthGrid = () => {
+    if (!isMonthGridExpanded) {
+      const d = new Date(selectedDate.replace(/-/g, '/'));
+      if (!isNaN(d.getFullYear())) {
+        setViewingYear(d.getFullYear());
+        setViewingMonth(d.getMonth());
+      }
+    }
+    setIsMonthGridExpanded((prev) => !prev);
+  };
+
+  // Check if a date has any tasks or lessons logged
+  const hasTasksForDate = (dateStr: string): boolean => {
+    const dayEntry = dailyEntries[dateStr];
+    if (dayEntry) {
+      if (dayEntry.hours && dayEntry.hours.length > 0) return true;
+      if (dayEntry.subjects && dayEntry.subjects.length > 0) return true;
+    }
+    if (revisits && revisits.some((r) => r.date === dateStr)) return true;
+    return false;
+  };
+
+  // Generate calendar grid cells (Monday-first: Mo-Su) with adjacent month overflow days
+  const calendarGridCells = useMemo(() => {
+    const cells: {
+      dateStr: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      isSelected: boolean;
+      isToday: boolean;
+      hasTasks: boolean;
+    }[] = [];
+
+    const toDateKey = (year: number, monthIndex: number, day: number) => {
+      return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+
+    const firstDayOfMonth = new Date(viewingYear, viewingMonth, 1);
+    // Monday-based day of week: Monday is 0, Sunday is 6
+    const firstDayIndex = (firstDayOfMonth.getDay() + 6) % 7;
+    const daysInCurrentMonth = new Date(viewingYear, viewingMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewingYear, viewingMonth, 0).getDate();
+
+    const prevYear = viewingMonth === 0 ? viewingYear - 1 : viewingYear;
+    const prevMonth = viewingMonth === 0 ? 11 : viewingMonth - 1;
+
+    // Previous month overflow days
+    for (let i = 0; i < firstDayIndex; i++) {
+      const dayNum = daysInPrevMonth - firstDayIndex + 1 + i;
+      const dateStr = toDateKey(prevYear, prevMonth, dayNum);
+      cells.push({
+        dateStr,
+        dayNumber: dayNum,
+        isCurrentMonth: false,
+        isSelected: dateStr === selectedDate,
+        isToday: dateStr === today,
+        hasTasks: hasTasksForDate(dateStr),
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInCurrentMonth; d++) {
+      const dateStr = toDateKey(viewingYear, viewingMonth, d);
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: true,
+        isSelected: dateStr === selectedDate,
+        isToday: dateStr === today,
+        hasTasks: hasTasksForDate(dateStr),
+      });
+    }
+
+    // Next month overflow days (fill out remaining slots in the last week, minimum 35 cells)
+    const nextYear = viewingMonth === 11 ? viewingYear + 1 : viewingYear;
+    const nextMonth = viewingMonth === 11 ? 0 : viewingMonth + 1;
+    const totalSlots = Math.ceil(cells.length / 7) * 7;
+    const remainingSlots = totalSlots - cells.length;
+    for (let d = 1; d <= remainingSlots; d++) {
+      const dateStr = toDateKey(nextYear, nextMonth, d);
+      cells.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: false,
+        isSelected: dateStr === selectedDate,
+        isToday: dateStr === today,
+        hasTasks: hasTasksForDate(dateStr),
+      });
+    }
+
+    return cells;
+  }, [viewingYear, viewingMonth, selectedDate, today, dailyEntries, revisits]);
+
+  const handleSelectCalendarDate = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    const d = new Date(dateStr.replace(/-/g, '/'));
+    if (!isNaN(d.getFullYear())) {
+      setViewingYear(d.getFullYear());
+      setViewingMonth(d.getMonth());
+    }
+    if (dateStr === today) {
+      setFilterMode('today');
+    } else if (dateStr === addDays(today, 1)) {
+      setFilterMode('tomorrow');
+    } else {
+      setFilterMode('custom');
+    }
+    setIsMonthGridExpanded(false);
+  };
 
   useEffect(() => {
     if (!isSearchOpen) {
@@ -351,13 +509,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return Math.max(count, 1);
   }, [dailyEntries, today]);
 
-  // Tasks to display based on filterMode ('today' | 'tomorrow' | 'all')
+  // Tasks to display based on filterMode ('today' | 'tomorrow' | 'all' | 'custom')
   const displayedTasks = useMemo(() => {
     if (filterMode === 'today') {
       return getTasksForDate(today);
     }
     if (filterMode === 'tomorrow') {
       return getTasksForDate(addDays(today, 1));
+    }
+    if (filterMode === 'custom') {
+      return getTasksForDate(selectedDate);
     }
     // 'all': collect tasks starting from today onwards
     const upcomingTasks: AgendaTask[] = [];
@@ -691,20 +852,28 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
   return (
     <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden relative">
       {/* Pinned / Fixed Header Section (greeting, filter chips + quick-add, large bold date display) */}
-      <div className="flex-shrink-0 space-y-2.5 pb-2 bg-[#FAFAFA] z-20">
-        {/* 1. Greeting Header Row (Screen 1 in Reference) */}
-        <div className="flex items-center justify-between px-1 pt-1 pb-1">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight leading-tight m-0 flex items-center gap-1.5">
-              {getGreetingText()}{' '}
-              <span className="text-base select-none">
-                {getGreetingIcon()}
-              </span>
-            </h1>
-            <p className="text-xs sm:text-sm font-sans text-[#8A8A8A] mt-0.5 m-0 font-normal">
-              Have a great day!
-            </p>
-          </div>
+      <div className="flex-shrink-0 space-y-2 pb-2 bg-[#FAFAFA] z-20">
+        {/* Top Control Bar: Month Selector Pill Button (left) + Utility Icons (right) */}
+        <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
+          {/* Collapsed state month button matching reference image */}
+          <button
+            type="button"
+            onClick={handleToggleMonthGrid}
+            className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E0E0E0] hover:border-[#111111] text-[#111111] shadow-2xs hover:shadow-xs transition-all cursor-pointer select-none"
+            aria-expanded={isMonthGridExpanded}
+            aria-label="Toggle month calendar grid"
+          >
+            <CalendarIcon size={14} className="text-[#111111] group-hover:scale-105 transition-transform" />
+            <span className="text-xs font-sans font-bold capitalize">
+              {viewingMonthName}
+            </span>
+            <ChevronDown
+              size={14}
+              className={`text-[#8A8A8A] transition-transform duration-300 ease-in-out ${
+                isMonthGridExpanded ? 'rotate-180 text-[#111111]' : ''
+              }`}
+            />
+          </button>
 
           {/* Utility icons on the top-right replacing the avatar */}
           <div className="flex items-center gap-1">
@@ -738,6 +907,96 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               <CalendarIcon size={18} strokeWidth={2.2} />
             </button>
           </div>
+        </div>
+
+        {/* Smooth Expandable Month Calendar Grid */}
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+            isMonthGridExpanded
+              ? 'max-h-[380px] opacity-100 scale-y-100 my-1'
+              : 'max-h-0 opacity-0 scale-y-95 pointer-events-none my-0'
+          } origin-top`}
+        >
+          <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-2xl p-3 sm:p-4 shadow-xs mx-0.5">
+            {/* Month & Year header with prev/next arrows */}
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="font-sans font-bold text-sm sm:text-base text-[#111111]">
+                {viewingMonthName} <span className="text-[#8A8A8A] font-semibold text-xs ml-1">{viewingYear}</span>
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="p-1.5 rounded-full text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="p-1.5 rounded-full text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                  aria-label="Next month"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Day of week labels (Mo–Su) at top matching reference */}
+            <div className="grid grid-cols-7 text-center mb-1 border-b border-[#F0F0F0] pb-1">
+              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((wd) => (
+                <span key={wd} className="text-[10px] sm:text-[11px] font-sans font-semibold text-[#8A8A8A] py-0.5">
+                  {wd}
+                </span>
+              ))}
+            </div>
+
+            {/* Dates Grid */}
+            <div className="grid grid-cols-7 gap-y-1 text-center pt-1">
+              {calendarGridCells.map((cell) => {
+                return (
+                  <div key={cell.dateStr} className="flex flex-col items-center justify-center p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCalendarDate(cell.dateStr)}
+                      className={`w-7.5 h-7.5 sm:w-8.5 sm:h-8.5 rounded-full flex flex-col items-center justify-center text-[11px] sm:text-xs font-sans transition-all cursor-pointer relative select-none ${
+                        cell.isSelected
+                          ? 'bg-[#111111] text-[#FFFFFF] font-bold shadow-xs'
+                          : cell.isToday
+                          ? 'border border-[#111111] text-[#111111] font-bold hover:bg-[#F5F5F5]'
+                          : !cell.isCurrentMonth
+                          ? 'text-[#C4C4C4] hover:bg-[#F5F5F5] hover:text-[#8A8A8A]'
+                          : 'text-[#111111] font-medium hover:bg-[#F5F5F5]'
+                      }`}
+                    >
+                      <span className={cell.hasTasks ? '-mt-0.5' : ''}>{cell.dayNumber}</span>
+                      {cell.hasTasks && (
+                        <span
+                          className={`w-1 h-1 rounded-full absolute bottom-1 left-1/2 -translate-x-1/2 ${
+                            cell.isSelected ? 'bg-[#FFFFFF]' : 'bg-[#111111]'
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 1. Greeting Header Row (Screen 1 in Reference) */}
+        <div className="px-1 pt-0.5 pb-0.5">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight leading-tight m-0 flex items-center gap-1.5">
+            {getGreetingText()}{' '}
+            <span className="text-base select-none">
+              {getGreetingIcon()}
+            </span>
+          </h1>
+          <p className="text-xs sm:text-sm font-sans text-[#8A8A8A] mt-0.5 m-0 font-normal">
+            Have a great day!
+          </p>
         </div>
 
         {/* Optional Search bar */}
@@ -858,6 +1117,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                 ? 'Nothing planned for tomorrow'
                 : filterMode === 'all'
                 ? 'No upcoming tasks'
+                : filterMode === 'custom' && selectedDate !== today
+                ? `Nothing planned for ${activeDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
                 : 'Nothing planned for today'}
             </h3>
             <p className="font-sans text-xs text-[#8A8A8A] mt-1 mb-4 max-w-[230px]">
