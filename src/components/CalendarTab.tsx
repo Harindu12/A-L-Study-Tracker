@@ -14,7 +14,8 @@ import {
   Sparkles,
   MapPin,
   Search,
-  PenTool
+  PenTool,
+  Clock
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -23,31 +24,18 @@ interface CalendarTabProps {
 
 interface AgendaTask {
   id: string;
-  source: 'hour' | 'subject';
+  source: 'hour' | 'subject' | 'revisit';
   originalId: string;
   date: string;
   title: string;
   detail?: string;
   timeDisplay: string;
   subjectLabel: string;
-  duration: string;
-  period: 'morning' | 'afternoon' | 'evening';
+  duration?: string;
+  period?: 'morning' | 'afternoon' | 'evening';
   done: boolean;
-  color: string;
+  accentColor: string;
 }
-
-// Subject-coded solid background colors for full-width cards
-// Ensuring high contrast WCAG AA/AAA with crisp white typography
-const SOLID_ACCENT_COLORS: Record<string, string> = {
-  '#EF4444': '#993D44', // Wine red (Screen 1 Card 1 in reference)
-  '#F97316': '#D85B3F', // Terracotta orange (Screen 1 Card 2 in reference)
-  '#3B82F6': '#36537A', // Deep slate blue (Screen 1 Card 3 in reference)
-  '#8B5CF6': '#603B7C', // Deep plum / berry
-  '#10B981': '#22694E', // Forest emerald
-  '#F59E0B': '#A3681F', // Warm amber / ochre
-  '#06B6D4': '#1B6577', // Ocean cyan / teal
-  '#6366F1': '#433D82', // Royal indigo
-};
 
 const MONTH_ACCENT_COLORS = [
   '#EF4444', // Jan - Red / Rose
@@ -65,7 +53,7 @@ const MONTH_ACCENT_COLORS = [
 ];
 
 export const CalendarTab: React.FC<CalendarTabProps> = () => {
-  const { dailyEntries, saveDailyEntry, updateDailyEntry, subjects, lessons } = useStore();
+  const { dailyEntries, saveDailyEntry, updateDailyEntry, subjects, lessons, revisits, updateRevisit } = useStore();
   const today = todayStr();
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [filterMode, setFilterMode] = useState<'today' | 'tomorrow' | 'all'>('today');
@@ -174,100 +162,134 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return `${String(h).padStart(2, '0')}.${min}`;
   };
 
-  // Extract agenda tasks for any specific date
+  // Extract agenda tasks for any specific date using real app data
   const getTasksForDate = (dateStr: string): AgendaTask[] => {
     const dayEntry = dailyEntries[dateStr];
-    if (!dayEntry) return [];
     const result: AgendaTask[] = [];
 
-    // 1. Hourly schedule blocks
-    (dayEntry.hours || []).forEach((h, hIdx) => {
-      let period: 'morning' | 'afternoon' | 'evening' = 'morning';
-      const hour = parseTimeToHour(h.time || '');
-      if (hour >= 5 && hour < 12) period = 'morning';
-      else if (hour >= 12 && hour < 17) period = 'afternoon';
-      else period = 'evening';
+    // 1. Hourly schedule blocks from dailyEntries
+    if (dayEntry && dayEntry.hours) {
+      dayEntry.hours.forEach((h, hIdx) => {
+        let period: 'morning' | 'afternoon' | 'evening' = 'morning';
+        const hour = parseTimeToHour(h.time || '');
+        if (hour >= 5 && hour < 12) period = 'morning';
+        else if (hour >= 12 && hour < 17) period = 'afternoon';
+        else period = 'evening';
 
-      let title = h.task;
-      let detail: string | undefined = undefined;
-      const colonIdx = h.task.indexOf(':');
-      if (colonIdx > -1) {
-        title = h.task.slice(0, colonIdx).trim();
-        detail = h.task.slice(colonIdx + 1).trim();
-      }
+        let title = h.task;
+        let detail: string | undefined = undefined;
+        const colonIdx = h.task.indexOf(':');
+        if (colonIdx > -1) {
+          title = h.task.slice(0, colonIdx).trim();
+          detail = h.task.slice(colonIdx + 1).trim();
+        }
 
-      const matchingSubj = subjects.find(
-        (s) =>
-          title.toLowerCase().includes(s.name.toLowerCase()) ||
-          (detail && detail.toLowerCase().includes(s.name.toLowerCase()))
-      );
+        const matchingSubj = subjects.find(
+          (s) =>
+            title.toLowerCase().includes(s.name.toLowerCase()) ||
+            (detail && detail.toLowerCase().includes(s.name.toLowerCase()))
+        );
 
-      const rawColor = matchingSubj
-        ? getSubjectColorById(matchingSubj.id, subjects)
-        : SUBJECT_ACCENT_COLORS[hIdx % SUBJECT_ACCENT_COLORS.length];
+        const accentColor = matchingSubj
+          ? getSubjectColorById(matchingSubj.id, subjects)
+          : SUBJECT_ACCENT_COLORS[hIdx % SUBJECT_ACCENT_COLORS.length];
 
-      const cardColor = SOLID_ACCENT_COLORS[rawColor] || rawColor;
-      const timeDisplay = formatTimeDot(h.time, hour);
-      const subjectLabel = matchingSubj ? matchingSubj.name : 'Study Desk';
+        const timeDisplay = h.time && h.time.trim() ? h.time.trim() : formatTimeDot(h.time, hour);
+        const subjectLabel = matchingSubj ? matchingSubj.name : 'Study Block';
 
-      result.push({
-        id: `h_${dateStr}_${h.id}`,
-        source: 'hour',
-        originalId: h.id,
-        date: dateStr,
-        title,
-        detail,
-        timeDisplay,
-        subjectLabel,
-        duration: (h as any).duration || '50 min',
-        period: (h as any).period || period,
-        done: !!h.done,
-        color: cardColor,
+        result.push({
+          id: `h_${dateStr}_${h.id}`,
+          source: 'hour',
+          originalId: h.id,
+          date: dateStr,
+          title,
+          detail,
+          timeDisplay,
+          subjectLabel,
+          duration: (h as any).duration || '50 min',
+          period: (h as any).period || period,
+          done: !!h.done,
+          accentColor,
+        });
       });
-    });
+    }
 
-    // 2. Subject study logs
-    (dayEntry.subjects || []).forEach((s, idx) => {
-      const subj = subjects.find((sub) => sub.id === s.subjectId);
-      const lesson = lessons.find((l) => l.id === s.lessonId);
-      const subjName = subj ? subj.name : 'Subject';
-      const lessonName = lesson ? lesson.name : '';
+    // 2. Subject study logs from dailyEntries
+    if (dayEntry && dayEntry.subjects) {
+      dayEntry.subjects.forEach((s, idx) => {
+        const subj = subjects.find((sub) => sub.id === s.subjectId);
+        const lesson = lessons.find((l) => l.id === s.lessonId);
+        const subjName = subj ? subj.name : 'Subject';
+        const lessonName = lesson ? lesson.name : '';
 
-      let detail = lessonName;
-      if (s.pastPaper) {
-        detail = lessonName ? `${lessonName} (Past Paper)` : 'Past Paper Practice';
-      } else if (!detail) {
-        detail = 'Study & Revision';
-      }
+        let detail = lessonName;
+        if (s.pastPaper) {
+          detail = lessonName ? `${lessonName} (Past Paper)` : 'Past Paper Practice';
+        } else if (!detail) {
+          detail = 'Study & Revision';
+        }
 
-      const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
-      const period = (s as any).period || defaultPeriod;
-      const defaultHour = period === 'morning' ? 9 : period === 'afternoon' ? 14 : 19;
-      const timeDisplay = formatTimeDot(undefined, defaultHour + (idx % 3));
-      const rawColor = getSubjectColorById(s.subjectId, subjects);
-      const cardColor = SOLID_ACCENT_COLORS[rawColor] || rawColor;
+        const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
+        const period = (s as any).period || defaultPeriod;
+        const defaultHour = period === 'morning' ? 9 : period === 'afternoon' ? 14 : 19;
+        const timeDisplay = formatTimeDot(undefined, defaultHour + (idx % 3));
+        const accentColor = getSubjectColorById(s.subjectId, subjects);
 
-      result.push({
-        id: `s_${dateStr}_${s.id}`,
-        source: 'subject',
-        originalId: s.id,
-        date: dateStr,
-        title: subjName,
-        detail,
-        timeDisplay,
-        subjectLabel: s.pastPaper ? `${subjName} · Past Paper` : `${subjName} · Lesson`,
-        duration: (s as any).duration || (s.pastPaper ? '60 min' : '45 min'),
-        period,
-        done: !!(s.studied || s.pastPaper),
-        color: cardColor,
+        result.push({
+          id: `s_${dateStr}_${s.id}`,
+          source: 'subject',
+          originalId: s.id,
+          date: dateStr,
+          title: lessonName || subjName,
+          detail: s.pastPaper ? `${subjName} · Past Paper` : (lessonName ? subjName : 'Study & Revision'),
+          timeDisplay,
+          subjectLabel: s.pastPaper ? `${subjName} · Past Paper` : `${subjName} · Lesson`,
+          duration: (s as any).duration || (s.pastPaper ? '60 min' : '45 min'),
+          period,
+          done: !!(s.studied || s.pastPaper),
+          accentColor,
+        });
       });
-    });
+    }
+
+    // 3. Spaced repetition revisits scheduled for this date
+    (revisits || [])
+      .filter((r) => r.date === dateStr)
+      .forEach((r) => {
+        const subj = subjects.find((sub) => sub.id === r.subjectId);
+        const lesson = lessons.find((l) => l.id === r.lessonId);
+        const subjName = subj ? subj.name : 'Subject';
+        const lessonName = lesson ? lesson.name : 'Lesson Revisit';
+        const accentColor = getSubjectColorById(r.subjectId, subjects);
+
+        result.push({
+          id: `r_${dateStr}_${r.id}`,
+          source: 'revisit',
+          originalId: r.id,
+          date: dateStr,
+          title: lessonName,
+          detail: `${subjName} · Spaced Repetition (${r.type})`,
+          timeDisplay: '09.00',
+          subjectLabel: `${subjName} · ${r.type}`,
+          duration: '30 min',
+          period: 'morning',
+          done: !!r.done,
+          accentColor,
+        });
+      });
 
     return result;
   };
 
   // Toggle task done state
   const handleToggleTask = (task: AgendaTask) => {
+    if (task.source === 'revisit') {
+      if (typeof updateRevisit === 'function') {
+        updateRevisit(task.originalId, { done: !task.done });
+      }
+      return;
+    }
+
     const targetDate = task.date || selectedDate;
     const targetEntry = dailyEntries[targetDate] || {
       date: targetDate,
@@ -578,250 +600,281 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     );
   };
 
-  // Render individual task card matching reference image Screen 1 exactly:
-  // Solid/tinted background with crisp white typography, corner time, subtitle, bottom icon+label, and completion toggle
+  // Render individual task card matching the app's established black-and-white-with-accent theme:
+  // White/light-neutral card background, subject-accent-colored left edge or tag, bold title, gray subtitle/detail, time badge
   const renderTaskCard = (task: AgendaTask) => {
     return (
       <div
         key={task.id}
         onClick={() => handleToggleTask(task)}
-        className="rounded-3xl p-4 sm:p-5 flex flex-col justify-between min-h-[120px] sm:min-h-[130px] cursor-pointer transition-all active:scale-[0.99] select-none shadow-sm relative overflow-hidden group"
-        style={{
-          backgroundColor: task.color,
-        }}
+        className="group relative bg-[#FFFFFF] border border-[#E0E0E0] hover:border-[#CCCCCC] rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] transition-all cursor-pointer flex items-center gap-3 select-none"
       >
-        {/* Top Row: Title on the left, Corner Time on the top-right */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 pr-2 min-w-0">
-            <h3
-              className={`font-sans text-base sm:text-lg font-bold text-[#FFFFFF] leading-snug tracking-tight m-0 ${
-                task.done ? 'line-through opacity-75' : ''
-              }`}
-            >
-              {task.title}
-            </h3>
-            {task.detail && (
-              <p className="font-sans text-xs sm:text-sm text-[#FFFFFF]/85 mt-1 leading-snug m-0">
-                {task.detail}
-              </p>
-            )}
-          </div>
+        {/* Subject-accent-colored left edge indicator */}
+        <div
+          className="w-1.5 self-stretch rounded-full flex-shrink-0 my-0.5 transition-transform group-hover:scale-y-105"
+          style={{ backgroundColor: task.accentColor }}
+        />
 
-          {/* Top-Right Corner Time */}
-          <div className="text-right flex-shrink-0">
-            <span className="font-sans text-xs sm:text-sm font-bold text-[#FFFFFF]/90 tracking-wide">
-              {task.timeDisplay}
+        {/* Circular Checkbox button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleTask(task);
+          }}
+          className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
+            task.done
+              ? 'bg-[#111111] border-[#111111] text-[#FFFFFF]'
+              : 'border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF]'
+          }`}
+          aria-label={task.done ? 'Mark incomplete' : 'Mark complete'}
+        >
+          {task.done && <Check size={12} strokeWidth={3} />}
+        </button>
+
+        {/* Content area: Title, Subtitle, Tags */}
+        <div className="flex-1 min-w-0 pr-1">
+          <h3
+            className={`font-sans font-bold text-sm sm:text-[15px] text-[#111111] leading-snug tracking-tight truncate ${
+              task.done ? 'line-through text-[#8A8A8A]' : ''
+            }`}
+          >
+            {task.title}
+          </h3>
+
+          {task.detail && (
+            <p className="font-sans text-xs text-[#8A8A8A] mt-0.5 leading-normal truncate">
+              {task.detail}
+            </p>
+          )}
+
+          {/* Subject tag & duration line */}
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span
+              className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5"
+              style={{
+                backgroundColor: `${task.accentColor}14`,
+                color: task.accentColor,
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: task.accentColor }}
+              />
+              {task.subjectLabel}
             </span>
+
+            {task.duration && (
+              <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A]">
+                {task.duration}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Bottom Row: Icon + location or subject label on bottom-left, completion toggle on bottom-right */}
-        <div className="flex items-center justify-between gap-2 mt-4 pt-1">
-          <div className="flex items-center gap-1.5 text-[#FFFFFF]/90 text-xs font-medium">
-            <MapPin size={13} className="flex-shrink-0 opacity-85" />
-            <span className="truncate max-w-[210px]">{task.subjectLabel}</span>
-          </div>
-
-          {/* Completion indicator matching reference right-corner element */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {task.done ? (
-              <span className="bg-[#FFFFFF]/25 text-[#FFFFFF] text-[11px] font-sans font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-xs">
-                <Check size={12} strokeWidth={3} /> Done
-              </span>
-            ) : (
-              <span className="bg-[#000000]/20 hover:bg-[#000000]/30 text-[#FFFFFF]/90 text-[11px] font-sans font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-colors">
-                Tap to complete
-              </span>
-            )}
-          </div>
+        {/* Right side: Time shown as a small badge */}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <span className="inline-flex items-center gap-1 bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] text-[11px] font-sans font-semibold px-2.5 py-1 rounded-full shadow-2xs">
+            <Clock size={11} className="text-[#8A8A8A]" />
+            {task.timeDisplay}
+          </span>
+          {task.period && (
+            <span className="text-[10px] font-sans text-[#8A8A8A] capitalize">
+              {task.period}
+            </span>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="flex flex-col pb-20 relative">
-      {/* 1. Greeting Header Row (Screen 1 in Reference) */}
-      <div className="flex items-center justify-between px-1 pt-1 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight leading-tight m-0 flex items-center gap-1.5">
-            {getGreetingText()}{' '}
-            <span className="text-base select-none">
-              {getGreetingIcon()}
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm font-sans text-[#8A8A8A] mt-0.5 m-0 font-normal">
-            Have a great day!
-          </p>
-        </div>
+    <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden relative">
+      {/* Pinned / Fixed Header Section (greeting, filter chips + quick-add, large bold date display) */}
+      <div className="flex-shrink-0 space-y-2.5 pb-2 bg-[#FAFAFA] z-20">
+        {/* 1. Greeting Header Row (Screen 1 in Reference) */}
+        <div className="flex items-center justify-between px-1 pt-1 pb-1">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight leading-tight m-0 flex items-center gap-1.5">
+              {getGreetingText()}{' '}
+              <span className="text-base select-none">
+                {getGreetingIcon()}
+              </span>
+            </h1>
+            <p className="text-xs sm:text-sm font-sans text-[#8A8A8A] mt-0.5 m-0 font-normal">
+              Have a great day!
+            </p>
+          </div>
 
-        {/* Utility icons on the top-right replacing the avatar */}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
-            className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-              isSearchOpen ? 'text-[#111111] bg-[#F0F0F0]' : 'text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0]'
-            }`}
-            title="Search tasks"
-            aria-label="Search tasks"
-          >
-            <Search size={18} strokeWidth={2.2} />
-          </button>
-          <button
-            type="button"
-            onClick={() => openOverlay('calendar-notes')}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
-            title="Teach-back & Daily Reflections"
-            aria-label="Daily Reflections"
-          >
-            <PenTool size={18} strokeWidth={2.2} />
-          </button>
-          <button
-            type="button"
-            onClick={() => openOverlay('calendar-month')}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
-            title="Year at a glance"
-            aria-label="Year at a glance"
-          >
-            <CalendarIcon size={18} strokeWidth={2.2} />
-          </button>
-        </div>
-      </div>
-
-      {/* Optional Search bar */}
-      {isSearchOpen && (
-        <div className="flex items-center gap-2 bg-[#FFFFFF] border border-[#E0E0E0] rounded-full px-3.5 py-1.5 shadow-xs mt-1 mb-2 animate-in fade-in duration-150">
-          <Search size={16} className="text-[#8A8A8A]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search tasks or subjects..."
-            className="flex-1 bg-transparent border-none text-xs sm:text-sm text-[#111111] focus:outline-none placeholder-[#8A8A8A]"
-            autoFocus
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-[#8A8A8A] hover:text-[#111111] cursor-pointer">
-              <X size={14} />
+          {/* Utility icons on the top-right replacing the avatar */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
+              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+                isSearchOpen ? 'text-[#111111] bg-[#F0F0F0]' : 'text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0]'
+              }`}
+              title="Search tasks"
+              aria-label="Search tasks"
+            >
+              <Search size={18} strokeWidth={2.2} />
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => openOverlay('calendar-notes')}
+              className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
+              title="Teach-back & Daily Reflections"
+              aria-label="Daily Reflections"
+            >
+              <PenTool size={18} strokeWidth={2.2} />
+            </button>
+            <button
+              type="button"
+              onClick={() => openOverlay('calendar-month')}
+              className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
+              title="Year at a glance"
+              aria-label="Year at a glance"
+            >
+              <CalendarIcon size={18} strokeWidth={2.2} />
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* 2. Filter Chip Row: "Today", "Tomorrow", "All" + circular "+" button */}
-      <div className="flex items-center justify-between gap-2 px-1 mt-2.5">
-        <div className="flex items-center gap-2">
-          {[
-            { id: 'today', label: 'Today' },
-            { id: 'tomorrow', label: 'Tomorrow' },
-            { id: 'all', label: 'All' },
-          ].map((chip) => {
-            const isSelected = filterMode === chip.id;
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => {
-                  if (chip.id === 'today') {
-                    setSelectedDate(today);
-                    setFilterMode('today');
-                  } else if (chip.id === 'tomorrow') {
-                    setSelectedDate(addDays(today, 1));
-                    setFilterMode('tomorrow');
-                  } else {
-                    setFilterMode('all');
-                  }
-                }}
-                className={`px-5 py-1.5 rounded-full text-xs font-sans font-bold transition-all cursor-pointer select-none ${
-                  isSelected
-                    ? 'bg-[#111111] text-[#FFFFFF] border border-[#111111] shadow-xs'
-                    : 'bg-[#FFFFFF] text-[#111111] border border-[#D4D4D4] hover:border-[#111111]'
-                }`}
-              >
-                {chip.label}
+        {/* Optional Search bar */}
+        {isSearchOpen && (
+          <div className="flex items-center gap-2 bg-[#FFFFFF] border border-[#E0E0E0] rounded-full px-3.5 py-1.5 shadow-xs mt-1 mb-1 animate-in fade-in duration-150">
+            <Search size={16} className="text-[#8A8A8A]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tasks or subjects..."
+              className="flex-1 bg-transparent border-none text-xs sm:text-sm text-[#111111] focus:outline-none placeholder-[#8A8A8A]"
+              autoFocus
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-[#8A8A8A] hover:text-[#111111] cursor-pointer">
+                <X size={14} />
               </button>
-            );
-          })}
-        </div>
-
-        {/* Small circular "+" button at the end of the row */}
-        <button
-          type="button"
-          onClick={() => openOverlay('calendar-add-task')}
-          className="w-8.5 h-8.5 rounded-full border border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF] text-[#111111] flex items-center justify-center transition-all hover:bg-[#F5F5F5] cursor-pointer shadow-2xs flex-shrink-0"
-          title="Add task or lesson"
-          aria-label="Add task"
-        >
-          <Plus size={17} strokeWidth={2.4} />
-        </button>
-      </div>
-
-      {/* 3. Date Display Block (Oversized date treatment + secondary info line on the right) */}
-      <div className="flex items-center justify-between px-1 mt-3.5 mb-2.5">
-        <div
-          onClick={() => openOverlay('calendar-month')}
-          className="cursor-pointer select-none group"
-          title="Tap to view Year at a Glance"
-        >
-          <div className="text-xs sm:text-sm font-sans font-medium text-[#8A8A8A]">
-            {displayDayName}
+            )}
           </div>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="font-sans text-4xl sm:text-5xl font-black text-[#111111] tracking-tight leading-none">
-              {displayDayNum}
-            </span>
-            <span className="font-sans text-lg sm:text-xl font-black text-[#111111] tracking-wider uppercase">
-              {displayMonthName}
-            </span>
-          </div>
-        </div>
+        )}
 
-        {/* Right side secondary info line matching reference Screen 1 */}
-        <div className="flex items-center gap-3 pl-3">
-          <div className="w-[1px] h-10 bg-[#E0E0E0]" />
-          <div className="text-left">
-            <div className="font-sans text-base sm:text-lg font-black text-[#111111] leading-tight">
-              {tasksToRender.length} {tasksToRender.length === 1 ? 'task' : 'tasks'}
-            </div>
-            <div className="text-[11px] sm:text-xs font-sans text-[#8A8A8A] font-medium leading-tight mt-0.5">
-              {tasksCompletedCount} completed · {streak}d streak
-            </div>
+        {/* 2. Filter Chip Row: "Today", "Tomorrow", "All" + circular "+" button */}
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2">
+            {[
+              { id: 'today', label: 'Today' },
+              { id: 'tomorrow', label: 'Tomorrow' },
+              { id: 'all', label: 'All' },
+            ].map((chip) => {
+              const isSelected = filterMode === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => {
+                    if (chip.id === 'today') {
+                      setSelectedDate(today);
+                      setFilterMode('today');
+                    } else if (chip.id === 'tomorrow') {
+                      setSelectedDate(addDays(today, 1));
+                      setFilterMode('tomorrow');
+                    } else {
+                      setFilterMode('all');
+                    }
+                  }}
+                  className={`px-5 py-1.5 rounded-full text-xs font-sans font-bold transition-all cursor-pointer select-none ${
+                    isSelected
+                      ? 'bg-[#111111] text-[#FFFFFF] border border-[#111111] shadow-xs'
+                      : 'bg-[#FFFFFF] text-[#111111] border border-[#D4D4D4] hover:border-[#111111]'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
 
-      {/* 4. Task list below: Each task as full-width rounded card matching reference Screen 1 */}
-      {tasksToRender.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#D4D4D4] p-8 text-center bg-[#FFFFFF] mt-1 shadow-2xs">
-          <div className="w-11 h-11 mx-auto mb-2.5 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[#8A8A8A]">
-            <CalendarIcon size={20} />
-          </div>
-          <h3 className="font-sans text-sm font-bold text-[#111111] m-0">
-            {filterMode === 'tomorrow'
-              ? 'No tasks scheduled for tomorrow'
-              : filterMode === 'all'
-              ? 'No upcoming tasks'
-              : 'No tasks scheduled today'}
-          </h3>
-          <p className="font-sans text-xs text-[#8A8A8A] mt-1 mb-4">
-            {filterMode === 'tomorrow'
-              ? 'Plan ahead by adding tomorrow’s revision blocks.'
-              : 'Tap the + button to schedule your study sessions.'}
-          </p>
+          {/* Small circular "+" button at the end of the row */}
           <button
             type="button"
             onClick={() => openOverlay('calendar-add-task')}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full bg-[#111111] text-[#FFFFFF] text-xs font-bold hover:bg-[#262626] transition-colors cursor-pointer shadow-xs"
+            className="w-8.5 h-8.5 rounded-full border border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF] text-[#111111] flex items-center justify-center transition-all hover:bg-[#F5F5F5] cursor-pointer shadow-2xs flex-shrink-0"
+            title="Add task or lesson"
+            aria-label="Add task"
           >
-            <Plus size={15} strokeWidth={2.4} /> Add Task
+            <Plus size={17} strokeWidth={2.4} />
           </button>
         </div>
-      ) : (
-        <div className="flex flex-col gap-3 mt-1">
-          {tasksToRender.map((task) => renderTaskCard(task))}
+
+        {/* 3. Date Display Block (Oversized date treatment + secondary info line on the right) */}
+        <div className="flex items-center justify-between px-1 pt-1">
+          <div
+            onClick={() => openOverlay('calendar-month')}
+            className="cursor-pointer select-none group"
+            title="Tap to view Year at a Glance"
+          >
+            <div className="text-xs sm:text-sm font-sans font-medium text-[#8A8A8A]">
+              {displayDayName}
+            </div>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="font-sans text-4xl sm:text-5xl font-black text-[#111111] tracking-tight leading-none">
+                {displayDayNum}
+              </span>
+              <span className="font-sans text-lg sm:text-xl font-black text-[#111111] tracking-wider uppercase">
+                {displayMonthName}
+              </span>
+            </div>
+          </div>
+
+          {/* Right side secondary info line matching reference Screen 1 */}
+          <div className="flex items-center gap-3 pl-3">
+            <div className="w-[1px] h-10 bg-[#E0E0E0]" />
+            <div className="text-left">
+              <div className="font-sans text-base sm:text-lg font-black text-[#111111] leading-tight">
+                {tasksToRender.length} {tasksToRender.length === 1 ? 'task' : 'tasks'}
+              </div>
+              <div className="text-[11px] sm:text-xs font-sans text-[#8A8A8A] font-medium leading-tight mt-0.5">
+                {tasksCompletedCount} completed · {streak}d streak
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* 4. Independently scrollable task card list container below the fixed header */}
+      <div
+        id="calendar-tasks-scroll-container"
+        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pt-1 pb-32 space-y-2.5 pr-0.5"
+      >
+        {tasksToRender.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#D4D4D4] p-8 text-center bg-[#FFFFFF] shadow-2xs my-auto flex flex-col items-center justify-center">
+            <div className="w-12 h-12 mb-3 rounded-full bg-[#F5F5F5] border border-[#E0E0E0] flex items-center justify-center text-[#8A8A8A]">
+              <CalendarIcon size={20} />
+            </div>
+            <h3 className="font-sans text-sm font-bold text-[#111111] m-0">
+              {filterMode === 'tomorrow'
+                ? 'Nothing planned for tomorrow'
+                : filterMode === 'all'
+                ? 'No upcoming tasks'
+                : 'Nothing planned for today'}
+            </h3>
+            <p className="font-sans text-xs text-[#8A8A8A] mt-1 mb-4 max-w-[230px]">
+              Tap the <strong className="text-[#111111]">+</strong> button to schedule a lesson or study block.
+            </p>
+            <button
+              type="button"
+              onClick={() => openOverlay('calendar-add-task')}
+              className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full bg-[#111111] text-[#FFFFFF] text-xs font-bold hover:bg-[#262626] transition-colors cursor-pointer shadow-xs"
+            >
+              <Plus size={14} strokeWidth={2.4} /> Add Task
+            </button>
+          </div>
+        ) : (
+          tasksToRender.map((task) => renderTaskCard(task))
+        )}
+      </div>
 
       {/* Notes & Teach-back Modal */}
       {isNotesModalOpen && (
