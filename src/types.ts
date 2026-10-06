@@ -41,6 +41,7 @@ export interface DailySubjectLog {
   id: string;
   subjectId: string;
   lessonId: string;
+  partId?: string;
   studied: boolean;
   pastPaper: boolean;
   confidence: 'L' | 'M' | 'H' | null;

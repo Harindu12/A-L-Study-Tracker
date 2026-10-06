@@ -10,13 +10,14 @@ import {
   X, 
   Calendar as CalendarIcon, 
   ChevronLeft, 
-  ChevronRight,
-  ChevronDown,
-  Sparkles,
-  MapPin,
-  Search,
-  PenTool,
-  Clock
+  ChevronRight, 
+  ChevronDown, 
+  Sparkles, 
+  MapPin, 
+  Search, 
+  PenTool, 
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -36,6 +37,9 @@ interface AgendaTask {
   period?: 'morning' | 'afternoon' | 'evening';
   done: boolean;
   accentColor: string;
+  lessonId?: string;
+  partId?: string;
+  pastPaperDone?: boolean;
 }
 
 const MONTH_ACCENT_COLORS = [
@@ -54,7 +58,16 @@ const MONTH_ACCENT_COLORS = [
 ];
 
 export const CalendarTab: React.FC<CalendarTabProps> = () => {
-  const { dailyEntries, saveDailyEntry, updateDailyEntry, subjects, lessons, revisits, updateRevisit } = useStore();
+  const { 
+    dailyEntries, 
+    saveDailyEntry, 
+    updateDailyEntry, 
+    subjects, 
+    lessons, 
+    revisits, 
+    updateRevisit,
+    updateLessonParts 
+  } = useStore();
   const today = todayStr();
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [filterMode, setFilterMode] = useState<'today' | 'tomorrow' | 'all' | 'custom'>('today');
@@ -70,7 +83,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return !isNaN(d.getMonth()) ? d.getMonth() : new Date().getMonth();
   });
 
-  const { activeOverlay, openOverlay, closeOverlay } = useNavigation();
+  const { activeOverlay, openOverlay, closeOverlay, setTab, openSubject } = useNavigation();
 
   // Floating toolbar & overlay states
   const isSearchOpen = activeOverlay === 'calendar-search';
@@ -264,6 +277,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
   // Subject log form state
   const [newSubjId, setNewSubjId] = useState('');
   const [newLessonId, setNewLessonId] = useState('');
+  const [newPartId, setNewPartId] = useState('');
   const [newSubjPeriod, setNewSubjPeriod] = useState<'morning' | 'afternoon' | 'evening'>('afternoon');
   const [newSubjStudied, setNewSubjStudied] = useState(true);
   const [newSubjPastPaper, setNewSubjPastPaper] = useState(false);
@@ -379,12 +393,34 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
         const lesson = lessons.find((l) => l.id === s.lessonId);
         const subjName = subj ? subj.name : 'Subject';
         const lessonName = lesson ? lesson.name : '';
+        const part = lesson?.parts?.find((p) => p.id === s.partId);
+        const partName = part ? part.name : '';
 
-        let detail = lessonName;
-        if (s.pastPaper) {
+        // Two-way sync: part in Curriculum is the source of truth for watched and pastPaper!
+        const isWatched = part ? !!part.watched : !!s.studied;
+        const isPastPaper = part ? !!part.pastPaper : !!s.pastPaper;
+
+        // Card title formatting: "Chemistry — Structure and Bonding: Day 01"
+        let title = '';
+        if (subjName && lessonName && partName) {
+          title = `${subjName} — ${lessonName}: ${partName}`;
+        } else if (lessonName && partName) {
+          title = `${lessonName}: ${partName}`;
+        } else if (subjName && lessonName) {
+          title = `${subjName} — ${lessonName}`;
+        } else if (lessonName) {
+          title = lessonName;
+        } else {
+          title = subjName;
+        }
+
+        let detail = '';
+        if (partName) {
+          detail = `${subjName} · ${lessonName}`;
+        } else if (s.pastPaper) {
           detail = lessonName ? `${lessonName} (Past Paper)` : 'Past Paper Practice';
-        } else if (!detail) {
-          detail = 'Study & Revision';
+        } else {
+          detail = lessonName ? subjName : 'Study & Revision';
         }
 
         const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
@@ -398,14 +434,17 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           source: 'subject',
           originalId: s.id,
           date: dateStr,
-          title: lessonName || subjName,
-          detail: s.pastPaper ? `${subjName} · Past Paper` : (lessonName ? subjName : 'Study & Revision'),
+          title,
+          detail,
           timeDisplay,
-          subjectLabel: s.pastPaper ? `${subjName} · Past Paper` : `${subjName} · Lesson`,
-          duration: (s as any).duration || (s.pastPaper ? '60 min' : '45 min'),
+          subjectLabel: partName ? `${subjName} · Part` : s.pastPaper ? `${subjName} · Past Paper` : `${subjName} · Lesson`,
+          duration: (s as any).duration || (isPastPaper ? '60 min' : '45 min'),
           period,
-          done: !!(s.studied || s.pastPaper),
+          done: isWatched,
           accentColor,
+          lessonId: s.lessonId,
+          partId: s.partId,
+          pastPaperDone: isPastPaper,
         });
       });
     }
@@ -468,10 +507,59 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       );
       saveFn(targetDate, { ...targetEntry, hours: updatedHours });
     } else {
+      const nextDone = !task.done;
+
+      // Two-way sync with Curriculum: If linked to a lesson part, sync "watched"
+      if (task.lessonId && task.partId) {
+        const lesson = lessons.find((l) => l.id === task.lessonId);
+        if (lesson && lesson.parts) {
+          const updatedParts = lesson.parts.map((p) =>
+            p.id === task.partId ? { ...p, watched: nextDone } : p
+          );
+          updateLessonParts(task.lessonId, updatedParts);
+        }
+      }
+
       const updatedSubjects = (targetEntry.subjects || []).map((s) => {
         if (s.id === task.originalId) {
-          const nextState = !(s.studied || s.pastPaper);
-          return { ...s, studied: nextState, pastPaper: s.pastPaper && nextState };
+          return { ...s, studied: nextDone };
+        }
+        return s;
+      });
+      saveFn(targetDate, { ...targetEntry, subjects: updatedSubjects });
+    }
+  };
+
+  // Toggle past paper done state for a task card, syncing back to Curriculum part
+  const handleToggleTaskPastPaper = (task: AgendaTask) => {
+    const nextPP = !task.pastPaperDone;
+
+    // Two-way sync with Curriculum: If linked to a lesson part, sync "pastPaper"
+    if (task.lessonId && task.partId) {
+      const lesson = lessons.find((l) => l.id === task.lessonId);
+      if (lesson && lesson.parts) {
+        const updatedParts = lesson.parts.map((p) =>
+          p.id === task.partId ? { ...p, pastPaper: nextPP } : p
+        );
+        updateLessonParts(task.lessonId, updatedParts);
+      }
+    }
+
+    const targetDate = task.date || selectedDate;
+    const targetEntry = dailyEntries[targetDate] || {
+      date: targetDate,
+      hours: [],
+      subjects: [],
+      teachback: '',
+      notes: '',
+      wakeTime: '',
+      sleepTime: '',
+    };
+    const saveFn = saveDailyEntry || updateDailyEntry;
+    if (typeof saveFn === 'function') {
+      const updatedSubjects = (targetEntry.subjects || []).map((s) => {
+        if (s.id === task.originalId) {
+          return { ...s, pastPaper: nextPP };
         }
         return s;
       });
@@ -632,11 +720,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       setNewTaskDetail('');
       closeOverlay();
     } else {
-      if (!newSubjId) return;
+      if (!newSubjId || !newLessonId) return;
       const newLog: DailySubjectLog & { duration?: string; period?: string } = {
         id: uid(),
         subjectId: newSubjId,
         lessonId: newLessonId,
+        partId: newPartId || undefined,
         studied: newSubjStudied,
         pastPaper: newSubjPastPaper,
         confidence: newSubjConfidence,
@@ -655,8 +744,21 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       };
 
       updateEntryForDate(targetDate, { subjects: [...(baseEntry.subjects || []), newLog] });
+
+      // If a part was selected and checkboxes were toggled in the modal, sync to lesson part in Curriculum!
+      if (newLessonId && newPartId) {
+        const lessonObj = lessons.find((l) => l.id === newLessonId);
+        if (lessonObj && lessonObj.parts) {
+          const updatedParts = lessonObj.parts.map((p) =>
+            p.id === newPartId ? { ...p, watched: newSubjStudied, pastPaper: newSubjPastPaper } : p
+          );
+          updateLessonParts(newLessonId, updatedParts);
+        }
+      }
+
       setNewSubjId('');
       setNewLessonId('');
+      setNewPartId('');
       closeOverlay();
     }
   };
@@ -809,7 +911,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
             </p>
           )}
 
-          {/* Subject tag & duration line */}
+          {/* Subject tag & duration line & Past Paper quick toggle */}
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span
               className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5"
@@ -829,6 +931,33 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A]">
                 {task.duration}
               </span>
+            )}
+
+            {/* Quick toggle for Past Paper Done if linked to a part or subject task */}
+            {task.source === 'subject' && task.partId && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleTaskPastPaper(task);
+                }}
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-sans font-bold border transition-all cursor-pointer ${
+                  task.pastPaperDone
+                    ? 'bg-[#111111] text-[#FFFFFF] border-[#111111] shadow-2xs'
+                    : 'bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#555555] border-[#D4D4D4] hover:border-[#111111]'
+                }`}
+                title={task.pastPaperDone ? 'Past Paper marked complete (click to toggle)' : 'Mark Past Paper done'}
+                aria-label="Toggle past paper completed"
+              >
+                <span
+                  className={`w-3 h-3 rounded-xs border flex items-center justify-center transition-all ${
+                    task.pastPaperDone ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[#888888] bg-[#FFFFFF]'
+                  }`}
+                >
+                  {task.pastPaperDone && <Check size={8} strokeWidth={4} className="text-[#111111]" />}
+                </span>
+                <span>Past paper</span>
+              </button>
             )}
           </div>
         </div>
@@ -1333,6 +1462,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                 </>
               ) : (
                 <>
+                  {/* Subject Dropdown */}
                   <div>
                     <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                       Subject
@@ -1341,10 +1471,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                       required
                       value={newSubjId}
                       onChange={(e) => {
-                        setNewSubjId(e.target.value);
+                        const sId = e.target.value;
+                        setNewSubjId(sId);
                         setNewLessonId('');
+                        setNewPartId('');
                       }}
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
                     >
                       <option value="">-- Choose Subject --</option>
                       {subjects.map((s) => (
@@ -1355,28 +1487,140 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Lesson / Topic (Optional)
-                    </label>
-                    <select
-                      value={newLessonId}
-                      onChange={(e) => setNewLessonId(e.target.value)}
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                    >
-                      <option value="">-- Choose Lesson --</option>
-                      {newSubjId &&
-                        lessons
-                          .filter((l) => l.subjectId === newSubjId)
-                          .map((l) => (
-                            <option key={l.id} value={l.id}>
-                              {l.name}
-                            </option>
-                          ))}
-                    </select>
-                  </div>
+                  {/* If Subject chosen, check for lessons */}
+                  {newSubjId && (() => {
+                    const subjLessons = lessons.filter((l) => l.subjectId === newSubjId);
+                    if (subjLessons.length === 0) {
+                      return (
+                        <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] space-y-2">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <AlertCircle size={15} className="text-[#D97706] flex-shrink-0" />
+                            <span>No lessons in this subject yet</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed m-0 text-[#B45309]">
+                            Please add lessons and parts in the Curriculum tab first before scheduling tasks.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              closeOverlay();
+                              openSubject(newSubjId);
+                              setTab('lessons');
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] underline hover:text-[#78350F] cursor-pointer pt-0.5"
+                          >
+                            <span>Open Curriculum tab to add lessons →</span>
+                          </button>
+                        </div>
+                      );
+                    }
 
-                  <div className="grid grid-cols-2 gap-3">
+                    const selectedLessonObj = lessons.find((l) => l.id === newLessonId);
+                    const lessonParts = selectedLessonObj?.parts || [];
+
+                    return (
+                      <>
+                        {/* Lesson Dropdown */}
+                        <div>
+                          <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                            Lesson
+                          </label>
+                          <select
+                            required
+                            value={newLessonId}
+                            onChange={(e) => {
+                              const lId = e.target.value;
+                              setNewLessonId(lId);
+                              const chosen = lessons.find((l) => l.id === lId);
+                              const parts = chosen?.parts || [];
+                              const firstUnwatched = parts.find((p) => !p.watched);
+                              const initialPartId = firstUnwatched ? firstUnwatched.id : parts[0]?.id || '';
+                              setNewPartId(initialPartId);
+                              if (initialPartId) {
+                                const pObj = parts.find((p) => p.id === initialPartId);
+                                setNewSubjStudied(pObj ? !!pObj.watched : false);
+                                setNewSubjPastPaper(pObj ? !!pObj.pastPaper : false);
+                              }
+                            }}
+                            className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                          >
+                            <option value="">-- Choose Lesson --</option>
+                            {subjLessons.map((l) => (
+                              <option key={l.id} value={l.id}>
+                                {l.name} {l.done ? '✓ (Completed)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* If Lesson chosen, check for parts */}
+                        {newLessonId && (() => {
+                          if (lessonParts.length === 0) {
+                            return (
+                              <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] space-y-2">
+                                <div className="flex items-center gap-1.5 font-bold">
+                                  <AlertCircle size={15} className="text-[#D97706] flex-shrink-0" />
+                                  <span>No parts in this lesson yet</span>
+                                </div>
+                                <p className="text-[11px] leading-relaxed m-0 text-[#B45309]">
+                                  Please add parts (e.g. Day 01, Day 02) to this lesson in the Curriculum tab first.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    closeOverlay();
+                                    openSubject(newSubjId);
+                                    setTab('lessons');
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] underline hover:text-[#78350F] cursor-pointer pt-0.5"
+                                >
+                                  <span>Open Curriculum tab to add parts →</span>
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          const unwatchedCount = lessonParts.filter((p) => !p.watched).length;
+
+                          return (
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
+                                  Specific Part
+                                </label>
+                                <span className="text-[10px] font-sans font-medium text-[#8A8A8A]">
+                                  {unwatchedCount} unwatched
+                                </span>
+                              </div>
+                              <select
+                                required
+                                value={newPartId}
+                                onChange={(e) => {
+                                  const pId = e.target.value;
+                                  setNewPartId(pId);
+                                  const pObj = lessonParts.find((p) => p.id === pId);
+                                  if (pObj) {
+                                    setNewSubjStudied(pObj.watched);
+                                    setNewSubjPastPaper(pObj.pastPaper);
+                                  }
+                                }}
+                                className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                              >
+                                <option value="">-- Choose Part --</option>
+                                {lessonParts.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} {p.watched ? '✓ (Watched)' : '(Unwatched)'} {p.pastPaper ? '· PP Done' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })()}
+                      </>
+                    );
+                  })()}
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                         Time of Day
@@ -1386,9 +1630,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                         onChange={(e) => setNewSubjPeriod(e.target.value as any)}
                         className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
                       >
-                        <option value="morning">Morning</option>
-                        <option value="afternoon">Afternoon</option>
-                        <option value="evening">Evening</option>
+                        <option value="morning">Morning (8 AM)</option>
+                        <option value="afternoon">Afternoon (2 PM)</option>
+                        <option value="evening">Evening (7 PM)</option>
                       </select>
                     </div>
 
@@ -1396,7 +1640,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                       <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
                         Confidence
                       </label>
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex gap-2 pt-0.5">
                         {(['L', 'M', 'H'] as const).map((lvl) => (
                           <button
                             key={lvl}
@@ -1415,23 +1659,25 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-sans font-medium text-[#111111]">
+                  <div className="flex items-center gap-5 pt-1 border-t border-[#F0F0F0]">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
                       <input
                         type="checkbox"
                         checked={newSubjStudied}
                         onChange={(e) => setNewSubjStudied(e.target.checked)}
+                        className="rounded accent-black"
                       />
-                      Studied
+                      Watched / Done
                     </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-sans font-medium text-[#111111]">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
                       <input
                         type="checkbox"
                         checked={newSubjPastPaper}
                         onChange={(e) => setNewSubjPastPaper(e.target.checked)}
+                        className="rounded accent-black"
                       />
-                      Past Paper
+                      Past Paper Done
                     </label>
                   </div>
                 </>
@@ -1440,7 +1686,24 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-[#111111] text-[#FFFFFF] font-sans font-bold text-sm rounded-xl hover:bg-[#262626] transition-colors cursor-pointer"
+                  disabled={
+                    addMode === 'subject' &&
+                    (!newSubjId ||
+                      !newLessonId ||
+                      !newPartId ||
+                      lessons.filter((l) => l.subjectId === newSubjId).length === 0 ||
+                      (lessons.find((l) => l.id === newLessonId)?.parts || []).length === 0)
+                  }
+                  className={`w-full py-3 font-sans font-bold text-sm rounded-xl transition-colors cursor-pointer ${
+                    addMode === 'subject' &&
+                    (!newSubjId ||
+                      !newLessonId ||
+                      !newPartId ||
+                      lessons.filter((l) => l.subjectId === newSubjId).length === 0 ||
+                      (lessons.find((l) => l.id === newLessonId)?.parts || []).length === 0)
+                      ? 'bg-[#E5E5E5] text-[#A0A0A0] cursor-not-allowed'
+                      : 'bg-[#111111] text-[#FFFFFF] hover:bg-[#262626]'
+                  }`}
                 >
                   Add Task
                 </button>
