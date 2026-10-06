@@ -17,7 +17,11 @@ import {
   Search, 
   PenTool, 
   Clock,
-  AlertCircle
+  AlertCircle,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  BookOpen
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -37,6 +41,7 @@ interface AgendaTask {
   period?: 'morning' | 'afternoon' | 'evening';
   done: boolean;
   accentColor: string;
+  subjectId?: string;
   lessonId?: string;
   partId?: string;
   pastPaperDone?: boolean;
@@ -56,6 +61,225 @@ const MONTH_ACCENT_COLORS = [
   '#84CC16', // Nov - Lime
   '#64748B', // Dec - Slate
 ];
+
+interface AgendaTaskCardProps {
+  task: AgendaTask;
+  onToggle: (task: AgendaTask) => void;
+  onTogglePastPaper: (task: AgendaTask) => void;
+  onLongPress: (task: AgendaTask) => void;
+}
+
+const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
+  task,
+  onToggle,
+  onTogglePastPaper,
+  onLongPress,
+}) => {
+  // Long-press handling (500ms threshold) matching Curriculum's LessonCardItem
+  const timerRef = React.useRef<number | null>(null);
+  const isLongPressTriggered = React.useRef(false);
+  const touchStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mouseStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const clearTimer = () => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isLongPressTriggered.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      isLongPressTriggered.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(40);
+        } catch (_) {}
+      }
+      onLongPress(task);
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (timerRef.current === null) return;
+    const dx = e.touches[0].clientX - touchStartPos.current.x;
+    const dy = e.touches[0].clientY - touchStartPos.current.y;
+    if (Math.hypot(dx, dy) > 10) {
+      clearTimer();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    clearTimer();
+    if (isLongPressTriggered.current) {
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    mouseStartPos.current = { x: e.clientX, y: e.clientY };
+    isLongPressTriggered.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      isLongPressTriggered.current = true;
+      onLongPress(task);
+    }, 500);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (timerRef.current === null) return;
+    const dx = e.clientX - mouseStartPos.current.x;
+    const dy = e.clientY - mouseStartPos.current.y;
+    if (Math.hypot(dx, dy) > 10) {
+      clearTimer();
+    }
+  };
+
+  const handleMouseUp = () => {
+    clearTimer();
+  };
+
+  const handleMouseLeave = () => {
+    clearTimer();
+  };
+
+  const handleClick = () => {
+    if (isLongPressTriggered.current) {
+      isLongPressTriggered.current = false;
+      return;
+    }
+    onToggle(task);
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={clearTimer}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        clearTimer();
+        onLongPress(task);
+      }}
+      title="Tap to toggle · Hold to edit or delete"
+      className="group relative bg-[#FFFFFF] border border-[#E0E0E0] hover:border-[#CCCCCC] rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] transition-all cursor-pointer flex items-center gap-3 select-none"
+    >
+      {/* Subject-accent-colored left edge indicator */}
+      <div
+        className="w-1.5 self-stretch rounded-full flex-shrink-0 my-0.5 transition-transform group-hover:scale-y-105"
+        style={{ backgroundColor: task.accentColor }}
+      />
+
+      {/* Circular Checkbox button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(task);
+        }}
+        className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
+          task.done
+            ? 'bg-[#111111] border-[#111111] text-[#FFFFFF]'
+            : 'border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF]'
+        }`}
+        aria-label={task.done ? 'Mark incomplete' : 'Mark complete'}
+      >
+        {task.done && <Check size={12} strokeWidth={3} />}
+      </button>
+
+      {/* Content area: Title, Subtitle, Tags */}
+      <div className="flex-1 min-w-0 pr-1">
+        <h3
+          className={`font-sans font-bold text-sm sm:text-[15px] text-[#111111] leading-snug tracking-tight truncate ${
+            task.done ? 'line-through text-[#8A8A8A]' : ''
+          }`}
+        >
+          {task.title}
+        </h3>
+
+        {task.detail && (
+          <p className="font-sans text-xs text-[#8A8A8A] mt-0.5 leading-normal truncate">
+            {task.detail}
+          </p>
+        )}
+
+        {/* Subject tag & duration line & Past Paper quick toggle */}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          <span
+            className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5"
+            style={{
+              backgroundColor: `${task.accentColor}14`,
+              color: task.accentColor,
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: task.accentColor }}
+            />
+            {task.subjectLabel}
+          </span>
+
+          {task.duration && (
+            <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A]">
+              {task.duration}
+            </span>
+          )}
+
+          {/* Quick toggle for Past Paper Done if linked to a part or subject task */}
+          {task.source === 'subject' && task.partId && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePastPaper(task);
+              }}
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-sans font-bold border transition-all cursor-pointer ${
+                task.pastPaperDone
+                  ? 'bg-[#111111] text-[#FFFFFF] border-[#111111] shadow-2xs'
+                  : 'bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#555555] border-[#D4D4D4] hover:border-[#111111]'
+              }`}
+              title={task.pastPaperDone ? 'Past Paper marked complete (click to toggle)' : 'Mark Past Paper done'}
+              aria-label="Toggle past paper completed"
+            >
+              <span
+                className={`w-3 h-3 rounded-xs border flex items-center justify-center transition-all ${
+                  task.pastPaperDone ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[#888888] bg-[#FFFFFF]'
+                }`}
+              >
+                {task.pastPaperDone && <Check size={8} strokeWidth={4} className="text-[#111111]" />}
+              </span>
+              <span>Past paper</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Right side: Time shown as a small badge */}
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        <span className="inline-flex items-center gap-1 bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] text-[11px] font-sans font-semibold px-2.5 py-1 rounded-full shadow-2xs">
+          <Clock size={11} className="text-[#8A8A8A]" />
+          {task.timeDisplay}
+        </span>
+        {task.period && (
+          <span className="text-[10px] font-sans text-[#8A8A8A] capitalize">
+            {task.period}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const CalendarTab: React.FC<CalendarTabProps> = () => {
   const { 
@@ -283,6 +507,151 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
   const [newSubjPastPaper, setNewSubjPastPaper] = useState(false);
   const [newSubjConfidence, setNewSubjConfidence] = useState<'L' | 'M' | 'H'>('M');
 
+  // Long-press Action Sheet & Edit/Delete Modals State
+  const [actionTask, setActionTask] = useState<AgendaTask | null>(null);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  // Edit Task Modal Form State
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskDetail, setEditTaskDetail] = useState('');
+  const [editTaskPeriod, setEditTaskPeriod] = useState<'morning' | 'afternoon' | 'evening'>('morning');
+  const [editTaskDuration, setEditTaskDuration] = useState('50 min');
+
+  const [editSubjId, setEditSubjId] = useState('');
+  const [editLessonId, setEditLessonId] = useState('');
+  const [editPartId, setEditPartId] = useState('');
+  const [editSubjPeriod, setEditSubjPeriod] = useState<'morning' | 'afternoon' | 'evening'>('afternoon');
+  const [editSubjStudied, setEditSubjStudied] = useState(false);
+  const [editSubjPastPaper, setEditSubjPastPaper] = useState(false);
+  const [editSubjConfidence, setEditSubjConfidence] = useState<'L' | 'M' | 'H'>('M');
+
+  const handleTaskLongPress = (task: AgendaTask) => {
+    setActionTask(task);
+    setIsActionMenuOpen(true);
+  };
+
+  const handleOpenEditModal = () => {
+    if (!actionTask) return;
+    setIsActionMenuOpen(false);
+
+    if (actionTask.source === 'subject') {
+      const entry = dailyEntries[actionTask.date];
+      const log = (entry?.subjects || []).find((s) => s.id === actionTask.originalId);
+      setEditSubjId(actionTask.subjectId || log?.subjectId || '');
+      setEditLessonId(actionTask.lessonId || log?.lessonId || '');
+      setEditPartId(actionTask.partId || log?.partId || '');
+      setEditSubjPeriod((log as any)?.period || actionTask.period || 'afternoon');
+      setEditSubjStudied(actionTask.done);
+      setEditSubjPastPaper(actionTask.pastPaperDone || false);
+      setEditSubjConfidence(log?.confidence || 'M');
+    } else if (actionTask.source === 'hour') {
+      const entry = dailyEntries[actionTask.date];
+      const hourBlock = (entry?.hours || []).find((h) => h.id === actionTask.originalId);
+      setEditTaskTitle(actionTask.title);
+      setEditTaskDetail(actionTask.detail || '');
+      setEditTaskPeriod((hourBlock as any)?.period || actionTask.period || 'morning');
+      setEditTaskDuration(actionTask.duration || (hourBlock as any)?.duration || '50 min');
+    }
+
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actionTask) return;
+    const targetDate = actionTask.date;
+    const baseEntry = dailyEntries[targetDate] || {
+      date: targetDate,
+      hours: [],
+      subjects: [],
+      teachback: '',
+      notes: '',
+      wakeTime: '',
+      sleepTime: '',
+    };
+
+    if (actionTask.source === 'subject') {
+      if (!editSubjId || !editLessonId) return;
+      const updatedSubjects = (baseEntry.subjects || []).map((s) => {
+        if (s.id === actionTask.originalId) {
+          return {
+            ...s,
+            subjectId: editSubjId,
+            lessonId: editLessonId,
+            partId: editPartId || undefined,
+            studied: editSubjStudied,
+            pastPaper: editSubjPastPaper,
+            confidence: editSubjConfidence,
+            period: editSubjPeriod,
+          };
+        }
+        return s;
+      });
+      updateEntryForDate(targetDate, { subjects: updatedSubjects });
+
+      // Sync to Curriculum if part checkboxes were updated in edit modal:
+      if (editLessonId && editPartId) {
+        const lessonObj = lessons.find((l) => l.id === editLessonId);
+        if (lessonObj && lessonObj.parts) {
+          const updatedParts = lessonObj.parts.map((p) =>
+            p.id === editPartId ? { ...p, watched: editSubjStudied, pastPaper: editSubjPastPaper } : p
+          );
+          updateLessonParts(editLessonId, updatedParts);
+        }
+      }
+    } else if (actionTask.source === 'hour') {
+      if (!editTaskTitle.trim()) return;
+      const fullTaskStr = editTaskDetail.trim() 
+        ? `${editTaskTitle.trim()}: ${editTaskDetail.trim()}` 
+        : editTaskTitle.trim();
+      const updatedHours = (baseEntry.hours || []).map((h) => {
+        if (h.id === actionTask.originalId) {
+          return {
+            ...h,
+            task: fullTaskStr,
+            time: editTaskPeriod === 'morning' ? '8:00 am' : editTaskPeriod === 'afternoon' ? '2:00 pm' : '7:00 pm',
+            duration: editTaskDuration,
+            period: editTaskPeriod,
+          };
+        }
+        return h;
+      });
+      updateEntryForDate(targetDate, { hours: updatedHours });
+    }
+
+    setIsEditModalOpen(false);
+    setActionTask(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!actionTask) return;
+    const targetDate = actionTask.date;
+    const baseEntry = dailyEntries[targetDate];
+    if (!baseEntry) {
+      setIsDeleteConfirmOpen(false);
+      setActionTask(null);
+      return;
+    }
+
+    if (actionTask.source === 'subject') {
+      const updatedSubjects = (baseEntry.subjects || []).filter((s) => s.id !== actionTask.originalId);
+      updateEntryForDate(targetDate, { subjects: updatedSubjects });
+      // Note: Deleting the calendar task does NOT un-mark that part as "Watched" in Curriculum per requirement!
+    } else if (actionTask.source === 'hour') {
+      const updatedHours = (baseEntry.hours || []).filter((h) => h.id !== actionTask.originalId);
+      updateEntryForDate(targetDate, { hours: updatedHours });
+    } else if (actionTask.source === 'revisit') {
+      if (typeof updateRevisit === 'function') {
+        updateRevisit(actionTask.originalId, { done: false });
+      }
+    }
+
+    setIsDeleteConfirmOpen(false);
+    setActionTask(null);
+  };
+
   const activeTargetDate = filterMode === 'tomorrow' ? addDays(today, 1) : selectedDate;
   const currentTargetEntry: DailyEntry = dailyEntries[activeTargetDate] || {
     date: activeTargetDate,
@@ -442,6 +811,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           period,
           done: isWatched,
           accentColor,
+          subjectId: s.subjectId,
           lessonId: s.lessonId,
           partId: s.partId,
           pastPaperDone: isPastPaper,
@@ -863,118 +1233,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     );
   };
 
-  // Render individual task card matching the app's established black-and-white-with-accent theme:
-  // White/light-neutral card background, subject-accent-colored left edge or tag, bold title, gray subtitle/detail, time badge
+  // Render individual task card matching the app's established black-and-white-with-accent theme
   const renderTaskCard = (task: AgendaTask) => {
     return (
-      <div
+      <AgendaTaskCard
         key={task.id}
-        onClick={() => handleToggleTask(task)}
-        className="group relative bg-[#FFFFFF] border border-[#E0E0E0] hover:border-[#CCCCCC] rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] transition-all cursor-pointer flex items-center gap-3 select-none"
-      >
-        {/* Subject-accent-colored left edge indicator */}
-        <div
-          className="w-1.5 self-stretch rounded-full flex-shrink-0 my-0.5 transition-transform group-hover:scale-y-105"
-          style={{ backgroundColor: task.accentColor }}
-        />
-
-        {/* Circular Checkbox button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleToggleTask(task);
-          }}
-          className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
-            task.done
-              ? 'bg-[#111111] border-[#111111] text-[#FFFFFF]'
-              : 'border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF]'
-          }`}
-          aria-label={task.done ? 'Mark incomplete' : 'Mark complete'}
-        >
-          {task.done && <Check size={12} strokeWidth={3} />}
-        </button>
-
-        {/* Content area: Title, Subtitle, Tags */}
-        <div className="flex-1 min-w-0 pr-1">
-          <h3
-            className={`font-sans font-bold text-sm sm:text-[15px] text-[#111111] leading-snug tracking-tight truncate ${
-              task.done ? 'line-through text-[#8A8A8A]' : ''
-            }`}
-          >
-            {task.title}
-          </h3>
-
-          {task.detail && (
-            <p className="font-sans text-xs text-[#8A8A8A] mt-0.5 leading-normal truncate">
-              {task.detail}
-            </p>
-          )}
-
-          {/* Subject tag & duration line & Past Paper quick toggle */}
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span
-              className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5"
-              style={{
-                backgroundColor: `${task.accentColor}14`,
-                color: task.accentColor,
-              }}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: task.accentColor }}
-              />
-              {task.subjectLabel}
-            </span>
-
-            {task.duration && (
-              <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A]">
-                {task.duration}
-              </span>
-            )}
-
-            {/* Quick toggle for Past Paper Done if linked to a part or subject task */}
-            {task.source === 'subject' && task.partId && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleTaskPastPaper(task);
-                }}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-sans font-bold border transition-all cursor-pointer ${
-                  task.pastPaperDone
-                    ? 'bg-[#111111] text-[#FFFFFF] border-[#111111] shadow-2xs'
-                    : 'bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#555555] border-[#D4D4D4] hover:border-[#111111]'
-                }`}
-                title={task.pastPaperDone ? 'Past Paper marked complete (click to toggle)' : 'Mark Past Paper done'}
-                aria-label="Toggle past paper completed"
-              >
-                <span
-                  className={`w-3 h-3 rounded-xs border flex items-center justify-center transition-all ${
-                    task.pastPaperDone ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[#888888] bg-[#FFFFFF]'
-                  }`}
-                >
-                  {task.pastPaperDone && <Check size={8} strokeWidth={4} className="text-[#111111]" />}
-                </span>
-                <span>Past paper</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Right side: Time shown as a small badge */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className="inline-flex items-center gap-1 bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] text-[11px] font-sans font-semibold px-2.5 py-1 rounded-full shadow-2xs">
-            <Clock size={11} className="text-[#8A8A8A]" />
-            {task.timeDisplay}
-          </span>
-          {task.period && (
-            <span className="text-[10px] font-sans text-[#8A8A8A] capitalize">
-              {task.period}
-            </span>
-          )}
-        </div>
-      </div>
+        task={task}
+        onToggle={handleToggleTask}
+        onTogglePastPaper={handleToggleTaskPastPaper}
+        onLongPress={handleTaskLongPress}
+      />
     );
   };
 
@@ -1793,6 +2061,444 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               <span className="text-[11px] font-sans text-[#8A8A8A]">
                 Selected: <strong className="text-[#111111]">{selectedDate}</strong>
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Long-Press Action Sheet / Context Menu Modal */}
+      {isActionMenuOpen && actionTask && (
+        <div
+          className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => {
+            setIsActionMenuOpen(false);
+            setActionTask(null);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#E0E0E0]">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 border"
+                  style={{
+                    backgroundColor: `${actionTask.accentColor}15`,
+                    borderColor: `${actionTask.accentColor}35`,
+                    color: actionTask.accentColor,
+                  }}
+                >
+                  <BookOpen size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-sans text-sm sm:text-base font-bold text-[#111111] truncate m-0">
+                    {actionTask.title}
+                  </h3>
+                  <p className="text-xs font-sans text-[#8A8A8A] m-0 truncate">
+                    {actionTask.subjectLabel} · {actionTask.timeDisplay}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionMenuOpen(false);
+                  setActionTask(null);
+                }}
+                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Options */}
+            <div className="flex flex-col gap-2 my-1">
+              {/* Option 1: Edit */}
+              <button
+                type="button"
+                onClick={handleOpenEditModal}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:bg-[#F5F5F5] hover:border-[#111111] text-left transition-colors cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111111] group-hover:text-[#FFFFFF] transition-colors">
+                  <Pencil size={17} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-sans font-bold text-sm text-[#111111]">
+                    Edit
+                  </div>
+                  <div className="text-xs font-sans text-[#8A8A8A]">
+                    Modify subject, lesson, part, or time block
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Delete */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionMenuOpen(false);
+                  setIsDeleteConfirmOpen(true);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-[#FFFFFF] hover:bg-red-50/50 hover:border-red-400 text-left transition-colors cursor-pointer group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                  <Trash2 size={17} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-sans font-bold text-sm text-red-600">
+                    Delete
+                  </div>
+                  <div className="text-xs font-sans text-red-500">
+                    Remove from today's agenda
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Cancel Button */}
+            <div className="mt-3 pt-2 border-t border-[#E0E0E0]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionMenuOpen(false);
+                  setActionTask(null);
+                }}
+                className="w-full py-2 text-center text-xs font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {isEditModalOpen && actionTask && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => {
+            setIsEditModalOpen(false);
+            setActionTask(null);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <Pencil size={18} className="text-[#111111]" />
+                <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Edit Task</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setActionTask(null);
+                }}
+                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditTask} className="space-y-3.5">
+              {actionTask.source === 'subject' ? (
+                <>
+                  {/* Subject Dropdown */}
+                  <div>
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                      Subject
+                    </label>
+                    <select
+                      required
+                      value={editSubjId}
+                      onChange={(e) => {
+                        const sId = e.target.value;
+                        setEditSubjId(sId);
+                        const subjLessons = lessons.filter((l) => l.subjectId === sId);
+                        const firstL = subjLessons[0];
+                        setEditLessonId(firstL ? firstL.id : '');
+                        const parts = firstL?.parts || [];
+                        const firstP = parts.find((p) => !p.watched) || parts[0];
+                        setEditPartId(firstP ? firstP.id : '');
+                      }}
+                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                    >
+                      <option value="">-- Choose Subject --</option>
+                      {subjects.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Lesson Dropdown */}
+                  {editSubjId && (() => {
+                    const subjLessons = lessons.filter((l) => l.subjectId === editSubjId);
+                    if (subjLessons.length === 0) {
+                      return (
+                        <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E]">
+                          No lessons found for this subject.
+                        </div>
+                      );
+                    }
+
+                    const selectedLessonObj = lessons.find((l) => l.id === editLessonId);
+                    const lessonParts = selectedLessonObj?.parts || [];
+
+                    return (
+                      <>
+                        <div>
+                          <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                            Lesson
+                          </label>
+                          <select
+                            required
+                            value={editLessonId}
+                            onChange={(e) => {
+                              const lId = e.target.value;
+                              setEditLessonId(lId);
+                              const chosen = lessons.find((l) => l.id === lId);
+                              const parts = chosen?.parts || [];
+                              const firstP = parts.find((p) => !p.watched) || parts[0];
+                              setEditPartId(firstP ? firstP.id : '');
+                            }}
+                            className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                          >
+                            <option value="">-- Choose Lesson --</option>
+                            {subjLessons.map((l) => (
+                              <option key={l.id} value={l.id}>
+                                {l.name} {l.done ? '✓ (Completed)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Part Dropdown */}
+                        {editLessonId && (() => {
+                          if (lessonParts.length === 0) {
+                            return (
+                              <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E]">
+                                No parts found in this lesson.
+                              </div>
+                            );
+                          }
+                          return (
+                            <div>
+                              <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                                Specific Part
+                              </label>
+                              <select
+                                required
+                                value={editPartId}
+                                onChange={(e) => {
+                                  const pId = e.target.value;
+                                  setEditPartId(pId);
+                                  const pObj = lessonParts.find((p) => p.id === pId);
+                                  if (pObj) {
+                                    setEditSubjStudied(pObj.watched);
+                                    setEditSubjPastPaper(pObj.pastPaper);
+                                  }
+                                }}
+                                className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                              >
+                                <option value="">-- Choose Part --</option>
+                                {lessonParts.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} {p.watched ? '✓ (Watched)' : '(Unwatched)'} {p.pastPaper ? '· PP Done' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })()}
+                      </>
+                    );
+                  })()}
+
+                  {/* Time Block (Time of day) */}
+                  <div>
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                      Time Block
+                    </label>
+                    <select
+                      value={editSubjPeriod}
+                      onChange={(e) => setEditSubjPeriod(e.target.value as any)}
+                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                    >
+                      <option value="morning">Morning (8 AM)</option>
+                      <option value="afternoon">Afternoon (2 PM)</option>
+                      <option value="evening">Evening (7 PM)</option>
+                    </select>
+                  </div>
+
+                  {/* Checkboxes: Watched & Past Paper */}
+                  <div className="flex items-center gap-5 pt-1 border-t border-[#F0F0F0]">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
+                      <input
+                        type="checkbox"
+                        checked={editSubjStudied}
+                        onChange={(e) => setEditSubjStudied(e.target.checked)}
+                        className="rounded accent-black"
+                      />
+                      Watched / Done
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
+                      <input
+                        type="checkbox"
+                        checked={editSubjPastPaper}
+                        onChange={(e) => setEditSubjPastPaper(e.target.checked)}
+                        className="rounded accent-black"
+                      />
+                      Past Paper Done
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                      Task Title
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editTaskTitle}
+                      onChange={(e) => setEditTaskTitle(e.target.value)}
+                      placeholder="e.g. Physics Revision"
+                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                      Details / Notes (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={editTaskDetail}
+                      onChange={(e) => setEditTaskDetail(e.target.value)}
+                      placeholder="e.g. Questions 1 to 5"
+                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                        Time Block
+                      </label>
+                      <select
+                        value={editTaskPeriod}
+                        onChange={(e) => setEditTaskPeriod(e.target.value as any)}
+                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                      >
+                        <option value="morning">Morning (8 AM)</option>
+                        <option value="afternoon">Afternoon (2 PM)</option>
+                        <option value="evening">Evening (7 PM)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                        Duration
+                      </label>
+                      <select
+                        value={editTaskDuration}
+                        onChange={(e) => setEditTaskDuration(e.target.value)}
+                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                      >
+                        <option value="30 min">30 min</option>
+                        <option value="45 min">45 min</option>
+                        <option value="50 min">50 min</option>
+                        <option value="1 hr">1 hr</option>
+                        <option value="1.5 hr">1.5 hr</option>
+                        <option value="2 hr">2 hr</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-2 justify-end pt-3 border-t border-[#E0E0E0]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setActionTask(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl hover:bg-[#262626] transition-colors cursor-pointer"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Task Confirmation Modal */}
+      {isDeleteConfirmOpen && actionTask && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => {
+            setIsDeleteConfirmOpen(false);
+            setActionTask(null);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2.5 rounded-full bg-red-100 text-red-600 flex-shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="font-sans text-base font-bold text-[#111111] m-0">
+                  Delete Task?
+                </h3>
+                <p className="text-xs font-sans text-[#8A8A8A] mt-1.5 leading-relaxed">
+                  Remove <strong className="text-[#111111] font-semibold">{actionTask.title}</strong> from this day's agenda?
+                </p>
+                <p className="text-[11px] font-sans text-[#8A8A8A] mt-1 leading-relaxed">
+                  Note: Completed study progress in your Curriculum will remain intact.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setActionTask(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="bg-red-600 hover:bg-red-700 text-white font-sans font-bold text-xs py-2 px-5 rounded-xl shadow-2xs transition-colors cursor-pointer"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
