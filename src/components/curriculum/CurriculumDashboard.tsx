@@ -12,7 +12,7 @@ import {
 import { todayStr } from '../../utils';
 import { useNavigation } from '../../navigation';
 import { calculateSubjectMetrics, calculateCurriculumMetrics } from '../../utils/subjectMetrics';
-import { getSubjectAccentColor } from '../../utils/colors';
+import { getSubjectColorById } from '../../utils/colors';
 import { 
   BookOpen, 
   Layers, 
@@ -51,7 +51,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   const lowConfCount = subjLessons.filter((l) => l.done && l.confidence === 'L').length;
   const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0 && lowConfCount === 0;
 
-  const accentColor = getSubjectAccentColor(idx);
+  const accentColor = getSubjectColorById(subj.id, [subj]);
 
   // Long-press handling (500ms standard hold threshold)
   const timerRef = React.useRef<number | null>(null);

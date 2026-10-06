@@ -191,34 +191,30 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
         }}
         className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
           task.done
-            ? 'bg-[#111111] border-[#111111] text-[#FFFFFF]'
+            ? 'border-[#111111] text-[#FFFFFF]'
             : 'border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF]'
         }`}
+        style={task.done ? { backgroundColor: task.accentColor, borderColor: task.accentColor } : undefined}
         aria-label={task.done ? 'Mark incomplete' : 'Mark complete'}
       >
-        {task.done && <Check size={12} strokeWidth={3} />}
+        {task.done && <Check size={12} strokeWidth={3} className="text-[#FFFFFF]" />}
       </button>
 
-      {/* Content area: Title, Subtitle, Tags */}
+      {/* Content area: Full Title (wrapping, no truncation, no redundant subtitle) */}
       <div className="flex-1 min-w-0 pr-1">
         <h3
-          className={`font-sans font-bold text-sm sm:text-[15px] text-[#111111] leading-snug tracking-tight truncate ${
+          className={`font-sans font-bold text-sm sm:text-[15px] text-[#111111] leading-snug tracking-tight break-words ${
             task.done ? 'line-through text-[#8A8A8A]' : ''
           }`}
         >
           {task.title}
         </h3>
 
-        {task.detail && (
-          <p className="font-sans text-xs text-[#8A8A8A] mt-0.5 leading-normal truncate">
-            {task.detail}
-          </p>
-        )}
-
-        {/* Subject tag & duration line & Past Paper quick toggle */}
+        {/* Single inline meta row: Subject pill tag + Past Paper checkbox inline + duration */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {/* Subject badge with uniform accent color */}
           <span
-            className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5"
+            className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 flex-shrink-0"
             style={{
               backgroundColor: `${task.accentColor}14`,
               color: task.accentColor,
@@ -231,13 +227,7 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
             {task.subjectLabel}
           </span>
 
-          {task.duration && (
-            <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A]">
-              {task.duration}
-            </span>
-          )}
-
-          {/* Quick toggle for Past Paper Done if linked to a part or subject task */}
+          {/* Quick toggle for Past Paper Done inline to the right of the subject pill */}
           {task.source === 'subject' && task.partId && (
             <button
               type="button"
@@ -245,23 +235,42 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
                 e.stopPropagation();
                 onTogglePastPaper(task);
               }}
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-sans font-bold border transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-sans font-bold border transition-all cursor-pointer flex-shrink-0 ${
                 task.pastPaperDone
-                  ? 'bg-[#111111] text-[#FFFFFF] border-[#111111] shadow-2xs'
+                  ? 'text-[#FFFFFF] shadow-2xs'
                   : 'bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#555555] border-[#D4D4D4] hover:border-[#111111]'
               }`}
+              style={
+                task.pastPaperDone
+                  ? { backgroundColor: '#111111', borderColor: '#111111' }
+                  : undefined
+              }
               title={task.pastPaperDone ? 'Past Paper marked complete (click to toggle)' : 'Mark Past Paper done'}
               aria-label="Toggle past paper completed"
             >
+              {/* Circular checkbox matching the main Watched/Done checkbox shape */}
               <span
-                className={`w-3 h-3 rounded-xs border flex items-center justify-center transition-all ${
-                  task.pastPaperDone ? 'bg-[#FFFFFF] border-[#FFFFFF]' : 'border-[#888888] bg-[#FFFFFF]'
+                className={`w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center transition-all flex-shrink-0 ${
+                  task.pastPaperDone
+                    ? 'border-transparent text-[#FFFFFF]'
+                    : 'border-[#888888] bg-[#FFFFFF]'
                 }`}
+                style={
+                  task.pastPaperDone
+                    ? { backgroundColor: task.accentColor, borderColor: task.accentColor }
+                    : undefined
+                }
               >
-                {task.pastPaperDone && <Check size={8} strokeWidth={4} className="text-[#111111]" />}
+                {task.pastPaperDone && <Check size={8} strokeWidth={3.5} className="text-[#FFFFFF]" />}
               </span>
               <span>Past paper</span>
             </button>
+          )}
+
+          {task.duration && (
+            <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A] flex-shrink-0">
+              {task.duration}
+            </span>
           )}
         </div>
       </div>
@@ -612,7 +621,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           return {
             ...h,
             task: fullTaskStr,
-            time: editTaskPeriod === 'morning' ? '8:00 am' : editTaskPeriod === 'afternoon' ? '2:00 pm' : '7:00 pm',
+            time: editTaskPeriod === 'morning' ? '8:00 AM' : editTaskPeriod === 'afternoon' ? '2:00 PM' : '7:00 PM',
             duration: editTaskDuration,
             period: editTaskPeriod,
           };
@@ -691,17 +700,31 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return h;
   };
 
-  // Format time matching reference's "10.45", "12.10", "19.45" exact style
-  const formatTimeDot = (timeStr?: string, defaultHour = 9): string => {
-    if (!timeStr) return `${String(defaultHour).padStart(2, '0')}.00`;
-    const m = timeStr.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i);
-    if (!m) return timeStr;
+  // Format time to standard 12-hour format with colon and AM/PM (e.g. "8:00 AM", "2:00 PM")
+  const formatTime12h = (timeStr?: string, defaultHour = 9): string => {
+    if (!timeStr || !timeStr.trim()) {
+      const h12 = defaultHour % 12 === 0 ? 12 : defaultHour % 12;
+      const ampm = defaultHour >= 12 ? 'PM' : 'AM';
+      return `${h12}:00 ${ampm}`;
+    }
+
+    const trimmed = timeStr.trim();
+    // Match patterns like "8:00 am", "08.00", "8am", "14:30", "2 pm"
+    const m = trimmed.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i);
+    if (!m) return trimmed;
+
     let h = parseInt(m[1], 10);
-    const min = m[2] ? m[2].padStart(2, '0') : '00';
-    const ampm = m[3] ? m[3].toLowerCase() : '';
-    if (ampm === 'pm' && h < 12) h += 12;
-    if (ampm === 'am' && h === 12) h = 0;
-    return `${String(h).padStart(2, '0')}.${min}`;
+    const min = m[2] ? m[2] : '00';
+    const ampmSpec = m[3] ? m[3].toUpperCase() : null;
+
+    if (ampmSpec) {
+      if (ampmSpec === 'PM' && h < 12) h += 12;
+      if (ampmSpec === 'AM' && h === 12) h = 0;
+    }
+
+    const finalAmpm = h >= 12 ? 'PM' : 'AM';
+    const finalH12 = h % 12 === 0 ? 12 : h % 12;
+    return `${finalH12}:${min} ${finalAmpm}`;
   };
 
   // Extract agenda tasks for any specific date using real app data
@@ -736,7 +759,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           ? getSubjectColorById(matchingSubj.id, subjects)
           : SUBJECT_ACCENT_COLORS[hIdx % SUBJECT_ACCENT_COLORS.length];
 
-        const timeDisplay = h.time && h.time.trim() ? h.time.trim() : formatTimeDot(h.time, hour);
+        const timeDisplay = formatTime12h(h.time, hour);
         const subjectLabel = matchingSubj ? matchingSubj.name : 'Study Block';
 
         result.push({
@@ -762,7 +785,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
         const subj = subjects.find((sub) => sub.id === s.subjectId);
         const lesson = lessons.find((l) => l.id === s.lessonId);
         const subjName = subj ? subj.name : 'Subject';
-        const lessonName = lesson ? lesson.name : '';
+        const lessonName = lesson ? lesson.name : 'Lesson';
         const part = lesson?.parts?.find((p) => p.id === s.partId);
         const partName = part ? part.name : '';
 
@@ -770,33 +793,20 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
         const isWatched = part ? !!part.watched : !!s.studied;
         const isPastPaper = part ? !!part.pastPaper : !!s.pastPaper;
 
-        // Card title formatting: "Chemistry — Structure and Bonding: Day 01"
+        // Consistent title format:
+        // "[Subject] — [Lesson]: [Part]" when a part is selected,
+        // or "[Subject] — [Lesson]" if no specific part was chosen.
         let title = '';
-        if (subjName && lessonName && partName) {
-          title = `${subjName} — ${lessonName}: ${partName}`;
-        } else if (lessonName && partName) {
-          title = `${lessonName}: ${partName}`;
-        } else if (subjName && lessonName) {
-          title = `${subjName} — ${lessonName}`;
-        } else if (lessonName) {
-          title = lessonName;
-        } else {
-          title = subjName;
-        }
-
-        let detail = '';
         if (partName) {
-          detail = `${subjName} · ${lessonName}`;
-        } else if (s.pastPaper) {
-          detail = lessonName ? `${lessonName} (Past Paper)` : 'Past Paper Practice';
+          title = `${subjName} — ${lessonName}: ${partName}`;
         } else {
-          detail = lessonName ? subjName : 'Study & Revision';
+          title = `${subjName} — ${lessonName}`;
         }
 
         const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
         const period = (s as any).period || defaultPeriod;
-        const defaultHour = period === 'morning' ? 9 : period === 'afternoon' ? 14 : 19;
-        const timeDisplay = formatTimeDot(undefined, defaultHour + (idx % 3));
+        const defaultHour = period === 'morning' ? 8 : period === 'afternoon' ? 14 : 19;
+        const timeDisplay = formatTime12h(undefined, defaultHour + (idx % 3));
         const accentColor = getSubjectColorById(s.subjectId, subjects);
 
         result.push({
@@ -805,7 +815,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           originalId: s.id,
           date: dateStr,
           title,
-          detail,
           timeDisplay,
           subjectLabel: partName ? `${subjName} · Part` : s.pastPaper ? `${subjName} · Past Paper` : `${subjName} · Lesson`,
           duration: (s as any).duration || (isPastPaper ? '60 min' : '45 min'),
@@ -835,9 +844,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           source: 'revisit',
           originalId: r.id,
           date: dateStr,
-          title: lessonName,
-          detail: `${subjName} · Spaced Repetition (${r.type})`,
-          timeDisplay: '09.00',
+          title: `${subjName} — ${lessonName}`,
+          timeDisplay: '9:00 AM',
           subjectLabel: `${subjName} · ${r.type}`,
           duration: '30 min',
           period: 'morning',
@@ -1069,7 +1077,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       
       const newHour: HourBlock & { duration?: string; period?: string } = {
         id: uid(),
-        time: newTaskPeriod === 'morning' ? '8:00 am' : newTaskPeriod === 'afternoon' ? '2:00 pm' : '7:00 pm',
+        time: newTaskPeriod === 'morning' ? '8:00 AM' : newTaskPeriod === 'afternoon' ? '2:00 PM' : '7:00 PM',
         task: fullTaskStr,
         done: false,
         duration: newTaskDuration,
