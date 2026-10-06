@@ -16,7 +16,12 @@ const TABS: TabItem[] = [
 ];
 
 export const BottomNav: React.FC = () => {
-  const { tab, setTab, activeSubjectId, openOverlay } = useNavigation();
+  const { tab, setTab, activeSubjectId, openOverlay, activeOverlay } = useNavigation();
+
+  // If a full-screen overlay or modal is active, do not render the floating bottom bar
+  if (activeOverlay) {
+    return null;
+  }
 
   // Quick Action triggered by the floating accent circular button
   const handleQuickAction = () => {
@@ -45,7 +50,7 @@ export const BottomNav: React.FC = () => {
   return (
     <div
       id="bottom-navigation-cluster"
-      className="fixed bottom-5 sm:bottom-6 left-0 right-0 z-50 pointer-events-none flex justify-center px-3.5 sm:px-4"
+      className="fixed bottom-5 sm:bottom-6 left-0 right-0 z-40 pointer-events-none flex justify-center px-3.5 sm:px-4"
     >
       <div className="w-full max-w-[420px] flex items-center gap-2.5 sm:gap-3 pointer-events-auto">
         {/* Main Dark Nav Pill */}

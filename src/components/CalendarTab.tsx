@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { useNavigation } from '../navigation';
 import { DailyEntry, DailySubjectLog, HourBlock } from '../types';
@@ -1535,9 +1536,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       </div>
 
       {/* Notes & Teach-back Modal */}
-      {isNotesModalOpen && (
+      {isNotesModalOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[999] flex items-center justify-center p-4"
           onClick={closeOverlay}
         >
           <div
@@ -1617,13 +1618,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               Done
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add Task / Study Session Modal */}
-      {isAddModalOpen && (
+      {isAddModalOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[999] flex items-center justify-center p-4"
           onClick={closeOverlay}
         >
           <div
@@ -1978,13 +1980,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Month Picker Modal - Year-at-a-glance multi-month grid */}
-      {isMonthModalOpen && (
+      {isMonthModalOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[100] flex items-center justify-center p-3 sm:p-4"
+          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[999] flex items-center justify-center p-3 sm:p-4"
           onClick={closeOverlay}
         >
           <div
@@ -2063,20 +2066,21 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               </span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Long-Press Action Sheet / Context Menu Modal */}
-      {isActionMenuOpen && actionTask && (
+      {isActionMenuOpen && actionTask && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => {
             setIsActionMenuOpen(false);
             setActionTask(null);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+            className="w-full max-w-sm rounded-3xl p-5 sm:p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -2172,13 +2176,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Task Modal */}
-      {isEditModalOpen && actionTask && (
+      {isEditModalOpen && actionTask && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => {
             setIsEditModalOpen(false);
             setActionTask(null);
@@ -2448,13 +2453,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Task Confirmation Modal */}
-      {isDeleteConfirmOpen && actionTask && (
+      {isDeleteConfirmOpen && actionTask && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => {
             setIsDeleteConfirmOpen(false);
             setActionTask(null);
@@ -2501,7 +2507,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

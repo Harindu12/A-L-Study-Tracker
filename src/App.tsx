@@ -26,7 +26,7 @@ function AppContent() {
 
         {/* Main Content */}
         <main
-          className={`flex-1 min-h-0 relative z-10 flex flex-col ${
+          className={`flex-1 min-h-0 relative flex flex-col ${
             tab === 'calendar'
               ? 'overflow-hidden px-4 pt-5'
               : 'overflow-y-auto px-4 pb-44 scrollbar-hide' + (tab === 'lessons' ? ' pt-5' : '')
