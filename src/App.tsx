@@ -17,7 +17,7 @@ function AppContent() {
           <header className="pt-8 pb-3 px-6 relative z-10 flex-shrink-0">
             <div className="flex justify-between items-center">
               <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight m-0">
-                {tab === 'stats' && 'Analytics'}
+                {tab === 'stats' && 'Stats'}
                 {tab === 'revisit' && 'Spaced Repetition'}
               </h1>
             </div>

@@ -29,7 +29,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   isExpanded,
   onToggleExpand,
 }) => {
-  const { updateLesson, updateLessonParts, deleteLesson, markLessonDone } = useStore();
+  const { updateLesson, updateLessonParts, deleteLesson, markLessonDone, dailyEntries, saveDailyEntry } = useStore();
 
   const [newPartName, setNewPartName] = useState('');
   const [editingPartNames, setEditingPartNames] = useState<Record<string, string>>({});
@@ -236,11 +236,77 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   const handleToggleWatched = (partId: string, watched: boolean) => {
     const updated = parts.map((p) => (p.id === partId ? { ...p, watched } : p));
     updateLessonParts(lesson.id, updated);
+
+    // Sync to today's dailyEntry for real-time live activity tracking across tabs
+    const today = todayStr();
+    const currentEntry = dailyEntries[today] || {
+      date: today,
+      hours: [],
+      subjects: [],
+      teachback: '',
+      notes: '',
+      wakeTime: '',
+      sleepTime: '',
+    };
+    let updatedSubjects = [...(currentEntry.subjects || [])];
+    const existingIdx = updatedSubjects.findIndex((s) => s.lessonId === lesson.id && s.partId === partId);
+    if (existingIdx >= 0) {
+      updatedSubjects[existingIdx] = {
+        ...updatedSubjects[existingIdx],
+        studied: watched,
+      };
+    } else if (watched) {
+      updatedSubjects.push({
+        id: Math.random().toString(36).slice(2, 10),
+        subjectId: lesson.subjectId,
+        lessonId: lesson.id,
+        partId,
+        studied: true,
+        pastPaper: false,
+        confidence: null,
+      });
+    }
+    if (typeof saveDailyEntry === 'function') {
+      saveDailyEntry(today, { ...currentEntry, subjects: updatedSubjects });
+    }
   };
 
   const handleTogglePastPaper = (partId: string, pastPaper: boolean) => {
     const updated = parts.map((p) => (p.id === partId ? { ...p, pastPaper } : p));
     updateLessonParts(lesson.id, updated);
+
+    // Sync to today's dailyEntry for real-time live activity tracking across tabs
+    const today = todayStr();
+    const currentEntry = dailyEntries[today] || {
+      date: today,
+      hours: [],
+      subjects: [],
+      teachback: '',
+      notes: '',
+      wakeTime: '',
+      sleepTime: '',
+    };
+    let updatedSubjects = [...(currentEntry.subjects || [])];
+    const existingIdx = updatedSubjects.findIndex((s) => s.lessonId === lesson.id && s.partId === partId);
+    if (existingIdx >= 0) {
+      updatedSubjects[existingIdx] = {
+        ...updatedSubjects[existingIdx],
+        pastPaper,
+      };
+    } else if (pastPaper) {
+      updatedSubjects.push({
+        id: Math.random().toString(36).slice(2, 10),
+        subjectId: lesson.subjectId,
+        lessonId: lesson.id,
+        partId,
+        studied: false,
+        pastPaper: true,
+        confidence: null,
+      });
+    }
+    if (typeof saveDailyEntry === 'function') {
+      saveDailyEntry(today, { ...currentEntry, subjects: updatedSubjects });
+    }
   };
 
   const handleDeletePart = (partId: string) => {
