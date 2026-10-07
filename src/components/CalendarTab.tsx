@@ -22,7 +22,10 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
-  BookOpen
+  BookOpen,
+  Sun,
+  CloudSun,
+  Moon
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -306,11 +309,6 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
           <Clock size={11} className="text-[#8A8A8A]" />
           {task.timeDisplay}
         </span>
-        {task.period && (
-          <span className="text-[10px] font-sans text-[#8A8A8A] capitalize">
-            {task.period}
-          </span>
-        )}
       </div>
     </div>
   );
@@ -1061,6 +1059,72 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
 
   const tasksCompletedCount = tasksToRender.filter((t) => t.done).length;
 
+  // Helper to determine time-of-day section automatically based on time
+  // before 12:00 = morning, 12:00-17:00 = afternoon, after 17:00 = evening
+  const getTimeOfDayPeriod = (timeStr?: string): 'morning' | 'afternoon' | 'evening' => {
+    if (!timeStr) return 'morning';
+    const hour = parseTimeToHour(timeStr);
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
+  };
+
+  // Group tasks into visible time-of-day sections: Morning, Afternoon, Evening
+  // If a time-of-day section has no tasks, it is omitted entirely
+  const groupedSections = useMemo(() => {
+    const morningTasks: AgendaTask[] = [];
+    const afternoonTasks: AgendaTask[] = [];
+    const eveningTasks: AgendaTask[] = [];
+
+    tasksToRender.forEach((task) => {
+      // Determine automatically from its time string
+      const period = getTimeOfDayPeriod(task.timeDisplay);
+      if (period === 'morning') {
+        morningTasks.push(task);
+      } else if (period === 'afternoon') {
+        afternoonTasks.push(task);
+      } else {
+        eveningTasks.push(task);
+      }
+    });
+
+    const sections: Array<{
+      key: 'morning' | 'afternoon' | 'evening';
+      title: string;
+      icon: typeof Sun;
+      tasks: AgendaTask[];
+    }> = [];
+
+    if (morningTasks.length > 0) {
+      sections.push({
+        key: 'morning',
+        title: 'MORNING',
+        icon: Sun,
+        tasks: morningTasks,
+      });
+    }
+
+    if (afternoonTasks.length > 0) {
+      sections.push({
+        key: 'afternoon',
+        title: 'AFTERNOON',
+        icon: CloudSun,
+        tasks: afternoonTasks,
+      });
+    }
+
+    if (eveningTasks.length > 0) {
+      sections.push({
+        key: 'evening',
+        title: 'EVENING',
+        icon: Moon,
+        tasks: eveningTasks,
+      });
+    }
+
+    return sections;
+  }, [tasksToRender]);
+
   // Greeting helper matching reference "Good Morning"
   const getGreetingText = () => {
     const hr = new Date().getHours();
@@ -1536,7 +1600,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       {/* 4. Independently scrollable task card list container below the fixed header */}
       <div
         id="calendar-tasks-scroll-container"
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pt-1 pb-32 space-y-2.5 pr-0.5"
+        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pt-1 pb-32 space-y-5 pr-0.5"
       >
         {tasksToRender.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#D4D4D4] p-8 text-center bg-[#FFFFFF] shadow-2xs my-auto flex flex-col items-center justify-center">
@@ -1564,7 +1628,31 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
             </button>
           </div>
         ) : (
-          tasksToRender.map((task) => renderTaskCard(task))
+          groupedSections.map((sec) => {
+            const IconComp = sec.icon;
+            return (
+              <div key={sec.key} className="space-y-2.5">
+                {/* Visible time-of-day section header label row (icon + text, e.g. sun icon + "MORNING") */}
+                <div className="flex items-center gap-2 px-1 pt-1 select-none">
+                  <div className="w-5 h-5 rounded-md bg-[#F0F0F0] border border-[#E5E5E5] flex items-center justify-center text-[#666666] flex-shrink-0">
+                    <IconComp size={12} strokeWidth={2.5} />
+                  </div>
+                  <span className="font-sans font-bold text-[11px] tracking-wider uppercase text-[#737373]">
+                    {sec.title}
+                  </span>
+                  <div className="h-[1px] flex-1 bg-[#EAEAEA]" />
+                  <span className="text-[10px] font-sans font-semibold text-[#8A8A8A]">
+                    {sec.tasks.length}
+                  </span>
+                </div>
+
+                {/* Section tasks list */}
+                <div className="space-y-2.5">
+                  {sec.tasks.map((task) => renderTaskCard(task))}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
