@@ -157,6 +157,11 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
     onToggle(task);
   };
 
+  const isSubjectWithPart = task.source === 'subject' && !!task.partId;
+  const isWatched = task.done;
+  const isPastPaper = !!task.pastPaperDone;
+  const isFullyComplete = isSubjectWithPart ? (isWatched && isPastPaper) : isWatched;
+
   return (
     <div
       onClick={handleClick}
@@ -174,15 +179,22 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
         onLongPress(task);
       }}
       title="Tap to toggle · Hold to edit or delete"
-      className="group relative bg-[#FFFFFF] border border-[#E0E0E0] hover:border-[#CCCCCC] rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] transition-all cursor-pointer flex items-center gap-3 select-none"
+      className={`group relative border rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] transition-all cursor-pointer flex items-center gap-3 select-none ${
+        isFullyComplete
+          ? 'bg-[#F9FAF9] border-[#D1D5DB] hover:border-[#9CA3AF]'
+          : 'bg-[#FFFFFF] border-[#E0E0E0] hover:border-[#CCCCCC]'
+      }`}
     >
-      {/* Subject-accent-colored left edge indicator */}
+      {/* Subject-accent-colored left edge indicator: solid when active/unwatched, soft/muted when fully complete */}
       <div
         className="w-1.5 self-stretch rounded-full flex-shrink-0 my-0.5 transition-transform group-hover:scale-y-105"
-        style={{ backgroundColor: task.accentColor }}
+        style={{
+          backgroundColor: isFullyComplete ? '#9CA3AF' : task.accentColor,
+          opacity: isFullyComplete ? 0.75 : 1,
+        }}
       />
 
-      {/* Circular Checkbox button */}
+      {/* Primary Step 1: Circular Checkbox for "Watched / Done" */}
       <button
         type="button"
         onClick={(e) => {
@@ -190,27 +202,30 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
           onToggle(task);
         }}
         className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
-          task.done
+          isWatched
             ? 'border-[#111111] text-[#FFFFFF]'
             : 'border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF]'
         }`}
-        style={task.done ? { backgroundColor: task.accentColor, borderColor: task.accentColor } : undefined}
-        aria-label={task.done ? 'Mark incomplete' : 'Mark complete'}
+        style={isWatched ? { backgroundColor: task.accentColor, borderColor: task.accentColor } : undefined}
+        aria-label={isWatched ? 'Mark incomplete' : 'Mark watched'}
+        title={isWatched ? 'Watched (click to unmark)' : 'Click to mark Watched (Step 1)'}
       >
-        {task.done && <Check size={12} strokeWidth={3} className="text-[#FFFFFF]" />}
+        {isWatched && <Check size={12} strokeWidth={3} className="text-[#FFFFFF]" />}
       </button>
 
       {/* Content area: Full Title (wrapping, no truncation, no redundant subtitle) */}
       <div className="flex-1 min-w-0 pr-1">
         <h3
-          className={`font-sans font-bold text-sm sm:text-[15px] text-[#111111] leading-snug tracking-tight break-words ${
-            task.done ? 'line-through text-[#8A8A8A]' : ''
+          className={`font-sans font-bold text-sm sm:text-[15px] leading-snug tracking-tight break-words ${
+            isWatched
+              ? 'line-through text-[#8A8A8A]'
+              : 'text-[#111111]'
           }`}
         >
           {task.title}
         </h3>
 
-        {/* Single inline meta row: Subject pill tag + Past Paper checkbox inline + duration */}
+        {/* Single inline meta row: Subject pill tag + Step 2 Past Paper Chip/Toggle + Duration */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {/* Subject badge with uniform accent color */}
           <span
@@ -227,43 +242,53 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
             {task.subjectLabel}
           </span>
 
-          {/* Quick toggle for Past Paper Done inline to the right of the subject pill */}
-          {task.source === 'subject' && task.partId && (
+          {/* Step 2 Control: Compact chip/toggle for Past Paper */}
+          {isSubjectWithPart && (
             <button
               type="button"
+              disabled={!isWatched}
               onClick={(e) => {
                 e.stopPropagation();
-                onTogglePastPaper(task);
-              }}
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-sans font-bold border transition-all cursor-pointer flex-shrink-0 ${
-                task.pastPaperDone
-                  ? 'text-[#FFFFFF] shadow-2xs'
-                  : 'bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#555555] border-[#D4D4D4] hover:border-[#111111]'
-              }`}
-              style={
-                task.pastPaperDone
-                  ? { backgroundColor: '#111111', borderColor: '#111111' }
-                  : undefined
-              }
-              title={task.pastPaperDone ? 'Past Paper marked complete (click to toggle)' : 'Mark Past Paper done'}
-              aria-label="Toggle past paper completed"
-            >
-              {/* Circular checkbox matching the main Watched/Done checkbox shape */}
-              <span
-                className={`w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center transition-all flex-shrink-0 ${
-                  task.pastPaperDone
-                    ? 'border-transparent text-[#FFFFFF]'
-                    : 'border-[#888888] bg-[#FFFFFF]'
-                }`}
-                style={
-                  task.pastPaperDone
-                    ? { backgroundColor: task.accentColor, borderColor: task.accentColor }
-                    : undefined
+                if (isWatched) {
+                  onTogglePastPaper(task);
                 }
-              >
-                {task.pastPaperDone && <Check size={8} strokeWidth={3.5} className="text-[#FFFFFF]" />}
-              </span>
+              }}
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-sans font-semibold transition-all flex-shrink-0 ${
+                !isWatched
+                  ? 'bg-[#F5F5F5] text-[#A3A3A3] border border-[#E5E5E5] opacity-55 cursor-not-allowed select-none'
+                  : isPastPaper
+                  ? 'bg-[#111111] text-[#FFFFFF] border border-[#111111] shadow-2xs hover:bg-[#262626] cursor-pointer'
+                  : 'bg-[#FFFFFF] text-[#333333] border border-[#CCCCCC] hover:border-[#111111] hover:bg-[#F5F5F5] cursor-pointer shadow-2xs'
+              }`}
+              title={
+                !isWatched
+                  ? 'Step 2: Mark "Watched" first to unlock Past Paper practice'
+                  : isPastPaper
+                  ? 'Past Paper done (click to toggle)'
+                  : 'Step 2: Click to mark Past Paper done'
+              }
+              aria-label={
+                !isWatched
+                  ? 'Past Paper practice locked until watched'
+                  : isPastPaper
+                  ? 'Mark past paper not done'
+                  : 'Mark past paper done'
+              }
+            >
+              {/* Distinctive mini indicator dot / pill (not a duplicate primary checkbox) */}
+              <span
+                className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${
+                  !isWatched
+                    ? 'bg-[#D4D4D4]'
+                    : isPastPaper
+                    ? 'bg-[#FFFFFF]'
+                    : 'bg-[#8A8A8A]'
+                }`}
+              />
               <span>Past paper</span>
+              {isWatched && isPastPaper && (
+                <Check size={10} strokeWidth={3.5} className="text-[#FFFFFF] -ml-0.5" />
+              )}
             </button>
           )}
 
