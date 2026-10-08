@@ -123,3 +123,16 @@ export function calculateWeeklyStudiedMinutes(
 
   return totalMinutes;
 }
+
+/**
+ * Calculates total minutes studied on a specific single date
+ * by summing duration of every task in Calendar/Agenda marked as completed ("Watched" checked).
+ */
+export function calculateDailyStudiedMinutes(
+  dateStr: string,
+  dailyEntries: Record<string, DailyEntry>,
+  lessons: Lesson[],
+  revisits: Revisit[] = []
+): number {
+  return calculateWeeklyStudiedMinutes([dateStr], dailyEntries, lessons, revisits);
+}

@@ -9,7 +9,7 @@ import {
   calculateSubjectMetrics,
 } from '../utils/subjectMetrics';
 import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar, Clock } from 'lucide-react';
-import { formatStudiedTime, calculateWeeklyStudiedMinutes } from '../utils/duration';
+import { formatStudiedTime, calculateWeeklyStudiedMinutes, calculateDailyStudiedMinutes } from '../utils/duration';
 
 const CUSTOM_TARGETS_KEY = 'study_tracker_custom_weekly_targets';
 
@@ -160,6 +160,16 @@ export const StatsTab: React.FC = () => {
     return subjectPaces.reduce((sum, sp) => sum + sp.actualProgress, 0);
   }, [subjectPaces]);
 
+  // Sum of all subjects' weekly targets
+  const totalWeeklyTarget = useMemo(() => {
+    return subjectPaces.reduce((sum, sp) => sum + sp.weeklyTarget, 0);
+  }, [subjectPaces]);
+
+  // That day's share of the weekly target (minimum 1)
+  const dailyTargetShare = useMemo(() => {
+    return Math.max(1, Math.round(totalWeeklyTarget / 7));
+  }, [totalWeeklyTarget]);
+
   // Time studied this week: Sum the duration of every task in Calendar/Agenda marked as completed
   // ("Watched" checked) within current Mon–Sun week across all subjects.
   const timeStudied = useMemo(() => {
@@ -205,8 +215,9 @@ export const StatsTab: React.FC = () => {
     return streakCount;
   }, [dailyEntries, today]);
 
-  // Weekly 7-day dot grid data (Mon–Sun)
-  const weekDotGrid = useMemo(() => {
+  // Weekly 7-day ring progress data (Mon–Sun)
+  // Each ring fills proportionally based on that day's parts completed vs that day's share of the weekly target
+  const weekRingsData = useMemo(() => {
     const dayInitials = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -217,16 +228,52 @@ export const StatsTab: React.FC = () => {
         watchedCount = entry.subjects.filter((s) => s.studied).length;
       }
 
+      // Percentage: that day's parts completed vs that day's share of weekly target
+      const percentage = Math.min(100, Math.round((watchedCount / dailyTargetShare) * 100));
+      const isTargetMet = percentage >= 100;
+
       return {
         date: dateStr,
         initial: dayInitials[idx],
         fullName: fullDayNames[idx],
-        isCompleted: watchedCount > 0,
+        watchedCount,
+        percentage,
+        isTargetMet,
         isToday: dateStr === today,
-        count: watchedCount,
       };
     });
-  }, [currentWeekDays, dailyEntries, today]);
+  }, [currentWeekDays, dailyEntries, today, dailyTargetShare]);
+
+  // Days on target this week (count of days where ring hit 100%)
+  const daysOnTarget = useMemo(() => {
+    return weekRingsData.filter((d) => d.isTargetMet).length;
+  }, [weekRingsData]);
+
+  // Daily studied minutes for each day in Mon–Sun week for the vertical bar chart
+  const weekBarData = useMemo(() => {
+    const dayInitials = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    const minutesList = currentWeekDays.map((dateStr) =>
+      calculateDailyStudiedMinutes(dateStr, dailyEntries, lessons, revisits || [])
+    );
+
+    const maxMinutes = Math.max(...minutesList, 60);
+
+    return currentWeekDays.map((dateStr, idx) => {
+      const minutes = minutesList[idx];
+      const heightPercent = minutes > 0 ? Math.max(16, Math.min(100, Math.round((minutes / maxMinutes) * 100))) : 0;
+
+      return {
+        date: dateStr,
+        initial: dayInitials[idx],
+        fullName: fullDayNames[idx],
+        minutes,
+        heightPercent,
+        isToday: dateStr === today,
+      };
+    });
+  }, [currentWeekDays, dailyEntries, lessons, revisits, today]);
 
   // Helper icon for subject
   const getSubjectIcon = (name: string) => {
@@ -412,67 +459,46 @@ export const StatsTab: React.FC = () => {
 
         {/* Consistency Card */}
         <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
-          {/* Top section: Current Streak, This Week's Total, and Time Studied This Week */}
-          <div className="space-y-4">
-            {/* Top row: Current Streak + This week's total */}
-            <div className="flex items-center justify-between gap-4">
-              {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                  <Flame size={13} className="text-[#111111]" />
-                  <span>Current Streak</span>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
-                    {currentStreak}
-                  </span>
-                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
-                    {currentStreak === 1 ? 'day' : 'days'}
-                  </span>
-                </div>
+          {/* Top row: Current Streak + This week's total */}
+          <div className="flex items-center justify-between gap-4">
+            {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                <Flame size={13} className="text-[#111111]" />
+                <span>Current Streak</span>
               </div>
-
-              {/* Subtle vertical separator */}
-              <div className="w-[1px] h-11 bg-[#EAEAEA] flex-shrink-0" />
-
-              {/* This week's total (sum of all three subjects' actual progress from Section 1) */}
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                  <BookOpen size={13} className="text-[#111111]" />
-                  <span>This Week's Total</span>
-                </div>
-                <div className="flex items-baseline justify-end gap-1.5">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
-                    {weeklyTotalWatched}
-                  </span>
-                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
-                    {weeklyTotalWatched === 1 ? 'part' : 'parts'}
-                  </span>
-                </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                  {currentStreak}
+                </span>
+                <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                  {currentStreak === 1 ? 'day' : 'days'}
+                </span>
               </div>
             </div>
 
-            {/* Bottom row: Time studied this week */}
-            <div className="pt-3.5 border-t border-[#F0F0F0] flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                  <Clock size={13} className="text-[#111111]" />
-                  <span>Time Studied This Week</span>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
-                    {timeStudied.value}
-                  </span>
-                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
-                    {timeStudied.unit}
-                  </span>
-                </div>
+            {/* Subtle vertical separator */}
+            <div className="w-[1px] h-11 bg-[#EAEAEA] flex-shrink-0" />
+
+            {/* This week's total (sum of all three subjects' actual progress from Section 1) */}
+            <div className="text-right">
+              <div className="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                <BookOpen size={13} className="text-[#111111]" />
+                <span>This Week's Total</span>
+              </div>
+              <div className="flex items-baseline justify-end gap-1.5">
+                <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                  {weeklyTotalWatched}
+                </span>
+                <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                  {weeklyTotalWatched === 1 ? 'part' : 'parts'}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Bottom section: Weekly dot-grid (styled like Image 2 filled-vs-hollow circle pattern) */}
-          <div className="pt-4 border-t border-[#F0F0F0]">
+          {/* Middle section: Daily Activity Rings (Reference: "Your weekly goals" card) */}
+          <div className="pt-5 border-t border-[#F0F0F0]">
             <div className="flex items-center justify-between mb-3 px-0.5">
               <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
                 Daily Activity
@@ -482,42 +508,160 @@ export const StatsTab: React.FC = () => {
               </span>
             </div>
 
-            {/* 7 dots/circles row (Mon – Sun) with initials beneath */}
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center">
-              {weekDotGrid.map((day) => {
-                return (
-                  <div key={day.date} className="flex flex-col items-center gap-2 select-none">
-                    {/* Circle dot: filled if >= 1 part completed, hollow if 0; today gets highlight ring */}
-                    <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all ${
-                        day.isCompleted
-                          ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs'
-                          : 'bg-[#FFFFFF] border-2 border-[#D4D4D4] text-[#A3A3A3]'
-                      } ${
-                        day.isToday
-                          ? 'ring-2 ring-[#111111] ring-offset-2'
-                          : ''
-                      }`}
-                      title={`${day.fullName} (${day.date}): ${day.count} parts watched`}
-                    >
-                      {day.isCompleted ? (
-                        <Check size={14} strokeWidth={3} className="text-[#FFFFFF]" />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D4D4D4]" />
-                      )}
-                    </div>
+            <div className="flex items-center justify-between gap-3 sm:gap-4">
+              {/* Left headline stat (Reference: "3/7 Achieved" pattern) */}
+              <div className="flex-shrink-0 min-w-[70px]">
+                <div className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                  {daysOnTarget}/7
+                </div>
+                <div className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-1 leading-tight">
+                  Days on target
+                </div>
+              </div>
 
-                    {/* Day initial beneath dot */}
-                    <span
-                      className={`text-xs font-sans font-bold leading-none ${
-                        day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
-                      }`}
-                    >
-                      {day.initial}
-                    </span>
-                  </div>
-                );
-              })}
+              {/* Right: Horizontal row of concentric progress rings (M T W T F S S) */}
+              <div className="flex-1 max-w-[245px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-center">
+                {weekRingsData.map((day) => {
+                  const size = 28;
+                  const strokeWidth = 2.8;
+                  const center = size / 2;
+                  const radius = 10.5;
+                  const circumference = 2 * Math.PI * radius;
+                  const offset = circumference - (day.percentage / 100) * circumference;
+
+                  return (
+                    <div key={day.date} className="flex flex-col items-center gap-1.5 select-none">
+                      {/* Ring container with today's outer highlight ring */}
+                      <div
+                        className={`relative w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all ${
+                          day.isToday ? 'ring-2 ring-[#111111] ring-offset-2' : ''
+                        }`}
+                        title={`${day.fullName}: ${day.watchedCount} / ${dailyTargetShare} parts (${day.percentage}%)`}
+                      >
+                        <svg
+                          width={size}
+                          height={size}
+                          viewBox={`0 0 ${size} ${size}`}
+                          className="w-full h-full transform -rotate-90"
+                        >
+                          {/* Inner subtle concentric guideline */}
+                          <circle
+                            cx={center}
+                            cy={center}
+                            r={radius - 3.5}
+                            fill="none"
+                            stroke="#F5F5F5"
+                            strokeWidth="1"
+                          />
+                          {/* Background track circle */}
+                          <circle
+                            cx={center}
+                            cy={center}
+                            r={radius}
+                            fill="none"
+                            stroke="#EAEAEA"
+                            strokeWidth={strokeWidth}
+                          />
+                          {/* Foreground progress ring using app's accent fill */}
+                          {day.percentage > 0 && (
+                            <circle
+                              cx={center}
+                              cy={center}
+                              r={radius}
+                              fill="none"
+                              stroke="#111111"
+                              strokeWidth={strokeWidth}
+                              strokeDasharray={circumference}
+                              strokeDashoffset={offset}
+                              strokeLinecap="round"
+                            />
+                          )}
+                        </svg>
+
+                        {/* Checkmark icon in center once 100% target met */}
+                        {day.isTargetMet && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <Check size={11} strokeWidth={3} className="text-[#111111]" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Day initial beneath ring */}
+                      <span
+                        className={`text-xs font-sans font-bold leading-none ${
+                          day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
+                        }`}
+                      >
+                        {day.initial}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom section: Time Studied with Bar Chart (Reference: "Sleep duration" card) */}
+          <div className="pt-5 border-t border-[#F0F0F0]">
+            <div className="flex items-center justify-between mb-3 px-0.5">
+              <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
+                Time Studied
+              </span>
+              <span className="text-[10px] font-sans text-[#8A8A8A]">
+                Mon – Sun
+              </span>
+            </div>
+
+            <div className="flex items-end justify-between gap-3 sm:gap-4">
+              {/* Left headline stat (Reference: "9h 27min Achieved" pattern) */}
+              <div className="flex-shrink-0 min-w-[70px] pb-1">
+                <div className="flex items-baseline gap-1">
+                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                    {timeStudied.value}
+                  </span>
+                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                    {timeStudied.unit}
+                  </span>
+                </div>
+                <div className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-1 leading-tight">
+                  This week
+                </div>
+              </div>
+
+              {/* Right: Vertical bar chart, one bar per day (Mon–Sun) */}
+              <div className="flex-1 max-w-[245px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-end">
+                {weekBarData.map((day) => {
+                  return (
+                    <div key={day.date} className="flex flex-col items-center select-none">
+                      {/* Bar container (44px height) */}
+                      <div className="h-11 w-full flex items-end justify-center pb-1">
+                        {day.minutes > 0 ? (
+                          <div
+                            style={{ height: `${day.heightPercent}%` }}
+                            className="w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
+                            title={`${day.fullName}: ${day.minutes} min studied`}
+                          />
+                        ) : (
+                          /* Stub/baseline mark for 0 min */
+                          <div
+                            className="w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D4D4D4]"
+                            title={`${day.fullName}: 0 min studied`}
+                          />
+                        )}
+                      </div>
+
+                      {/* Day initial beneath bar */}
+                      <span
+                        className={`text-xs font-sans font-bold leading-none ${
+                          day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
+                        }`}
+                      >
+                        {day.initial}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
