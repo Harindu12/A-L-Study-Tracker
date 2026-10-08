@@ -8,7 +8,7 @@ import {
   calculateWeeklyTarget,
   calculateSubjectMetrics,
 } from '../utils/subjectMetrics';
-import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar, Clock } from 'lucide-react';
+import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar, Clock, TrendingUp } from 'lucide-react';
 import { formatStudiedTime, calculateWeeklyStudiedMinutes } from '../utils/duration';
 
 const CUSTOM_TARGETS_KEY = 'study_tracker_custom_weekly_targets';
@@ -228,6 +228,73 @@ export const StatsTab: React.FC = () => {
     });
   }, [currentWeekDays, dailyEntries, today]);
 
+  // Weekly trend line data: one point per day (Mon–Sun), plotting count of parts completed that day
+  const weeklyTrendData = useMemo(() => {
+    const counts = weekDotGrid.map((d) => d.count);
+    const maxCount = Math.max(...counts, 0);
+
+    // SVG coordinate space: 280 x 48
+    // Y: 8 (peak) to 40 (baseline 0 parts)
+    const baselineY = 40;
+    const topY = 8;
+    const heightRange = baselineY - topY; // 32
+
+    // 7 day points aligned with the 7 columns (each column width is 280 / 7 = 40, center is (i + 0.5) * 40)
+    const dayPoints = weekDotGrid.map((day, idx) => {
+      const x = (idx + 0.5) * (280 / 7);
+      const y = maxCount > 0 ? baselineY - (day.count / maxCount) * heightRange : baselineY;
+      return { x, y, day };
+    });
+
+    // Spline points with virtual edges at x=0 and x=280 to span full card width seamlessly
+    const splinePoints = [
+      { x: 0, y: dayPoints[0].y },
+      ...dayPoints.map((p) => ({ x: p.x, y: p.y })),
+      { x: 280, y: dayPoints[dayPoints.length - 1].y },
+    ];
+
+    let linePath = '';
+    let areaPath = '';
+
+    if (maxCount === 0) {
+      // Flat line at zero across the entire week
+      linePath = `M 0 ${baselineY} L 280 ${baselineY}`;
+      areaPath = `M 0 ${baselineY} L 280 ${baselineY} L 280 ${baselineY} L 0 ${baselineY} Z`;
+    } else {
+      // Catmull-Rom spline converted to smooth cubic Bezier
+      linePath = `M ${splinePoints[0].x.toFixed(1)} ${splinePoints[0].y.toFixed(1)}`;
+      for (let i = 0; i < splinePoints.length - 1; i++) {
+        const p0 = i > 0 ? splinePoints[i - 1] : splinePoints[i];
+        const p1 = splinePoints[i];
+        const p2 = splinePoints[i + 1];
+        const p3 = i < splinePoints.length - 2 ? splinePoints[i + 2] : p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        let cp1y = p1.y + (p2.y - p0.y) / 6;
+
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        let cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        // Clamp control points between topY and baselineY so curves do not dip below 0
+        cp1y = Math.max(topY, Math.min(baselineY, cp1y));
+        cp2y = Math.max(topY, Math.min(baselineY, cp2y));
+
+        linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+      }
+
+      areaPath = `${linePath} L 280 ${baselineY} L 0 ${baselineY} Z`;
+    }
+
+    return {
+      counts,
+      maxCount,
+      dayPoints,
+      linePath,
+      areaPath,
+      baselineY,
+    };
+  }, [weekDotGrid]);
+
   // Helper icon for subject
   const getSubjectIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -363,36 +430,72 @@ export const StatsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom row: User-editable target control */}
-              <div className="mt-3 pt-2.5 border-t border-[#F2F2F2] flex items-center justify-between text-[11px] font-sans">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditTarget(sp)}
-                  className="inline-flex items-center gap-1 text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer select-none group"
-                  title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
-                >
-                  <span>
-                    Target: <strong className="text-[#111111]">{sp.weeklyTarget}/wk</strong>
-                  </span>
-                  {sp.isOverridden ? (
-                    <span className="text-[9px] bg-[#F0F0F0] text-[#555555] px-1 py-0.2 rounded font-semibold ml-0.5">
-                      Custom
-                    </span>
-                  ) : (
-                    <Pencil size={10} className="text-[#8A8A8A] opacity-60 group-hover:opacity-100" />
-                  )}
-                </button>
-
-                {sp.isOverridden && (
+              {/* Bottom row: User-editable target control & weekly progress mini-bar */}
+              <div className="mt-3 pt-2.5 border-t border-[#F2F2F2] flex flex-col gap-1.5 text-[11px] font-sans">
+                <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => handleResetTarget(sp.id)}
-                    className="text-[10px] text-[#8A8A8A] hover:text-[#111111] underline cursor-pointer select-none"
-                    title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
+                    onClick={() => handleOpenEditTarget(sp)}
+                    className="inline-flex items-center gap-1 text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer select-none group"
+                    title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
                   >
-                    Reset
+                    <span>
+                      Target: <strong className="text-[#111111]">{sp.weeklyTarget}/wk</strong>
+                    </span>
+                    {sp.isOverridden ? (
+                      <span className="text-[9px] bg-[#F0F0F0] text-[#555555] px-1 py-0.2 rounded font-semibold ml-0.5">
+                        Custom
+                      </span>
+                    ) : (
+                      <Pencil size={10} className="text-[#8A8A8A] opacity-60 group-hover:opacity-100" />
+                    )}
                   </button>
-                )}
+
+                  {sp.isOverridden && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetTarget(sp.id)}
+                      className="text-[10px] text-[#8A8A8A] hover:text-[#111111] underline cursor-pointer select-none"
+                      title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                {/* Weekly progress mini-bar */}
+                {(() => {
+                  const weekElapsedPct = Math.min(100, Math.max(0, (daysElapsedThisWeek / 7) * 100));
+                  const targetProgressPct = sp.weeklyTarget > 0 ? Math.min(100, (sp.actualProgress / sp.weeklyTarget) * 100) : 0;
+
+                  return (
+                    <div
+                      className="relative w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-visible mt-0.5"
+                      title={`This week: ${sp.actualProgress}/${sp.weeklyTarget} parts (${Math.round(targetProgressPct)}%) • Week elapsed: ${daysElapsedThisWeek}/7 days (${Math.round(weekElapsedPct)}%)`}
+                    >
+                      {/* A lighter-shaded marker or fill showing how far into the week we are */}
+                      <div
+                        className="absolute left-0 top-0 bottom-0 bg-[#D4D4D4] rounded-full"
+                        style={{ width: `${weekElapsedPct}%` }}
+                      />
+
+                      {/* A solid colored fill (using that subject's accent color) showing actual progress toward this week's target */}
+                      <div
+                        className="absolute left-0 top-0 bottom-0 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${targetProgressPct}%`,
+                          backgroundColor: sp.accentColor,
+                        }}
+                      />
+
+                      {/* Week-progress marker tick */}
+                      <div
+                        className="absolute -top-[2px] -bottom-[2px] w-[2px] bg-[#525252] rounded-full z-10 -ml-[1px]"
+                        style={{ left: `${weekElapsedPct}%` }}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ))}
@@ -468,6 +571,107 @@ export const StatsTab: React.FC = () => {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Middle section: Weekly trend line sparkline */}
+          <div className="pt-4 border-t border-[#F0F0F0]">
+            <div className="flex items-center justify-between mb-2 px-0.5">
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
+                <TrendingUp size={13} className="text-[#111111]" />
+                <span>Weekly Trend</span>
+              </div>
+              <span className="text-[10px] font-sans text-[#8A8A8A]">
+                {weeklyTrendData.maxCount > 0
+                  ? `Peak: ${weeklyTrendData.maxCount} ${weeklyTrendData.maxCount === 1 ? 'part' : 'parts'}/day`
+                  : '0 parts'}
+              </span>
+            </div>
+
+            {/* Sparkline chart */}
+            <div className="relative w-full h-12 select-none">
+              <svg
+                viewBox="0 0 280 48"
+                className="w-full h-full overflow-visible"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="weeklyTrendGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#111111" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#111111" stopOpacity="0.00" />
+                  </linearGradient>
+                </defs>
+
+                {/* Faint baseline guide at y=40 */}
+                <line
+                  x1="0"
+                  y1={weeklyTrendData.baselineY}
+                  x2="280"
+                  y2={weeklyTrendData.baselineY}
+                  stroke="#EFEFEF"
+                  strokeWidth="1"
+                  strokeDasharray="3 3"
+                />
+
+                {/* Area fill beneath curve */}
+                {weeklyTrendData.maxCount > 0 && (
+                  <path
+                    d={weeklyTrendData.areaPath}
+                    fill="url(#weeklyTrendGradient)"
+                  />
+                )}
+
+                {/* Smooth curve / flat line */}
+                <path
+                  d={weeklyTrendData.linePath}
+                  fill="none"
+                  stroke={weeklyTrendData.maxCount > 0 ? '#111111' : '#A3A3A3'}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+
+              {/* Day points overlay along the curve */}
+              {weeklyTrendData.dayPoints.map(({ y, day }, idx) => {
+                const xPct = ((idx + 0.5) / 7) * 100;
+                const yPct = (y / 48) * 100;
+
+                if (day.count > 0) {
+                  return (
+                    <div
+                      key={day.date}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+                      style={{ left: `${xPct}%`, top: `${yPct}%` }}
+                      title={`${day.fullName}: ${day.count} ${day.count === 1 ? 'part' : 'parts'} watched`}
+                    >
+                      <div
+                        className={`rounded-full bg-[#111111] border-2 border-[#FFFFFF] shadow-2xs ${
+                          day.isToday ? 'w-2.5 h-2.5 ring-1.5 ring-[#111111]' : 'w-2 h-2'
+                        }`}
+                      />
+                    </div>
+                  );
+                }
+
+                if (day.isToday) {
+                  return (
+                    <div
+                      key={day.date}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+                      style={{
+                        left: `${xPct}%`,
+                        top: `${(weeklyTrendData.baselineY / 48) * 100}%`,
+                      }}
+                      title={`${day.fullName} (Today): 0 parts watched`}
+                    >
+                      <div className="w-2 h-2 rounded-full bg-[#FFFFFF] border-1.5 border-[#111111]" />
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
             </div>
           </div>
 
