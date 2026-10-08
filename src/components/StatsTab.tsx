@@ -8,7 +8,8 @@ import {
   calculateWeeklyTarget,
   calculateSubjectMetrics,
 } from '../utils/subjectMetrics';
-import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar } from 'lucide-react';
+import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar, Clock } from 'lucide-react';
+import { formatStudiedTime, calculateWeeklyStudiedMinutes } from '../utils/duration';
 
 const CUSTOM_TARGETS_KEY = 'study_tracker_custom_weekly_targets';
 
@@ -27,7 +28,7 @@ interface SubjectPaceData {
 }
 
 export const StatsTab: React.FC = () => {
-  const { subjects, lessons, dailyEntries, examDate, updateSubject } = useStore();
+  const { subjects, lessons, dailyEntries, revisits, examDate, updateSubject } = useStore();
 
   // Custom targets map (subjectId -> overridden number).
   // Defaults to empty so every subject displays its live auto-calculated target.
@@ -158,6 +159,18 @@ export const StatsTab: React.FC = () => {
   const weeklyTotalWatched = useMemo(() => {
     return subjectPaces.reduce((sum, sp) => sum + sp.actualProgress, 0);
   }, [subjectPaces]);
+
+  // Time studied this week: Sum the duration of every task in Calendar/Agenda marked as completed
+  // ("Watched" checked) within current Mon–Sun week across all subjects.
+  const timeStudied = useMemo(() => {
+    const totalMinutes = calculateWeeklyStudiedMinutes(
+      currentWeekDays,
+      dailyEntries,
+      lessons,
+      revisits || []
+    );
+    return formatStudiedTime(totalMinutes);
+  }, [currentWeekDays, dailyEntries, lessons, revisits]);
 
   // Helper to determine if at least one part was marked "Watched" on a given day
   const hasWatchedOnDate = (dateStr: string): boolean => {
@@ -399,39 +412,61 @@ export const StatsTab: React.FC = () => {
 
         {/* Consistency Card */}
         <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
-          {/* Top section: Current Streak + This week's total */}
-          <div className="flex items-center justify-between gap-4">
-            {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                <Flame size={13} className="text-[#111111]" />
-                <span>Current Streak</span>
+          {/* Top section: Current Streak, This Week's Total, and Time Studied This Week */}
+          <div className="space-y-4">
+            {/* Top row: Current Streak + This week's total */}
+            <div className="flex items-center justify-between gap-4">
+              {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                  <Flame size={13} className="text-[#111111]" />
+                  <span>Current Streak</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                    {currentStreak}
+                  </span>
+                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                    {currentStreak === 1 ? 'day' : 'days'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-sans text-4xl sm:text-5xl font-black text-[#111111] tracking-tight leading-none">
-                  {currentStreak}
-                </span>
-                <span className="font-sans text-base sm:text-lg font-bold text-[#8A8A8A] leading-none">
-                  {currentStreak === 1 ? 'day' : 'days'}
-                </span>
+
+              {/* Subtle vertical separator */}
+              <div className="w-[1px] h-11 bg-[#EAEAEA] flex-shrink-0" />
+
+              {/* This week's total (sum of all three subjects' actual progress from Section 1) */}
+              <div className="text-right">
+                <div className="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                  <BookOpen size={13} className="text-[#111111]" />
+                  <span>This Week's Total</span>
+                </div>
+                <div className="flex items-baseline justify-end gap-1.5">
+                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                    {weeklyTotalWatched}
+                  </span>
+                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                    {weeklyTotalWatched === 1 ? 'part' : 'parts'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Subtle vertical separator */}
-            <div className="w-[1px] h-12 bg-[#EAEAEA] flex-shrink-0" />
-
-            {/* This week's total (sum of all three subjects' actual progress from Section 1) */}
-            <div className="text-right">
-              <div className="text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                This Week's Total
-              </div>
-              <div className="flex items-baseline justify-end gap-1.5">
-                <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
-                  {weeklyTotalWatched}
-                </span>
-                <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
-                  {weeklyTotalWatched === 1 ? 'part' : 'parts'}
-                </span>
+            {/* Bottom row: Time studied this week */}
+            <div className="pt-3.5 border-t border-[#F0F0F0] flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                  <Clock size={13} className="text-[#111111]" />
+                  <span>Time Studied This Week</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                    {timeStudied.value}
+                  </span>
+                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                    {timeStudied.unit}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
