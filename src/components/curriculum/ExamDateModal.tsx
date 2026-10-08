@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, X } from 'lucide-react';
 
 interface ExamDateModalProps {
@@ -15,6 +15,12 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
   onSave,
 }) => {
   const [date, setDate] = useState(currentDate || '');
+
+  useEffect(() => {
+    if (isOpen) {
+      setDate(currentDate || '');
+    }
+  }, [currentDate, isOpen]);
 
   if (!isOpen) return null;
 

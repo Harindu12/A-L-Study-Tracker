@@ -11,7 +11,7 @@ import {
 } from './SubjectEditModal';
 import { todayStr } from '../../utils';
 import { useNavigation } from '../../navigation';
-import { calculateSubjectMetrics, calculateCurriculumMetrics } from '../../utils/subjectMetrics';
+import { calculateSubjectMetrics, calculateCurriculumMetrics, calculateDaysRemaining } from '../../utils/subjectMetrics';
 import { getSubjectColorById } from '../../utils/colors';
 import { 
   BookOpen, 
@@ -281,9 +281,7 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
   // Days remaining calculation
   let daysRemainingText: string | React.ReactNode = 'Set exam date';
   if (examDate) {
-    const today = new Date(todayStr() + 'T00:00:00').getTime();
-    const exam = new Date(examDate + 'T00:00:00').getTime();
-    const diffDays = Math.ceil((exam - today) / (1000 * 60 * 60 * 24));
+    const diffDays = calculateDaysRemaining(examDate);
     
     if (diffDays > 1) {
       daysRemainingText = `${diffDays} days`;

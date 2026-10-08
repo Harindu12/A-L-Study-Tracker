@@ -1,8 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { todayStr, mondayOf, addDays } from '../utils';
 import { getSubjectColorById } from '../utils/colors';
-import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame } from 'lucide-react';
+import {
+  calculateDaysRemaining,
+  calculateWeeksRemaining,
+  calculateWeeklyTarget,
+  calculateSubjectMetrics,
+} from '../utils/subjectMetrics';
+import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar } from 'lucide-react';
 
 const CUSTOM_TARGETS_KEY = 'study_tracker_custom_weekly_targets';
 
@@ -12,20 +18,35 @@ interface SubjectPaceData {
   accentColor: string;
   actualProgress: number;
   weeklyTarget: number;
+  autoTarget: number;
   isOverridden: boolean;
   isOnTrack: boolean;
   expectedPace: number;
   totalRemainingParts: number;
+  totalParts: number;
 }
 
 export const StatsTab: React.FC = () => {
   const { subjects, lessons, dailyEntries, examDate, updateSubject } = useStore();
 
-  // Custom targets map (subjectId -> overridden number)
+  // Custom targets map (subjectId -> overridden number).
+  // Defaults to empty so every subject displays its live auto-calculated target.
   const [customTargets, setCustomTargets] = useState<Record<string, number>>(() => {
     try {
       const saved = localStorage.getItem(CUSTOM_TARGETS_KEY);
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) return {};
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        // Clean out any stale '1' or '50' overrides from the legacy schema bug
+        const cleaned: Record<string, number> = {};
+        for (const [key, val] of Object.entries(parsed)) {
+          if (typeof val === 'number' && val > 0 && val !== 1 && val !== 50) {
+            cleaned[key] = val;
+          }
+        }
+        return cleaned;
+      }
+      return {};
     } catch {
       return {};
     }
@@ -55,14 +76,15 @@ export const StatsTab: React.FC = () => {
     return idx >= 0 ? idx + 1 : 1;
   }, [currentWeekDays, today]);
 
-  // Weeks remaining until exam date
+  // Exact days remaining pulled from the single source of truth (examDate in store)
+  const daysRemaining = useMemo(() => {
+    return calculateDaysRemaining(examDate);
+  }, [examDate]);
+
+  // Whole weeks remaining until the saved exam date: (days remaining ÷ 7), rounded up, minimum 1
   const weeksRemaining = useMemo(() => {
-    if (!examDate) return 10; // Sensible default if not set
-    const todayMs = new Date(today + 'T00:00:00').getTime();
-    const examMs = new Date(examDate + 'T00:00:00').getTime();
-    const diffDays = Math.ceil((examMs - todayMs) / (1000 * 60 * 60 * 24));
-    return Math.max(1, Math.ceil(diffDays / 7));
-  }, [examDate, today]);
+    return calculateWeeksRemaining(examDate);
+  }, [examDate]);
 
   // Default standard 3 subjects if user hasn't added any yet
   const displaySubjects = useMemo(() => {
@@ -77,30 +99,24 @@ export const StatsTab: React.FC = () => {
   }, [subjects]);
 
   // SECTION 1: Calculate per-subject pace cards
+  // Formula: (that subject's total parts − parts already watched) ÷ weeks remaining, rounded up to a whole number
   const subjectPaces = useMemo<SubjectPaceData[]>(() => {
     return displaySubjects.map((subj) => {
       const accentColor = getSubjectColorById(subj.id, subjects);
 
-      // 1. Total parts remaining for this subject
-      const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
-      let remainingParts = 0;
+      // 1. Live parts calculation from actual lesson parts
+      const metrics = calculateSubjectMetrics(subj, lessons);
+      const totalParts = metrics.totalPartsAdded;
+      const watchedParts = metrics.watchedPartsCount;
+      const remainingParts = metrics.partsRemaining; // totalParts - watchedParts
 
-      subjLessons.forEach((l) => {
-        if (l.parts && l.parts.length > 0) {
-          remainingParts += l.parts.filter((p) => !p.watched).length;
-        } else if (!l.done) {
-          remainingParts += 1;
-        }
-      });
+      // 2. Auto-suggested weekly target: (remaining parts) ÷ (weeks remaining), rounded up to a whole number
+      const autoTarget = calculateWeeklyTarget(totalParts, watchedParts, weeksRemaining);
 
-      // 2. Auto-suggested weekly target: (remaining parts) ÷ (weeks remaining), rounded
-      const autoTarget = Math.max(1, Math.round(remainingParts / weeksRemaining));
-
-      // Check if user has manually overridden target
-      const isOverridden = customTargets[subj.id] !== undefined || (typeof subj.targetCount === 'number' && subj.targetCount > 0);
-      const weeklyTarget = isOverridden
-        ? (customTargets[subj.id] !== undefined ? customTargets[subj.id] : (subj.targetCount || autoTarget))
-        : autoTarget;
+      // Check if user has an explicit manual override in customTargets.
+      // Do NOT treat legacy subj.targetCount as an override — autoTarget displays by default.
+      const isOverridden = typeof customTargets[subj.id] === 'number' && customTargets[subj.id] > 0;
+      const weeklyTarget = isOverridden ? customTargets[subj.id] : autoTarget;
 
       // 3. This week's actual progress: count of parts marked "Watched" for this subject within Mon–Sun week
       const watchedThisWeek = new Set<string>();
@@ -127,10 +143,12 @@ export const StatsTab: React.FC = () => {
         accentColor,
         actualProgress,
         weeklyTarget,
+        autoTarget,
         isOverridden,
         isOnTrack,
         expectedPace,
         totalRemainingParts: remainingParts,
+        totalParts,
       };
     });
   }, [displaySubjects, subjects, lessons, weeksRemaining, customTargets, currentWeekDays, dailyEntries, daysElapsedThisWeek]);
@@ -176,7 +194,6 @@ export const StatsTab: React.FC = () => {
 
   // Weekly 7-day dot grid data (Mon–Sun)
   const weekDotGrid = useMemo(() => {
-    // Days Mon - Sun with initials M, T, W, T, F, S, S
     const dayInitials = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -215,13 +232,11 @@ export const StatsTab: React.FC = () => {
 
   // Open modal to override weekly target
   const handleOpenEditTarget = (sp: SubjectPaceData) => {
-    // Calculate raw auto target for reference
-    const autoTarget = Math.max(1, Math.round(sp.totalRemainingParts / weeksRemaining));
     setEditingSubject({
       id: sp.id,
       name: sp.name,
       currentTarget: sp.weeklyTarget,
-      autoTarget,
+      autoTarget: sp.autoTarget,
     });
     setTargetInputValue(String(sp.weeklyTarget));
   };
@@ -258,9 +273,19 @@ export const StatsTab: React.FC = () => {
       {/* SECTION 1 — Per-subject pace cards (Reference: Image 3's "My Habits" grid cards) */}
       <section>
         <div className="flex items-center justify-between mb-3 px-1">
-          <h2 className="font-sans text-xs font-bold text-[#8A8A8A] uppercase tracking-wider m-0">
-            Weekly Pace
-          </h2>
+          <div>
+            <h2 className="font-sans text-xs font-bold text-[#8A8A8A] uppercase tracking-wider m-0">
+              Weekly Pace
+            </h2>
+            <div className="text-[11px] font-sans font-medium text-[#737373] mt-0.5 flex items-center gap-1.5">
+              <Calendar size={11} className="text-[#8A8A8A]" />
+              <span>
+                {examDate
+                  ? `${weeksRemaining} ${weeksRemaining === 1 ? 'week' : 'weeks'} to exam (${daysRemaining}d)`
+                  : `${weeksRemaining} weeks baseline`}
+              </span>
+            </div>
+          </div>
           <span className="text-[11px] font-sans font-medium text-[#8A8A8A]">
             Mon – Sun
           </span>
@@ -331,7 +356,7 @@ export const StatsTab: React.FC = () => {
                   type="button"
                   onClick={() => handleOpenEditTarget(sp)}
                   className="inline-flex items-center gap-1 text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer select-none group"
-                  title="Tap to override weekly target"
+                  title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
                 >
                   <span>
                     Target: <strong className="text-[#111111]">{sp.weeklyTarget}/wk</strong>
@@ -350,7 +375,7 @@ export const StatsTab: React.FC = () => {
                     type="button"
                     onClick={() => handleResetTarget(sp.id)}
                     className="text-[10px] text-[#8A8A8A] hover:text-[#111111] underline cursor-pointer select-none"
-                    title="Reset to auto-calculated target"
+                    title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
                   >
                     Reset
                   </button>
@@ -485,7 +510,7 @@ export const StatsTab: React.FC = () => {
                 Subject: <strong className="text-[#111111]">{editingSubject.name}</strong>
               </div>
               <div className="text-[11px] font-sans text-[#8A8A8A]">
-                Auto-calculated suggestion: <strong>{editingSubject.autoTarget} parts/week</strong> based on remaining parts until exam.
+                Auto-calculated suggestion: <strong>{editingSubject.autoTarget} parts/week</strong> based on remaining parts until exam ({weeksRemaining}w).
               </div>
             </div>
 
@@ -529,3 +554,4 @@ export const StatsTab: React.FC = () => {
     </div>
   );
 };
+
