@@ -165,9 +165,9 @@ export const StatsTab: React.FC = () => {
     return subjectPaces.reduce((sum, sp) => sum + sp.weeklyTarget, 0);
   }, [subjectPaces]);
 
-  // That day's share of the weekly target (minimum 1)
+  // That day's share of the weekly target: (weekly target ÷ 7)
   const dailyTargetShare = useMemo(() => {
-    return Math.max(1, Math.round(totalWeeklyTarget / 7));
+    return totalWeeklyTarget > 0 ? totalWeeklyTarget / 7 : 1;
   }, [totalWeeklyTarget]);
 
   // Time studied this week: Sum the duration of every task in Calendar/Agenda marked as completed
@@ -216,7 +216,7 @@ export const StatsTab: React.FC = () => {
   }, [dailyEntries, today]);
 
   // Weekly 7-day ring progress data (Mon–Sun)
-  // Each ring fills proportionally based on that day's parts completed vs that day's share of the weekly target
+  // Each ring fills proportionally based on: (parts completed that day) ÷ (that day's share of the weekly target, i.e. weekly target ÷ 7)
   const weekRingsData = useMemo(() => {
     const dayInitials = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -228,9 +228,11 @@ export const StatsTab: React.FC = () => {
         watchedCount = entry.subjects.filter((s) => s.studied).length;
       }
 
-      // Percentage: that day's parts completed vs that day's share of weekly target
-      const percentage = Math.min(100, Math.round((watchedCount / dailyTargetShare) * 100));
-      const isTargetMet = percentage >= 100;
+      // Proportional fill calculation:
+      const ratio = dailyTargetShare > 0 ? watchedCount / dailyTargetShare : 0;
+      const percentage = Math.min(100, Math.round(ratio * 100));
+      // Ring reached 100% fill (target met or exceeded for that day)
+      const isTargetMet = watchedCount > 0 && ratio >= 1.0;
 
       return {
         date: dateStr,
@@ -331,7 +333,7 @@ export const StatsTab: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 pb-28 pt-1">
       {/* SECTION 1 — Per-subject pace cards (Reference: Image 3's "My Habits" grid cards) */}
-      <section>
+      <section className="overflow-hidden">
         <div className="flex items-center justify-between mb-3 px-1">
           <div>
             <h2 className="font-sans text-xs font-bold text-[#8A8A8A] uppercase tracking-wider m-0">
@@ -356,7 +358,7 @@ export const StatsTab: React.FC = () => {
           {subjectPaces.map((sp) => (
             <div
               key={sp.id}
-              className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-4.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:border-[#CCCCCC] transition-all flex flex-col justify-between min-h-[148px]"
+              className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-4.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:border-[#CCCCCC] transition-all flex flex-col justify-between min-h-[148px] overflow-hidden"
             >
               {/* Top row: Subject Icon/Badge in top-left + On-track/behind indicator in corner */}
               <div className="flex items-center justify-between gap-2">
@@ -446,7 +448,7 @@ export const StatsTab: React.FC = () => {
         </div>
       </section>
 
-      {/* SECTION 2 — Weekly consistency (Reference: Image 3 "Today's Focus" + Image 2 dot-grid pattern) */}
+      {/* SECTION 2 — Weekly consistency: Split into 3 standalone cards matching app style */}
       <section>
         <div className="flex items-center justify-between mb-3 px-1">
           <h2 className="font-sans text-xs font-bold text-[#8A8A8A] uppercase tracking-wider m-0">
@@ -457,48 +459,49 @@ export const StatsTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Consistency Card */}
-        <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
-          {/* Top row: Current Streak + This week's total */}
-          <div className="flex items-center justify-between gap-4">
-            {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                <Flame size={13} className="text-[#111111]" />
-                <span>Current Streak</span>
+        <div className="flex flex-col gap-3 sm:gap-3.5">
+          {/* Card 1: Streak and Weekly Total */}
+          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-between gap-4">
+              {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                  <Flame size={13} className="text-[#111111]" />
+                  <span>Current Streak</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                    {currentStreak}
+                  </span>
+                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                    {currentStreak === 1 ? 'day' : 'days'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
-                  {currentStreak}
-                </span>
-                <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
-                  {currentStreak === 1 ? 'day' : 'days'}
-                </span>
-              </div>
-            </div>
 
-            {/* Subtle vertical separator */}
-            <div className="w-[1px] h-11 bg-[#EAEAEA] flex-shrink-0" />
+              {/* Subtle vertical separator */}
+              <div className="w-[1px] h-10 bg-[#EAEAEA] flex-shrink-0" />
 
-            {/* This week's total (sum of all three subjects' actual progress from Section 1) */}
-            <div className="text-right">
-              <div className="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                <BookOpen size={13} className="text-[#111111]" />
-                <span>This Week's Total</span>
-              </div>
-              <div className="flex items-baseline justify-end gap-1.5">
-                <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
-                  {weeklyTotalWatched}
-                </span>
-                <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
-                  {weeklyTotalWatched === 1 ? 'part' : 'parts'}
-                </span>
+              {/* This week's total (sum of all subjects' actual progress from Section 1) */}
+              <div className="text-right">
+                <div className="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
+                  <BookOpen size={13} className="text-[#111111]" />
+                  <span>This Week's Total</span>
+                </div>
+                <div className="flex items-baseline justify-end gap-1.5">
+                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                    {weeklyTotalWatched}
+                  </span>
+                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                    {weeklyTotalWatched === 1 ? 'part' : 'parts'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Middle section: Daily Activity Rings (Reference: "Your weekly goals" card) */}
-          <div className="pt-5 border-t border-[#F0F0F0]">
+          {/* Card 2: Daily Activity Rings with Proportional Fill & Distinct Today vs Completed */}
+          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
             <div className="flex items-center justify-between mb-3 px-0.5">
               <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
                 Daily Activity
@@ -522,66 +525,60 @@ export const StatsTab: React.FC = () => {
               {/* Right: Horizontal row of concentric progress rings (M T W T F S S) */}
               <div className="flex-1 max-w-[245px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-center">
                 {weekRingsData.map((day) => {
-                  const size = 28;
-                  const strokeWidth = 2.8;
+                  const size = 26;
+                  const strokeWidth = 2.6;
                   const center = size / 2;
-                  const radius = 10.5;
+                  const radius = 9.8;
                   const circumference = 2 * Math.PI * radius;
                   const offset = circumference - (day.percentage / 100) * circumference;
 
                   return (
                     <div key={day.date} className="flex flex-col items-center gap-1.5 select-none">
-                      {/* Ring container with today's outer highlight ring */}
+                      {/* Outer container: "Today" gets a thin accent-colored outer ring/border regardless of completion */}
                       <div
-                        className={`relative w-[28px] h-[28px] rounded-full flex items-center justify-center transition-all ${
-                          day.isToday ? 'ring-2 ring-[#111111] ring-offset-2' : ''
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                          day.isToday ? 'border border-[#111111]' : 'border border-transparent'
                         }`}
-                        title={`${day.fullName}: ${day.watchedCount} / ${dailyTargetShare} parts (${day.percentage}%)`}
+                        title={`${day.fullName}: ${day.watchedCount} / ${typeof dailyTargetShare === 'number' ? dailyTargetShare.toFixed(1) : dailyTargetShare} parts (${day.percentage}%)${day.isToday ? ' · Today' : ''}`}
                       >
-                        <svg
-                          width={size}
-                          height={size}
-                          viewBox={`0 0 ${size} ${size}`}
-                          className="w-full h-full transform -rotate-90"
-                        >
-                          {/* Inner subtle concentric guideline */}
-                          <circle
-                            cx={center}
-                            cy={center}
-                            r={radius - 3.5}
-                            fill="none"
-                            stroke="#F5F5F5"
-                            strokeWidth="1"
-                          />
-                          {/* Background track circle */}
-                          <circle
-                            cx={center}
-                            cy={center}
-                            r={radius}
-                            fill="none"
-                            stroke="#EAEAEA"
-                            strokeWidth={strokeWidth}
-                          />
-                          {/* Foreground progress ring using app's accent fill */}
-                          {day.percentage > 0 && (
-                            <circle
-                              cx={center}
-                              cy={center}
-                              r={radius}
-                              fill="none"
-                              stroke="#111111"
-                              strokeWidth={strokeWidth}
-                              strokeDasharray={circumference}
-                              strokeDashoffset={offset}
-                              strokeLinecap="round"
-                            />
-                          )}
-                        </svg>
-
-                        {/* Checkmark icon in center once 100% target met */}
-                        {day.isTargetMet && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <Check size={11} strokeWidth={3} className="text-[#111111]" />
+                        {day.isTargetMet ? (
+                          /* Completed: The ring itself fully filled with the accent color + checkmark overlay */
+                          <div className="w-[24px] h-[24px] rounded-full bg-[#111111] flex items-center justify-center shadow-2xs">
+                            <Check size={13} strokeWidth={3} className="text-[#FFFFFF]" />
+                          </div>
+                        ) : (
+                          /* Partial/Zero fill: Circular progress arc using accent color on light track */
+                          <div className="relative w-[24px] h-[24px] flex items-center justify-center">
+                            <svg
+                              width={size}
+                              height={size}
+                              viewBox={`0 0 ${size} ${size}`}
+                              className="w-full h-full -rotate-90"
+                            >
+                              {/* Background track circle */}
+                              <circle
+                                cx={center}
+                                cy={center}
+                                r={radius}
+                                fill="none"
+                                stroke="#EAEAEA"
+                                strokeWidth={strokeWidth}
+                              />
+                              {/* Foreground progress arc */}
+                              {day.percentage > 0 && (
+                                <circle
+                                  cx={center}
+                                  cy={center}
+                                  r={radius}
+                                  fill="none"
+                                  stroke="#111111"
+                                  strokeWidth={strokeWidth}
+                                  strokeDasharray={circumference}
+                                  strokeDashoffset={offset}
+                                  strokeLinecap="round"
+                                />
+                              )}
+                            </svg>
                           </div>
                         )}
                       </div>
@@ -601,8 +598,8 @@ export const StatsTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom section: Time Studied with Bar Chart (Reference: "Sleep duration" card) */}
-          <div className="pt-5 border-t border-[#F0F0F0]">
+          {/* Card 3: Time Studied with Headline Stat + Minimal Bar Chart */}
+          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
             <div className="flex items-center justify-between mb-3 px-0.5">
               <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
                 Time Studied
@@ -613,7 +610,7 @@ export const StatsTab: React.FC = () => {
             </div>
 
             <div className="flex items-end justify-between gap-3 sm:gap-4">
-              {/* Left headline stat (Reference: "9h 27min Achieved" pattern) */}
+              {/* Left headline stat (Reference: "Sleep duration" headline pattern) */}
               <div className="flex-shrink-0 min-w-[70px] pb-1">
                 <div className="flex items-baseline gap-1">
                   <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">

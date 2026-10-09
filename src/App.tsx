@@ -14,7 +14,7 @@ function AppContent() {
       <div className="max-w-md mx-auto w-full h-full relative bg-[#FAFAFA] border-x border-[#E0E0E0] flex flex-col overflow-hidden">
         {/* Header - only for stats and revisit; Calendar and Lessons render their own headers */}
         {tab !== 'calendar' && tab !== 'lessons' && (
-          <header className="pt-8 pb-3 px-6 relative z-10 flex-shrink-0">
+          <header className="pt-8 pb-3 px-6 relative z-20 flex-shrink-0 bg-[#FAFAFA]">
             <div className="flex justify-between items-center">
               <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight m-0">
                 {tab === 'stats' && 'Stats'}
@@ -29,7 +29,7 @@ function AppContent() {
           className={`flex-1 min-h-0 relative flex flex-col ${
             tab === 'calendar'
               ? 'overflow-hidden px-4 pt-5'
-              : 'overflow-y-auto px-4 pb-44 scrollbar-hide' + (tab === 'lessons' ? ' pt-5' : '')
+              : 'overflow-y-auto px-4 pb-44 scrollbar-hide' + (tab === 'lessons' ? ' pt-5' : ' pt-1.5')
           }`}
         >
           {tab === 'calendar' && <CalendarTab onNavigateToRevisit={() => setTab('revisit')} />}
