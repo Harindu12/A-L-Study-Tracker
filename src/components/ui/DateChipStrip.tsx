@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { mondayOf, addDays } from '../../utils';
+import { mondayOf, addDays, parseLocalDate } from '../../utils';
 
 interface DateChipStripProps {
   currentDate: string;
@@ -17,7 +17,7 @@ export const DateChipStrip: React.FC<DateChipStripProps> = ({ currentDate, onDat
     <div className="flex gap-1.5 justify-between items-center py-2 px-0.5" ref={scrollRef}>
       {days.map((d) => {
         const isSelected = d === currentDate;
-        const dateObj = new Date(d);
+        const dateObj = parseLocalDate(d);
         const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
         const dayNum = dateObj.getDate();
         

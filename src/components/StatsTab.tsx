@@ -636,25 +636,32 @@ export const StatsTab: React.FC = () => {
                           <div
                             style={{ height: `${day.heightPercent}%` }}
                             className="w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
-                            title={`${day.fullName}: ${day.minutes} min studied`}
+                            title={`${day.fullName}: ${day.minutes} min studied${day.isToday ? ' · Today' : ''}`}
                           />
                         ) : (
                           /* Stub/baseline mark for 0 min */
                           <div
                             className="w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D4D4D4]"
-                            title={`${day.fullName}: 0 min studied`}
+                            title={`${day.fullName}: 0 min studied${day.isToday ? ' · Today' : ''}`}
                           />
                         )}
                       </div>
 
                       {/* Day initial beneath bar */}
-                      <span
-                        className={`text-xs font-sans font-bold leading-none ${
-                          day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
-                        }`}
-                      >
-                        {day.initial}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span
+                          className={`text-xs font-sans font-bold leading-none ${
+                            day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
+                          }`}
+                        >
+                          {day.initial}
+                        </span>
+                        <span
+                          className={`w-1 h-1 rounded-full mt-1 transition-opacity ${
+                            day.isToday ? 'bg-[#111111]' : 'opacity-0'
+                          }`}
+                        />
+                      </div>
                     </div>
                   );
                 })}
