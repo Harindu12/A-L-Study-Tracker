@@ -507,7 +507,7 @@ export const StatsTab: React.FC = () => {
                 Daily Activity
               </span>
               <span className="text-[10px] font-sans text-[#8A8A8A]">
-                Ring = Today
+                Bold = Today
               </span>
             </div>
 
@@ -534,11 +534,9 @@ export const StatsTab: React.FC = () => {
 
                   return (
                     <div key={day.date} className="flex flex-col items-center gap-1.5 select-none">
-                      {/* Outer container: "Today" gets a thin accent-colored outer ring/border regardless of completion */}
+                      {/* Ring container (same style for all days, no outer ring or highlight for today) */}
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                          day.isToday ? 'border border-[#111111]' : 'border border-transparent'
-                        }`}
+                        className="w-8 h-8 flex items-center justify-center"
                         title={`${day.fullName}: ${day.watchedCount} / ${typeof dailyTargetShare === 'number' ? dailyTargetShare.toFixed(1) : dailyTargetShare} parts (${day.percentage}%)${day.isToday ? ' · Today' : ''}`}
                       >
                         {day.isTargetMet ? (
@@ -583,10 +581,10 @@ export const StatsTab: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Day initial beneath ring */}
+                      {/* Day initial beneath ring (Bold for today, normal/regular for others) */}
                       <span
-                        className={`text-xs font-sans font-bold leading-none ${
-                          day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
+                        className={`text-xs font-sans leading-none ${
+                          day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#8A8A8A]'
                         }`}
                       >
                         {day.initial}
@@ -647,21 +645,14 @@ export const StatsTab: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Day initial beneath bar */}
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`text-xs font-sans font-bold leading-none ${
-                            day.isToday ? 'text-[#111111] font-black' : 'text-[#8A8A8A]'
-                          }`}
-                        >
-                          {day.initial}
-                        </span>
-                        <span
-                          className={`w-1 h-1 rounded-full mt-1 transition-opacity ${
-                            day.isToday ? 'bg-[#111111]' : 'opacity-0'
-                          }`}
-                        />
-                      </div>
+                      {/* Day initial beneath bar (Bold for today, normal/regular for others) */}
+                      <span
+                        className={`text-xs font-sans leading-none ${
+                          day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#8A8A8A]'
+                        }`}
+                      >
+                        {day.initial}
+                      </span>
                     </div>
                   );
                 })}
