@@ -9,7 +9,7 @@ import {
   calculateSubjectMetrics,
 } from '../utils/subjectMetrics';
 import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar, Clock } from 'lucide-react';
-import { formatStudiedTime, calculateWeeklyStudiedMinutes, calculateDailyStudiedMinutes } from '../utils/duration';
+import { formatStudiedTime, formatBarStudyTime, calculateWeeklyStudiedMinutes, calculateDailyStudiedMinutes } from '../utils/duration';
 
 const CUSTOM_TARGETS_KEY = 'study_tracker_custom_weekly_targets';
 
@@ -271,6 +271,7 @@ export const StatsTab: React.FC = () => {
         initial: dayInitials[idx],
         fullName: fullDayNames[idx],
         minutes,
+        label: formatBarStudyTime(minutes),
         heightPercent,
         isToday: dateStr === today,
       };
@@ -607,7 +608,7 @@ export const StatsTab: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-end justify-between gap-3 sm:gap-4">
+            <div className="flex items-end justify-between gap-3 sm:gap-4 pt-3.5">
               {/* Left headline stat (Reference: "Sleep duration" headline pattern) */}
               <div className="flex-shrink-0 min-w-[70px] pb-1">
                 <div className="flex items-baseline gap-1">
@@ -633,15 +634,25 @@ export const StatsTab: React.FC = () => {
                         {day.minutes > 0 ? (
                           <div
                             style={{ height: `${day.heightPercent}%` }}
-                            className="w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
+                            className="relative w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
                             title={`${day.fullName}: ${day.minutes} min studied${day.isToday ? ' · Today' : ''}`}
-                          />
+                          >
+                            {/* Value label directly above bar peak */}
+                            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#8A8A8A] leading-none whitespace-nowrap pointer-events-none">
+                              {day.label}
+                            </span>
+                          </div>
                         ) : (
                           /* Stub/baseline mark for 0 min */
                           <div
-                            className="w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D4D4D4]"
+                            className="relative w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D4D4D4]"
                             title={`${day.fullName}: 0 min studied${day.isToday ? ' · Today' : ''}`}
-                          />
+                          >
+                            {/* Value label directly above baseline stub */}
+                            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#8A8A8A] leading-none whitespace-nowrap pointer-events-none">
+                              {day.label}
+                            </span>
+                          </div>
                         )}
                       </div>
 

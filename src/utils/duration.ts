@@ -70,6 +70,24 @@ export function formatStudiedTime(totalMinutes: number): { value: string; unit: 
 }
 
 /**
+ * Formats daily study minutes for the bar chart label:
+ * - Under 60 min: "Xm" (e.g. "45m")
+ * - 60 min or more: "Xh Ym" (e.g. "1h 10m"), or "Xh" if zero leftover minutes (e.g. "2h")
+ * - Zero minutes: "0m"
+ */
+export function formatBarStudyTime(minutes: number): string {
+  const rounded = Math.round(minutes || 0);
+  if (rounded <= 0) return '0m';
+  if (rounded < 60) return `${rounded}m`;
+  const hours = Math.floor(rounded / 60);
+  const remainingMins = rounded % 60;
+  if (remainingMins === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${remainingMins}m`;
+}
+
+/**
  * Calculates total minutes studied within a list of dates (current Mon–Sun week)
  * by summing duration of every task in Calendar/Agenda marked as completed ("Watched" checked).
  */
