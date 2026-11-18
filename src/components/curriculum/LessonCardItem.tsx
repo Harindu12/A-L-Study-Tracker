@@ -2,7 +2,13 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Lesson, LessonPart } from '../../types';
 import { useStore } from '../../store';
 import { useNavigation } from '../../navigation';
-import { parseTelegramPost, isValidHttpUrl, convertTelegramHtmlToText } from '../../utils/telegramParser';
+import {
+  parseTelegramPost,
+  isValidHttpUrl,
+  convertTelegramHtmlToText,
+  extractTextFromRichElement,
+  extractHttpUrls,
+} from '../../utils/telegramParser';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -49,9 +55,12 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   // Telegram Import modal state (driven by NavigationContext overlay for Android back button support)
   const isTelegramModalOpen =
     activeOverlay === 'curriculum-telegram-import' && overlayData?.lessonId === lesson.id;
+  const richPasteBoxRef = useRef<HTMLDivElement | null>(null);
   const [telegramText, setTelegramText] = useState('');
   const [removedPreviewIds, setRemovedPreviewIds] = useState<Record<string, boolean>>({});
   const [editedLinks, setEditedLinks] = useState<Record<string, string>>({});
+  const [showBulkLinks, setShowBulkLinks] = useState(false);
+  const [bulkLinksText, setBulkLinksText] = useState('');
   const [importFeedback, setImportFeedback] = useState<{ added: number; skipped: number } | null>(null);
 
   useEffect(() => {
@@ -59,6 +68,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       setTelegramText('');
       setRemovedPreviewIds({});
       setEditedLinks({});
+      setShowBulkLinks(false);
+      setBulkLinksText('');
+      window.requestAnimationFrame(() => {
+        if (richPasteBoxRef.current) {
+          richPasteBoxRef.current.textContent = '';
+          richPasteBoxRef.current.focus();
+        }
+      });
     }
   }, [isTelegramModalOpen]);
 
@@ -265,19 +282,26 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
   // Telegram import live parsing & preview state
   const rawParsedTelegramParts = useMemo(() => parseTelegramPost(telegramText), [telegramText]);
+  const bulkLinksList = useMemo(() => extractHttpUrls(bulkLinksText), [bulkLinksText]);
+
+  const visibleRawTelegramParts = useMemo(
+    () => rawParsedTelegramParts.filter((item) => !removedPreviewIds[item.id]),
+    [rawParsedTelegramParts, removedPreviewIds]
+  );
+
   const previewTelegramParts = useMemo(
     () =>
-      rawParsedTelegramParts
-        .filter((item) => !removedPreviewIds[item.id])
-        .map((item) => {
-          const rawLink = editedLinks[item.id] !== undefined ? editedLinks[item.id] : item.videoLink;
-          return {
-            ...item,
-            rawLink,
-            effectiveVideoLink: isValidHttpUrl(rawLink) ? rawLink.trim() : '',
-          };
-        }),
-    [rawParsedTelegramParts, removedPreviewIds, editedLinks]
+      visibleRawTelegramParts.map((item, idx) => {
+        const bulkLink = bulkLinksList[idx] || '';
+        const baseLink = bulkLink || item.videoLink;
+        const rawLink = editedLinks[item.id] !== undefined ? editedLinks[item.id] : baseLink;
+        return {
+          ...item,
+          rawLink,
+          effectiveVideoLink: isValidHttpUrl(rawLink) ? rawLink.trim() : '',
+        };
+      }),
+    [visibleRawTelegramParts, bulkLinksList, editedLinks]
   );
 
   const previewLinksCount = useMemo(
@@ -290,32 +314,79 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     [parts]
   );
 
-  const handleTelegramPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const placeCaretAtEnd = (el: HTMLElement) => {
+    try {
+      const selection = window.getSelection();
+      if (!selection) return;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } catch {
+      // Ignore selection errors
+    }
+  };
+
+  const handleTelegramRichPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     try {
       const html = e.clipboardData?.getData('text/html');
-      if (!html) return; // Fall back to default plain-text paste
+      if (!html) return; // Fall back to native paste (contentEditable onInput will still inspect pasted DOM)
 
       const converted = convertTelegramHtmlToText(html);
-      if (!converted) return; // Fall back to default plain-text paste
+      if (!converted) return;
 
       e.preventDefault();
-      const target = e.currentTarget;
-      const start = target.selectionStart ?? telegramText.length;
-      const end = target.selectionEnd ?? telegramText.length;
-      const nextValue = telegramText.slice(0, start) + converted + telegramText.slice(end);
+      const el = e.currentTarget;
+      const selection = window.getSelection();
 
-      setTelegramText(nextValue);
+      if (selection && selection.rangeCount > 0 && el.contains(selection.anchorNode)) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(converted);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        el.textContent = (el.textContent || '') + converted;
+        placeCaretAtEnd(el);
+      }
+
+      const normalized = extractTextFromRichElement(el);
+      setTelegramText(normalized);
       setRemovedPreviewIds({});
       setEditedLinks({});
-
-      const nextCursor = start + converted.length;
-      window.requestAnimationFrame(() => {
-        target.selectionStart = nextCursor;
-        target.selectionEnd = nextCursor;
-      });
     } catch {
-      // Fall back to default plain-text paste with no error
+      // Fall back to default paste behavior without error
     }
+  };
+
+  const handleTelegramRichInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const hasRichAnchor = Boolean(el.querySelector('a[href]'));
+    const extracted = extractTextFromRichElement(el);
+
+    // If Android/browser natively pasted <a> tags into contentEditable, normalize into visible plain text + URLs
+    if (hasRichAnchor) {
+      el.textContent = extracted;
+      placeCaretAtEnd(el);
+    }
+
+    setTelegramText(extracted);
+    setRemovedPreviewIds({});
+    setEditedLinks({});
+  };
+
+  const handleClearRichPasteBox = () => {
+    if (richPasteBoxRef.current) {
+      richPasteBoxRef.current.textContent = '';
+      richPasteBoxRef.current.focus();
+    }
+    setTelegramText('');
+    setRemovedPreviewIds({});
+    setEditedLinks({});
   };
 
   const handleTelegramImport = (e: React.FormEvent) => {
@@ -1073,37 +1144,67 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleTelegramImport} noValidate className="flex flex-col gap-3.5 flex-1 min-h-0">
-              {/* Multi-line Paste Textarea */}
+            <form onSubmit={handleTelegramImport} noValidate className="flex flex-col gap-3 flex-1 min-h-0">
+              {/* Rich Paste Box (contentEditable so mobile browsers & Android preserve rich links when available) */}
               <div className="flex-shrink-0">
-                <label
-                  htmlFor={`telegram-paste-${lesson.id}`}
-                  className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5"
-                >
-                  Paste the Telegram post here
-                </label>
-                <textarea
-                  id={`telegram-paste-${lesson.id}`}
-                  rows={5}
-                  value={telegramText}
-                  onPaste={handleTelegramPaste}
-                  onChange={(e) => {
-                    setTelegramText(e.target.value);
-                    setRemovedPreviewIds({});
-                    setEditedLinks({});
-                  }}
-                  placeholder={'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
-                  className="w-full font-sans text-xs sm:text-sm p-3 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none resize-y min-h-[108px] max-h-[180px]"
-                  autoFocus
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    htmlFor={`telegram-paste-${lesson.id}`}
+                    className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider m-0"
+                  >
+                    Paste the Telegram post here
+                  </label>
+                  {telegramText.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearRichPasteBox}
+                      className="text-[11px] font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  {telegramText.length === 0 && (
+                    <div className="pointer-events-none absolute inset-0 p-3 font-sans text-xs sm:text-sm text-[#8A8A8A]/70 whitespace-pre-wrap select-none overflow-hidden">
+                      {'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
+                    </div>
+                  )}
+                  <div
+                    ref={richPasteBoxRef}
+                    id={`telegram-paste-${lesson.id}`}
+                    contentEditable
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-label="Paste the Telegram post here"
+                    suppressContentEditableWarning
+                    onPaste={handleTelegramRichPaste}
+                    onInput={handleTelegramRichInput}
+                    className="w-full font-sans text-xs sm:text-sm p-3 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none min-h-[100px] max-h-[160px] overflow-y-auto whitespace-pre-wrap break-words transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Live Preview Area */}
               <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex items-center justify-between gap-2 mb-1.5 flex-shrink-0">
-                  <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
-                    Preview
-                  </span>
+                <div className="flex items-center justify-between gap-2 mb-1.5 flex-shrink-0 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
+                      Preview
+                    </span>
+                    {previewTelegramParts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowBulkLinks((prev) => !prev)}
+                        className={`text-[11px] font-sans font-semibold underline-offset-2 hover:underline cursor-pointer transition-colors ${
+                          showBulkLinks ? 'text-[#111111] underline' : 'text-[#525252] hover:text-[#111111]'
+                        }`}
+                      >
+                        {showBulkLinks ? 'Hide bulk links' : 'Paste links in bulk'}
+                      </button>
+                    )}
+                  </div>
                   {telegramText.trim().length > 0 && (
                     <span className="text-xs font-sans font-semibold text-[#111111] text-right">
                       {previewTelegramParts.length}{' '}
@@ -1113,6 +1214,48 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     </span>
                   )}
                 </div>
+
+                {/* Bulk Link Pasting Panel */}
+                {showBulkLinks && previewTelegramParts.length > 0 && (
+                  <div className="mb-2 p-2.5 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] flex-shrink-0 shadow-2xs animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label
+                        htmlFor={`telegram-bulk-links-${lesson.id}`}
+                        className="text-[11px] font-sans font-bold text-[#111111] uppercase tracking-wider m-0"
+                      >
+                        Paste video links (one per line)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {bulkLinksList.length > 0 && (
+                          <span className="text-[11px] font-sans text-[#8A8A8A]">
+                            {Math.min(bulkLinksList.length, previewTelegramParts.length)} of{' '}
+                            {previewTelegramParts.length} matched
+                            {bulkLinksList.length > previewTelegramParts.length
+                              ? ` (${bulkLinksList.length - previewTelegramParts.length} extra ignored)`
+                              : ''}
+                          </span>
+                        )}
+                        {bulkLinksText.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setBulkLinksText('')}
+                            className="text-[11px] font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <textarea
+                      id={`telegram-bulk-links-${lesson.id}`}
+                      rows={3}
+                      value={bulkLinksText}
+                      onChange={(e) => setBulkLinksText(e.target.value)}
+                      placeholder={'https://youtu.be/...\nhttps://youtu.be/...'}
+                      className="w-full font-sans text-xs p-2.5 rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none resize-y min-h-[68px] max-h-[115px]"
+                    />
+                  </div>
+                )}
 
                 <div className="flex-1 min-h-[84px] max-h-[240px] overflow-y-auto rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] p-2.5">
                   {telegramText.trim().length === 0 ? (
@@ -1143,8 +1286,19 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   ) : (
                     <div className="flex flex-col gap-1.5">
                       {previewLinksCount === 0 && (
-                        <div className="rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] px-3 py-2 text-[11px] font-sans text-[#8A8A8A] leading-snug">
-                          No video links found in this paste. Try copying the whole post again, or add links by hand below.
+                        <div className="rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] px-3 py-2 text-[11px] font-sans text-[#8A8A8A] leading-snug flex flex-col gap-1">
+                          <span>
+                            No video links found in this paste. Telegram Android&apos;s Copy button strips hidden links — paste all links in bulk or add them below.
+                          </span>
+                          {!showBulkLinks && (
+                            <button
+                              type="button"
+                              onClick={() => setShowBulkLinks(true)}
+                              className="self-start text-[11px] font-sans font-bold text-[#111111] underline underline-offset-2 hover:text-[#262626] cursor-pointer"
+                            >
+                              Paste links in bulk →
+                            </button>
+                          )}
                         </div>
                       )}
 

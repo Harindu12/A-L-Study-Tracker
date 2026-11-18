@@ -78,6 +78,79 @@ function isBlockNode(node: Node): boolean {
   return node.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has((node as Element).tagName.toUpperCase());
 }
 
+function domRootToTelegramText(root: Node): string {
+  const walk = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return (node.textContent || '').replace(/\r\n/g, '\n').replace(/\u00A0/g, ' ');
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return '';
+    }
+
+    const el = node as Element;
+    const tag = el.tagName.toUpperCase();
+
+    if (SKIP_TAGS.has(tag)) {
+      return '';
+    }
+
+    if (tag === 'BR') {
+      return '\n';
+    }
+
+    if (tag === 'IMG') {
+      return el.getAttribute('alt') || '';
+    }
+
+    let inner = '';
+    for (let i = 0; i < el.childNodes.length; i++) {
+      const child = el.childNodes[i];
+      const childText = walk(child);
+      if (!childText) continue;
+
+      // Ignore source-indentation whitespace nodes sitting between block elements
+      if (child.nodeType === Node.TEXT_NODE && /^[ \t]*\n[ \t\n]*$/.test(childText)) {
+        const prevIsBlock = i > 0 && isBlockNode(el.childNodes[i - 1]);
+        const nextIsBlock = i < el.childNodes.length - 1 && isBlockNode(el.childNodes[i + 1]);
+        if (prevIsBlock || nextIsBlock || tag === 'BODY') {
+          continue;
+        }
+      }
+
+      if (isBlockNode(child)) {
+        if (inner.length > 0 && !inner.endsWith('\n')) {
+          inner += '\n';
+        }
+        inner += childText;
+        if (!inner.endsWith('\n')) {
+          inner += '\n';
+        }
+      } else {
+        inner += childText;
+      }
+    }
+
+    if (tag === 'A') {
+      const href = (el.getAttribute('href') || '').trim();
+      if (isValidHttpUrl(href) && inner.trim() && !inner.includes(href)) {
+        const match = inner.match(/^([\s\S]*?)(\n*)$/);
+        const body = (match ? match[1] : inner).replace(/[ \t]+$/, '');
+        const trailingNewlines = match ? match[2] : '';
+        return `${body} ${href}${trailingNewlines}`;
+      }
+    }
+
+    return inner;
+  };
+
+  const raw = walk(root);
+  return raw
+    .replace(/^\n+/, '')
+    .replace(/\n+$/, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
 /**
  * Converts clipboard HTML (e.g. rich text copied from Telegram) to plain text,
  * keeping visible text and line breaks intact and appending ` <url>` right after
@@ -93,80 +166,38 @@ export function convertTelegramHtmlToText(html: string): string {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     if (!doc || !doc.body) return '';
-
-    const walk = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return (node.textContent || '').replace(/\r\n/g, '\n').replace(/\u00A0/g, ' ');
-      }
-
-      if (node.nodeType !== Node.ELEMENT_NODE) {
-        return '';
-      }
-
-      const el = node as Element;
-      const tag = el.tagName.toUpperCase();
-
-      if (SKIP_TAGS.has(tag)) {
-        return '';
-      }
-
-      if (tag === 'BR') {
-        return '\n';
-      }
-
-      if (tag === 'IMG') {
-        return el.getAttribute('alt') || '';
-      }
-
-      let inner = '';
-      for (let i = 0; i < el.childNodes.length; i++) {
-        const child = el.childNodes[i];
-        const childText = walk(child);
-        if (!childText) continue;
-
-        // Ignore source-indentation whitespace nodes sitting between block elements
-        if (child.nodeType === Node.TEXT_NODE && /^[ \t]*\n[ \t\n]*$/.test(childText)) {
-          const prevIsBlock = i > 0 && isBlockNode(el.childNodes[i - 1]);
-          const nextIsBlock = i < el.childNodes.length - 1 && isBlockNode(el.childNodes[i + 1]);
-          if (prevIsBlock || nextIsBlock || tag === 'BODY') {
-            continue;
-          }
-        }
-
-        if (isBlockNode(child)) {
-          if (inner.length > 0 && !inner.endsWith('\n')) {
-            inner += '\n';
-          }
-          inner += childText;
-          if (!inner.endsWith('\n')) {
-            inner += '\n';
-          }
-        } else {
-          inner += childText;
-        }
-      }
-
-      if (tag === 'A') {
-        const href = (el.getAttribute('href') || '').trim();
-        if (isValidHttpUrl(href) && inner.trim() && !inner.includes(href)) {
-          const match = inner.match(/^([\s\S]*?)(\n*)$/);
-          const body = (match ? match[1] : inner).replace(/[ \t]+$/, '');
-          const trailingNewlines = match ? match[2] : '';
-          return `${body} ${href}${trailingNewlines}`;
-        }
-      }
-
-      return inner;
-    };
-
-    const raw = walk(doc.body);
-    return raw
-      .replace(/^\n+/, '')
-      .replace(/\n+$/, '')
-      .replace(/\n{3,}/g, '\n\n');
+    return domRootToTelegramText(doc.body);
   } catch {
     return '';
   }
+}
+
+/**
+ * Extracts normalized plain text (preserving line breaks and converting any native
+ * `<a href="http(s)://...">` elements into inline URLs) from a live contentEditable element.
+ */
+export function extractTextFromRichElement(el: HTMLElement): string {
+  return domRootToTelegramText(el);
+}
+
+/**
+ * Extracts all valid http:// or https:// URLs from a multi-line bulk links input,
+ * preserving their order of appearance.
+ */
+export function extractHttpUrls(input: string): string[] {
+  if (!input || !input.trim()) return [];
+  const matches = input.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/gi);
+  if (!matches) return [];
+
+  return matches
+    .map((raw) => {
+      let url = raw.trim();
+      while (url.endsWith(')') && (url.match(/\(/g)?.length || 0) < (url.match(/\)/g)?.length || 0)) {
+        url = url.slice(0, -1);
+      }
+      return url.replace(/[.,;!?]+$/, '');
+    })
+    .filter((url) => isValidHttpUrl(url));
 }
 
 /**
