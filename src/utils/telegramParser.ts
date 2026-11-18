@@ -53,6 +53,122 @@ export function isValidHttpUrl(url?: string): boolean {
   return /^https?:\/\/\S+$/i.test(url.trim());
 }
 
+const BLOCK_TAGS = new Set([
+  'DIV',
+  'P',
+  'LI',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'BLOCKQUOTE',
+  'PRE',
+  'TR',
+  'SECTION',
+  'ARTICLE',
+  'HEADER',
+  'FOOTER',
+]);
+
+const SKIP_TAGS = new Set(['STYLE', 'SCRIPT', 'HEAD', 'META', 'LINK', 'NOSCRIPT', 'TITLE']);
+
+function isBlockNode(node: Node): boolean {
+  return node.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has((node as Element).tagName.toUpperCase());
+}
+
+/**
+ * Converts clipboard HTML (e.g. rich text copied from Telegram) to plain text,
+ * keeping visible text and line breaks intact and appending ` <url>` right after
+ * each `<a href="http(s)://...">` link's visible text on the same line.
+ * Returns empty string if HTML is empty or parsing fails.
+ */
+export function convertTelegramHtmlToText(html: string): string {
+  if (!html || !html.trim() || typeof DOMParser === 'undefined') {
+    return '';
+  }
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    if (!doc || !doc.body) return '';
+
+    const walk = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return (node.textContent || '').replace(/\r\n/g, '\n').replace(/\u00A0/g, ' ');
+      }
+
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        return '';
+      }
+
+      const el = node as Element;
+      const tag = el.tagName.toUpperCase();
+
+      if (SKIP_TAGS.has(tag)) {
+        return '';
+      }
+
+      if (tag === 'BR') {
+        return '\n';
+      }
+
+      if (tag === 'IMG') {
+        return el.getAttribute('alt') || '';
+      }
+
+      let inner = '';
+      for (let i = 0; i < el.childNodes.length; i++) {
+        const child = el.childNodes[i];
+        const childText = walk(child);
+        if (!childText) continue;
+
+        // Ignore source-indentation whitespace nodes sitting between block elements
+        if (child.nodeType === Node.TEXT_NODE && /^[ \t]*\n[ \t\n]*$/.test(childText)) {
+          const prevIsBlock = i > 0 && isBlockNode(el.childNodes[i - 1]);
+          const nextIsBlock = i < el.childNodes.length - 1 && isBlockNode(el.childNodes[i + 1]);
+          if (prevIsBlock || nextIsBlock || tag === 'BODY') {
+            continue;
+          }
+        }
+
+        if (isBlockNode(child)) {
+          if (inner.length > 0 && !inner.endsWith('\n')) {
+            inner += '\n';
+          }
+          inner += childText;
+          if (!inner.endsWith('\n')) {
+            inner += '\n';
+          }
+        } else {
+          inner += childText;
+        }
+      }
+
+      if (tag === 'A') {
+        const href = (el.getAttribute('href') || '').trim();
+        if (isValidHttpUrl(href) && inner.trim() && !inner.includes(href)) {
+          const match = inner.match(/^([\s\S]*?)(\n*)$/);
+          const body = (match ? match[1] : inner).replace(/[ \t]+$/, '');
+          const trailingNewlines = match ? match[2] : '';
+          return `${body} ${href}${trailingNewlines}`;
+        }
+      }
+
+      return inner;
+    };
+
+    const raw = walk(doc.body);
+    return raw
+      .replace(/^\n+/, '')
+      .replace(/\n+$/, '')
+      .replace(/\n{3,}/g, '\n\n');
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Parses a pasted Telegram post into structured lesson parts.
  * Rules:

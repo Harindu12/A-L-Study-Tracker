@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Lesson, LessonPart } from '../../types';
 import { useStore } from '../../store';
 import { useNavigation } from '../../navigation';
-import { parseTelegramPost, isValidHttpUrl } from '../../utils/telegramParser';
+import { parseTelegramPost, isValidHttpUrl, convertTelegramHtmlToText } from '../../utils/telegramParser';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -51,12 +51,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     activeOverlay === 'curriculum-telegram-import' && overlayData?.lessonId === lesson.id;
   const [telegramText, setTelegramText] = useState('');
   const [removedPreviewIds, setRemovedPreviewIds] = useState<Record<string, boolean>>({});
+  const [editedLinks, setEditedLinks] = useState<Record<string, string>>({});
   const [importFeedback, setImportFeedback] = useState<{ added: number; skipped: number } | null>(null);
 
   useEffect(() => {
     if (isTelegramModalOpen) {
       setTelegramText('');
       setRemovedPreviewIds({});
+      setEditedLinks({});
     }
   }, [isTelegramModalOpen]);
 
@@ -264,14 +266,57 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   // Telegram import live parsing & preview state
   const rawParsedTelegramParts = useMemo(() => parseTelegramPost(telegramText), [telegramText]);
   const previewTelegramParts = useMemo(
-    () => rawParsedTelegramParts.filter((item) => !removedPreviewIds[item.id]),
-    [rawParsedTelegramParts, removedPreviewIds]
+    () =>
+      rawParsedTelegramParts
+        .filter((item) => !removedPreviewIds[item.id])
+        .map((item) => {
+          const rawLink = editedLinks[item.id] !== undefined ? editedLinks[item.id] : item.videoLink;
+          return {
+            ...item,
+            rawLink,
+            effectiveVideoLink: isValidHttpUrl(rawLink) ? rawLink.trim() : '',
+          };
+        }),
+    [rawParsedTelegramParts, removedPreviewIds, editedLinks]
+  );
+
+  const previewLinksCount = useMemo(
+    () => previewTelegramParts.filter((item) => !!item.effectiveVideoLink).length,
+    [previewTelegramParts]
   );
 
   const existingPartNamesSet = useMemo(
     () => new Set(parts.map((p) => p.name.trim().toLowerCase())),
     [parts]
   );
+
+  const handleTelegramPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    try {
+      const html = e.clipboardData?.getData('text/html');
+      if (!html) return; // Fall back to default plain-text paste
+
+      const converted = convertTelegramHtmlToText(html);
+      if (!converted) return; // Fall back to default plain-text paste
+
+      e.preventDefault();
+      const target = e.currentTarget;
+      const start = target.selectionStart ?? telegramText.length;
+      const end = target.selectionEnd ?? telegramText.length;
+      const nextValue = telegramText.slice(0, start) + converted + telegramText.slice(end);
+
+      setTelegramText(nextValue);
+      setRemovedPreviewIds({});
+      setEditedLinks({});
+
+      const nextCursor = start + converted.length;
+      window.requestAnimationFrame(() => {
+        target.selectionStart = nextCursor;
+        target.selectionEnd = nextCursor;
+      });
+    } catch {
+      // Fall back to default plain-text paste with no error
+    }
+  };
 
   const handleTelegramImport = (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,7 +337,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         id: Math.random().toString(36).slice(2, 10),
         name: item.name,
         ...(item.title ? { title: item.title } : {}),
-        ...(item.videoLink ? { videoLink: item.videoLink } : {}),
+        ...(item.effectiveVideoLink ? { videoLink: item.effectiveVideoLink } : {}),
         watched: false,
         pastPaper: false,
       });
@@ -1028,7 +1073,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleTelegramImport} className="flex flex-col gap-3.5 flex-1 min-h-0">
+            <form onSubmit={handleTelegramImport} noValidate className="flex flex-col gap-3.5 flex-1 min-h-0">
               {/* Multi-line Paste Textarea */}
               <div className="flex-shrink-0">
                 <label
@@ -1041,9 +1086,11 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   id={`telegram-paste-${lesson.id}`}
                   rows={5}
                   value={telegramText}
+                  onPaste={handleTelegramPaste}
                   onChange={(e) => {
                     setTelegramText(e.target.value);
                     setRemovedPreviewIds({});
+                    setEditedLinks({});
                   }}
                   placeholder={'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
                   className="w-full font-sans text-xs sm:text-sm p-3 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none resize-y min-h-[108px] max-h-[180px]"
@@ -1053,18 +1100,21 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
               {/* Live Preview Area */}
               <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
+                <div className="flex items-center justify-between gap-2 mb-1.5 flex-shrink-0">
                   <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
                     Preview
                   </span>
                   {telegramText.trim().length > 0 && (
-                    <span className="text-xs font-sans font-semibold text-[#111111]">
-                      {previewTelegramParts.length} {previewTelegramParts.length === 1 ? 'part' : 'parts'} found
+                    <span className="text-xs font-sans font-semibold text-[#111111] text-right">
+                      {previewTelegramParts.length}{' '}
+                      {previewTelegramParts.length === 1 ? 'part' : 'parts'} found
+                      {previewTelegramParts.length > 0 &&
+                        `, ${previewLinksCount} with ${previewLinksCount === 1 ? 'video link' : 'video links'}`}
                     </span>
                   )}
                 </div>
 
-                <div className="flex-1 min-h-[84px] max-h-[220px] overflow-y-auto rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] p-2.5">
+                <div className="flex-1 min-h-[84px] max-h-[240px] overflow-y-auto rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] p-2.5">
                   {telegramText.trim().length === 0 ? (
                     <div className="h-full min-h-[64px] flex items-center justify-center text-center px-3">
                       <span className="text-xs font-sans text-[#8A8A8A]">
@@ -1092,6 +1142,12 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1.5">
+                      {previewLinksCount === 0 && (
+                        <div className="rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] px-3 py-2 text-[11px] font-sans text-[#8A8A8A] leading-snug">
+                          No video links found in this paste. Try copying the whole post again, or add links by hand below.
+                        </div>
+                      )}
+
                       {previewTelegramParts.map((item) => {
                         const alreadyExists = existingPartNamesSet.has(item.name.trim().toLowerCase());
                         return (
@@ -1104,10 +1160,10 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                                 <span className="font-sans font-bold text-xs text-[#111111]">
                                   {item.name}
                                 </span>
-                                {item.videoLink && (
+                                {item.effectiveVideoLink && (
                                   <span
-                                    title={item.videoLink}
-                                    className="inline-flex items-center text-[#8A8A8A]"
+                                    title={item.effectiveVideoLink}
+                                    className="inline-flex items-center text-[#111111]"
                                   >
                                     <Link2 size={12} />
                                   </span>
@@ -1123,6 +1179,31 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                                   {item.title}
                                 </p>
                               )}
+
+                              {/* Optional manual video link field */}
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <Link2
+                                  size={11}
+                                  className={
+                                    item.effectiveVideoLink
+                                      ? 'text-[#111111] flex-shrink-0'
+                                      : 'text-[#A3A3A3] flex-shrink-0'
+                                  }
+                                />
+                                <input
+                                  type="url"
+                                  value={item.rawLink}
+                                  onChange={(e) =>
+                                    setEditedLinks((prev) => ({
+                                      ...prev,
+                                      [item.id]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Optional video link (https://...)"
+                                  aria-label={`Video link for ${item.name}`}
+                                  className="w-full font-sans text-[11px] px-2 py-1 rounded-lg border border-[#E0E0E0] bg-[#FAFAFA] text-[#111111] placeholder:text-[#A3A3A3] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-colors"
+                                />
+                              </div>
                             </div>
 
                             <button
