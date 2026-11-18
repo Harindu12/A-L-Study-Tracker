@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Lesson, LessonPart } from '../../types';
 import { useStore } from '../../store';
+import { useNavigation } from '../../navigation';
+import { parseTelegramPost, isValidHttpUrl } from '../../utils/telegramParser';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -14,7 +16,10 @@ import {
   X, 
   Pencil, 
   AlertTriangle, 
-  BookOpen 
+  BookOpen,
+  Send,
+  Play,
+  Link2
 } from 'lucide-react';
 import { todayStr } from '../../utils';
 
@@ -30,6 +35,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   onToggleExpand,
 }) => {
   const { updateLesson, updateLessonParts, deleteLesson, markLessonDone, dailyEntries, saveDailyEntry } = useStore();
+  const { activeOverlay, overlayData, openOverlay, closeOverlay } = useNavigation();
 
   const [newPartName, setNewPartName] = useState('');
   const [editingPartNames, setEditingPartNames] = useState<Record<string, string>>({});
@@ -39,6 +45,28 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   const [showEditTitleModal, setShowEditTitleModal] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState(lesson.name);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+
+  // Telegram Import modal state (driven by NavigationContext overlay for Android back button support)
+  const isTelegramModalOpen =
+    activeOverlay === 'curriculum-telegram-import' && overlayData?.lessonId === lesson.id;
+  const [telegramText, setTelegramText] = useState('');
+  const [removedPreviewIds, setRemovedPreviewIds] = useState<Record<string, boolean>>({});
+  const [importFeedback, setImportFeedback] = useState<{ added: number; skipped: number } | null>(null);
+
+  useEffect(() => {
+    if (isTelegramModalOpen) {
+      setTelegramText('');
+      setRemovedPreviewIds({});
+    }
+  }, [isTelegramModalOpen]);
+
+  useEffect(() => {
+    if (!importFeedback) return;
+    const timer = window.setTimeout(() => {
+      setImportFeedback(null);
+    }, 8000);
+    return () => window.clearTimeout(timer);
+  }, [importFeedback]);
 
   // Sync edit title value if lesson name changes
   useEffect(() => {
@@ -233,6 +261,51 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     setShowBulkAdd(false);
   };
 
+  // Telegram import live parsing & preview state
+  const rawParsedTelegramParts = useMemo(() => parseTelegramPost(telegramText), [telegramText]);
+  const previewTelegramParts = useMemo(
+    () => rawParsedTelegramParts.filter((item) => !removedPreviewIds[item.id]),
+    [rawParsedTelegramParts, removedPreviewIds]
+  );
+
+  const existingPartNamesSet = useMemo(
+    () => new Set(parts.map((p) => p.name.trim().toLowerCase())),
+    [parts]
+  );
+
+  const handleTelegramImport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (previewTelegramParts.length === 0) return;
+
+    const seenNames = new Set(parts.map((p) => p.name.trim().toLowerCase()));
+    const newParts: LessonPart[] = [];
+    let skipped = 0;
+
+    for (const item of previewTelegramParts) {
+      const normalized = item.name.trim().toLowerCase();
+      if (seenNames.has(normalized)) {
+        skipped++;
+        continue;
+      }
+      seenNames.add(normalized);
+      newParts.push({
+        id: Math.random().toString(36).slice(2, 10),
+        name: item.name,
+        ...(item.title ? { title: item.title } : {}),
+        ...(item.videoLink ? { videoLink: item.videoLink } : {}),
+        watched: false,
+        pastPaper: false,
+      });
+    }
+
+    if (newParts.length > 0) {
+      updateLessonParts(lesson.id, [...parts, ...newParts]);
+    }
+
+    setImportFeedback({ added: newParts.length, skipped });
+    closeOverlay();
+  };
+
   const handleToggleWatched = (partId: string, watched: boolean) => {
     const updated = parts.map((p) => (p.id === partId ? { ...p, watched } : p));
     updateLessonParts(lesson.id, updated);
@@ -413,89 +486,133 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     editingPartNames[part.id] !== undefined
                       ? editingPartNames[part.id]
                       : part.name;
+                  const safeVideoLink = isValidHttpUrl(part.videoLink) ? part.videoLink!.trim() : '';
 
                   return (
                     <div
                       key={part.id}
-                      className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-2 transition-all bg-[#FFFFFF] shadow-2xs ${
+                      className={`rounded-xl border px-3 py-2 flex flex-col gap-1 transition-all bg-[#FFFFFF] shadow-2xs ${
                         isPartComplete
                           ? 'border-[#BDBDBD]'
                           : 'border-[#E0E0E0] hover:border-[#BDBDBD]'
                       }`}
                     >
-                      {/* Part Number & Name on One Line */}
-                      <div className="flex-1 min-w-[100px] flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-[#F5F5F5] text-[#8A8A8A] font-mono font-bold text-[10px] flex items-center justify-center flex-shrink-0 select-none border border-[#E0E0E0]">
-                          {index + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={displayName}
-                          onChange={(e) =>
-                            setEditingPartNames((prev) => ({
-                              ...prev,
-                              [part.id]: e.target.value,
-                            }))
-                          }
-                          onBlur={() => handleBlurPartName(part.id, part.name)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.currentTarget.blur();
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Part Number, Name & Optional Video Play Link */}
+                        <div className="flex-1 min-w-[90px] flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-md bg-[#F5F5F5] text-[#8A8A8A] font-mono font-bold text-[10px] flex items-center justify-center flex-shrink-0 select-none border border-[#E0E0E0]">
+                            {index + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={displayName}
+                            onChange={(e) =>
+                              setEditingPartNames((prev) => ({
+                                ...prev,
+                                [part.id]: e.target.value,
+                              }))
                             }
-                          }}
-                          placeholder={`Part ${index + 1}`}
-                          className={`w-full font-sans text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#E0E0E0] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-all truncate text-[#111111] ${
-                            isPartComplete ? 'font-semibold' : 'font-medium'
-                          }`}
-                        />
+                            onBlur={() => handleBlurPartName(part.id, part.name)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            placeholder={`Part ${index + 1}`}
+                            className={`w-full font-sans text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#E0E0E0] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-all truncate text-[#111111] ${
+                              isPartComplete ? 'font-semibold' : 'font-medium'
+                            }`}
+                          />
+                          {safeVideoLink && (
+                            <a
+                              href={safeVideoLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Open video link"
+                              aria-label={`Open video for ${part.name}`}
+                              className="w-6 h-6 rounded-md bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] hover:bg-[#111111] hover:text-[#FFFFFF] hover:border-[#111111] flex items-center justify-center flex-shrink-0 transition-colors"
+                            >
+                              <Play size={11} className="fill-current ml-0.5" />
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Checkboxes + Delete */}
+                        <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
+                          <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={part.watched}
+                              onChange={(e) => handleToggleWatched(part.id, e.target.checked)}
+                              className="cursor-pointer accent-[#111111]"
+                            />
+                            <span className={`text-[11px] font-sans ${part.watched ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
+                              Watched
+                            </span>
+                          </label>
+
+                          <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={part.pastPaper}
+                              onChange={(e) => handleTogglePastPaper(part.id, e.target.checked)}
+                              className="cursor-pointer accent-[#111111]"
+                            />
+                            <span className={`text-[11px] font-sans ${part.pastPaper ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
+                              Past paper done
+                            </span>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePart(part.id)}
+                            title="Delete part"
+                            className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F0F0F0] transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Checkboxes + Delete */}
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={part.watched}
-                            onChange={(e) => handleToggleWatched(part.id, e.target.checked)}
-                            className="cursor-pointer accent-[#111111]"
-                          />
-                          <span className={`text-[11px] font-sans ${part.watched ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
-                            Watched
-                          </span>
-                        </label>
-
-                        <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={part.pastPaper}
-                            onChange={(e) => handleTogglePastPaper(part.id, e.target.checked)}
-                            className="cursor-pointer accent-[#111111]"
-                          />
-                          <span className={`text-[11px] font-sans ${part.pastPaper ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
-                            Past paper done
-                          </span>
-                        </label>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePart(part.id)}
-                          title="Delete part"
-                          className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F0F0F0] transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+                      {/* Optional Part Title beneath part name (allows wrapping, no truncation) */}
+                      {part.title && (
+                        <p className="pl-7 pr-1 text-[11px] font-sans text-[#8A8A8A] leading-snug whitespace-normal break-words select-text m-0">
+                          {part.title}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {/* Add Part Section: Compact single input + Add multiple toggle */}
+            {/* Import Feedback Notice (shows added + skipped duplicates count) */}
+            {importFeedback && (
+              <div className="mb-2.5 px-3 py-2 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] flex items-center justify-between gap-2 text-xs font-sans text-[#111111] shadow-2xs animate-in fade-in duration-150">
+                <span className="font-medium leading-snug">
+                  {importFeedback.added > 0 && importFeedback.skipped > 0
+                    ? `Imported ${importFeedback.added} ${importFeedback.added === 1 ? 'part' : 'parts'} (${importFeedback.skipped} ${importFeedback.skipped === 1 ? 'duplicate' : 'duplicates'} skipped).`
+                    : importFeedback.added > 0
+                    ? `Imported ${importFeedback.added} ${importFeedback.added === 1 ? 'part' : 'parts'}.`
+                    : `No new parts added — ${importFeedback.skipped} ${importFeedback.skipped === 1 ? 'part' : 'parts'} skipped (already in this lesson).`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setImportFeedback(null)}
+                  className="p-1 text-[#8A8A8A] hover:text-[#111111] rounded transition-colors cursor-pointer flex-shrink-0"
+                  aria-label="Dismiss notice"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
+            {/* Add Part Section: Compact single input + Add multiple + Import from Telegram */}
             <div className="flex flex-col gap-2 pt-0.5">
-              <div className="flex flex-wrap sm:flex-nowrap gap-1.5 items-center">
+              <div className="flex flex-wrap gap-1.5 items-center">
                 {/* Single Add Part input */}
-                <form onSubmit={handleAddPart} className="flex-1 flex gap-1.5 items-center min-w-[180px]">
+                <form onSubmit={handleAddPart} className="w-full sm:flex-1 flex gap-1.5 items-center min-w-[180px]">
                   <input
                     type="text"
                     value={newPartName}
@@ -525,6 +642,20 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 >
                   <ListPlus size={13} />
                   <span>{showBulkAdd ? 'Hide multiple' : 'Add multiple'}</span>
+                </button>
+
+                {/* Import from Telegram modal trigger */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportFeedback(null);
+                    openOverlay('curriculum-telegram-import', { lessonId: lesson.id });
+                  }}
+                  className="px-3.5 py-2 text-xs font-sans font-semibold rounded-xl border bg-[#FFFFFF] text-[#111111] border-[#E0E0E0] hover:bg-[#F0F0F0] shadow-2xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
+                  title="Paste a Telegram post to create parts at once"
+                >
+                  <Send size={12} />
+                  <span>Import from Telegram</span>
                 </button>
               </div>
 
@@ -857,6 +988,183 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 Delete Lesson
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import from Telegram Modal (back-button aware via NavigationContext) */}
+      {isTelegramModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={(e) => {
+            e.stopPropagation();
+            closeOverlay();
+          }}
+        >
+          <div
+            className="w-full max-w-md max-h-[88dvh] flex flex-col rounded-3xl p-5 sm:p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <Send size={18} className="text-[#111111] flex-shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-sans text-lg sm:text-xl font-extrabold text-[#111111] m-0 leading-tight">
+                    Import from Telegram
+                  </h3>
+                  <p className="text-[11px] font-sans text-[#8A8A8A] truncate m-0">
+                    {lesson.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeOverlay}
+                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer flex-shrink-0"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleTelegramImport} className="flex flex-col gap-3.5 flex-1 min-h-0">
+              {/* Multi-line Paste Textarea */}
+              <div className="flex-shrink-0">
+                <label
+                  htmlFor={`telegram-paste-${lesson.id}`}
+                  className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5"
+                >
+                  Paste the Telegram post here
+                </label>
+                <textarea
+                  id={`telegram-paste-${lesson.id}`}
+                  rows={5}
+                  value={telegramText}
+                  onChange={(e) => {
+                    setTelegramText(e.target.value);
+                    setRemovedPreviewIds({});
+                  }}
+                  placeholder={'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
+                  className="w-full font-sans text-xs sm:text-sm p-3 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none resize-y min-h-[108px] max-h-[180px]"
+                  autoFocus
+                />
+              </div>
+
+              {/* Live Preview Area */}
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
+                  <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
+                    Preview
+                  </span>
+                  {telegramText.trim().length > 0 && (
+                    <span className="text-xs font-sans font-semibold text-[#111111]">
+                      {previewTelegramParts.length} {previewTelegramParts.length === 1 ? 'part' : 'parts'} found
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 min-h-[84px] max-h-[220px] overflow-y-auto rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] p-2.5">
+                  {telegramText.trim().length === 0 ? (
+                    <div className="h-full min-h-[64px] flex items-center justify-center text-center px-3">
+                      <span className="text-xs font-sans text-[#8A8A8A]">
+                        Paste a Telegram post above to preview extracted parts.
+                      </span>
+                    </div>
+                  ) : rawParsedTelegramParts.length === 0 ? (
+                    <div className="h-full min-h-[64px] flex items-center justify-center text-center px-3">
+                      <span className="text-xs font-sans font-medium text-[#8A8A8A]">
+                        No DAY lines found - check the pasted text
+                      </span>
+                    </div>
+                  ) : previewTelegramParts.length === 0 ? (
+                    <div className="h-full min-h-[64px] flex flex-col items-center justify-center text-center px-3 gap-1.5">
+                      <span className="text-xs font-sans text-[#8A8A8A]">
+                        All parsed entries were removed from the preview.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setRemovedPreviewIds({})}
+                        className="text-xs font-sans font-semibold text-[#111111] underline cursor-pointer"
+                      >
+                        Restore all ({rawParsedTelegramParts.length})
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {previewTelegramParts.map((item) => {
+                        const alreadyExists = existingPartNamesSet.has(item.name.trim().toLowerCase());
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] px-3 py-2 flex items-start justify-between gap-2 shadow-2xs"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-sans font-bold text-xs text-[#111111]">
+                                  {item.name}
+                                </span>
+                                {item.videoLink && (
+                                  <span
+                                    title={item.videoLink}
+                                    className="inline-flex items-center text-[#8A8A8A]"
+                                  >
+                                    <Link2 size={12} />
+                                  </span>
+                                )}
+                                {alreadyExists && (
+                                  <span className="text-[10px] font-sans font-medium text-[#8A8A8A]">
+                                    (already exists · will skip)
+                                  </span>
+                                )}
+                              </div>
+                              {item.title && (
+                                <p className="text-[11px] font-sans text-[#8A8A8A] leading-snug whitespace-normal break-words mt-0.5 m-0">
+                                  {item.title}
+                                </p>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRemovedPreviewIds((prev) => ({
+                                  ...prev,
+                                  [item.id]: true,
+                                }))
+                              }
+                              title={`Remove ${item.name} from import`}
+                              aria-label={`Remove ${item.name}`}
+                              className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F5F5F5] transition-colors cursor-pointer flex-shrink-0"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex gap-2 justify-end pt-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={closeOverlay}
+                  className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={previewTelegramParts.length === 0}
+                  className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
+                >
+                  Import
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

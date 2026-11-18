@@ -7,6 +7,8 @@ export interface Subject {
 export interface LessonPart {
   id: string;
   name: string;
+  title?: string;
+  videoLink?: string;
   watched: boolean;
   pastPaper: boolean;
 }

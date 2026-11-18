@@ -98,6 +98,8 @@ const cleanState = (raw: any): AppState => {
         parts: l.parts.map((p: any) => ({
           id: typeof p.id === 'string' ? p.id : Math.random().toString(36).slice(2, 10),
           name: typeof p.name === 'string' && p.name.trim() ? p.name : 'Part',
+          ...(typeof p.title === 'string' && p.title.trim() ? { title: p.title } : {}),
+          ...(typeof p.videoLink === 'string' && p.videoLink.trim() ? { videoLink: p.videoLink } : {}),
           watched: !!p.watched,
           pastPaper: !!p.pastPaper,
         })),
