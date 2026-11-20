@@ -25,7 +25,9 @@ import {
   BookOpen,
   Send,
   Play,
-  Link2
+  Link2,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import { todayStr } from '../../utils';
 
@@ -56,7 +58,10 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   const isTelegramModalOpen =
     activeOverlay === 'curriculum-telegram-import' && overlayData?.lessonId === lesson.id;
   const richPasteBoxRef = useRef<HTMLDivElement | null>(null);
+  const [importStep, setImportStep] = useState<'paste' | 'review'>('paste');
   const [telegramText, setTelegramText] = useState('');
+  const telegramTextRef = useRef(telegramText);
+  telegramTextRef.current = telegramText;
   const [removedPreviewIds, setRemovedPreviewIds] = useState<Record<string, boolean>>({});
   const [editedLinks, setEditedLinks] = useState<Record<string, string>>({});
   const [showBulkLinks, setShowBulkLinks] = useState(false);
@@ -65,7 +70,9 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
   useEffect(() => {
     if (isTelegramModalOpen) {
+      setImportStep('paste');
       setTelegramText('');
+      telegramTextRef.current = '';
       setRemovedPreviewIds({});
       setEditedLinks({});
       setShowBulkLinks(false);
@@ -78,6 +85,19 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       });
     }
   }, [isTelegramModalOpen]);
+
+  // Restore uncontrolled contentEditable text when navigating back from Step 2 to Step 1
+  useEffect(() => {
+    if (!isTelegramModalOpen || importStep !== 'paste') return;
+    window.requestAnimationFrame(() => {
+      if (richPasteBoxRef.current) {
+        if (richPasteBoxRef.current.textContent !== telegramTextRef.current) {
+          richPasteBoxRef.current.textContent = telegramTextRef.current;
+        }
+        richPasteBoxRef.current.focus();
+      }
+    });
+  }, [isTelegramModalOpen, importStep]);
 
   useEffect(() => {
     if (!importFeedback) return;
@@ -572,131 +592,196 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         {isExpanded && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#F5F5F5] border-t border-[#E0E0E0] p-3.5 sm:p-4 animate-in fade-in duration-150"
+            className="bg-[#FAFAFA] border-t border-[#E0E0E0] p-3.5 sm:p-4 animate-in fade-in duration-150"
           >
-            {/* Shrunk, Clean Section Header */}
-            <div className="flex items-center justify-between mb-2 px-0.5">
-              <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#8A8A8A] flex items-center gap-1.5">
-                <Video size={12} className="text-[#111111]" />
-                <span>Video & Topic Parts Checklist ({parts.length})</span>
-              </span>
+            {/* Clean Section Header (zero-pill unboxed typography) */}
+            <div className="flex items-center justify-between gap-2 mb-2.5 px-0.5">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <span className="text-[11px] font-sans font-bold uppercase tracking-wider text-[#8A8A8A] flex items-center gap-1.5 tabular-nums">
+                  <Video size={13} className="text-[#111111]" />
+                  <span>Parts ({parts.length})</span>
+                </span>
 
-              {allPartsComplete && parts.length > 0 && (
-                <span className="text-[10px] font-sans font-bold text-[#111111] flex items-center gap-1 bg-[#FFFFFF] border border-[#E0E0E0] px-2 py-0.5 rounded-full shadow-2xs">
-                  <Check size={10} strokeWidth={3} />
-                  <span>All Parts Complete</span>
+                {allPartsComplete && parts.length > 0 && (
+                  <>
+                    <span className="text-[#D4D4D4] select-none" aria-hidden="true">·</span>
+                    <span className="text-[11px] font-sans font-semibold text-[#16A34A] inline-flex items-center gap-1">
+                      <Check size={12} strokeWidth={2.75} />
+                      <span>All complete</span>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {parts.length > 0 && (
+                <span className="text-[11px] font-sans font-medium text-[#8A8A8A] tabular-nums flex-shrink-0">
+                  {completedPartsCount}/{parts.length} done
                 </span>
               )}
             </div>
 
-            {/* Compact Parts List */}
+            {/* Two-Tier Parts List */}
             {parts.length === 0 ? (
-              <div className="p-3 text-center rounded-xl border border-dashed border-[#E0E0E0] text-xs font-sans text-[#8A8A8A] mb-2.5 bg-[#FFFFFF]">
-                No parts added yet. Add individual videos or sub-topics below to track your progress.
+              <div className="p-4 text-center rounded-2xl border border-dashed border-[#E0E0E0] text-xs font-sans text-[#8A8A8A] mb-3 bg-[#FFFFFF]">
+                No parts added yet. Add individual parts below or import from Telegram.
               </div>
             ) : (
-              <div className="flex flex-col gap-1.5 mb-2.5">
+              <div className="flex flex-col gap-2 mb-3">
                 {parts.map((part, index) => {
                   const isPartComplete = part.watched && part.pastPaper;
-                  const displayName =
-                    editingPartNames[part.id] !== undefined
-                      ? editingPartNames[part.id]
-                      : part.name;
+                  const isEditingName = editingPartNames[part.id] !== undefined;
+                  const displayName = isEditingName ? editingPartNames[part.id] : part.name;
                   const safeVideoLink = isValidHttpUrl(part.videoLink) ? part.videoLink!.trim() : '';
 
                   return (
                     <div
                       key={part.id}
-                      className={`rounded-xl border px-3 py-2 flex flex-col gap-1 transition-all bg-[#FFFFFF] shadow-2xs ${
+                      className={`rounded-2xl border bg-[#FFFFFF] transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.03)] ${
                         isPartComplete
-                          ? 'border-[#BDBDBD]'
+                          ? 'border-[#D4D4D4]'
                           : 'border-[#E0E0E0] hover:border-[#BDBDBD]'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Part Number, Name & Optional Video Play Link */}
-                        <div className="flex-1 min-w-[90px] flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-md bg-[#F5F5F5] text-[#8A8A8A] font-mono font-bold text-[10px] flex items-center justify-center flex-shrink-0 select-none border border-[#E0E0E0]">
-                            {index + 1}
-                          </span>
-                          <input
-                            type="text"
-                            value={displayName}
-                            onChange={(e) =>
-                              setEditingPartNames((prev) => ({
-                                ...prev,
-                                [part.id]: e.target.value,
-                              }))
-                            }
-                            onBlur={() => handleBlurPartName(part.id, part.name)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            placeholder={`Part ${index + 1}`}
-                            className={`w-full font-sans text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#E0E0E0] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-all truncate text-[#111111] ${
-                              isPartComplete ? 'font-semibold' : 'font-medium'
-                            }`}
-                          />
-                          {safeVideoLink && (
-                            <a
-                              href={safeVideoLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              title="Open video link"
-                              aria-label={`Open video for ${part.name}`}
-                              className="w-6 h-6 rounded-md bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] hover:bg-[#111111] hover:text-[#FFFFFF] hover:border-[#111111] flex items-center justify-center flex-shrink-0 transition-colors"
+                      {/* Tier 1: Identity, Actions & Full-Width Wrapped Sinhala Title */}
+                      <div className="px-3.5 pt-3 pb-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="w-6 h-6 rounded-lg bg-[#F5F5F5] border border-[#E0E0E0] text-[#525252] font-sans font-bold text-[11px] tabular-nums flex items-center justify-center flex-shrink-0 select-none">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+
+                            {isEditingName ? (
+                              <input
+                                type="text"
+                                value={displayName}
+                                autoFocus
+                                onChange={(e) =>
+                                  setEditingPartNames((prev) => ({
+                                    ...prev,
+                                    [part.id]: e.target.value,
+                                  }))
+                                }
+                                onBlur={() => handleBlurPartName(part.id, part.name)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  } else if (e.key === 'Escape') {
+                                    setEditingPartNames((prev) => {
+                                      const next = { ...prev };
+                                      delete next[part.id];
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                placeholder={`Part ${index + 1}`}
+                                className="flex-1 min-w-0 font-sans text-xs px-2 py-1 rounded-lg border border-[#111111] bg-[#FFFFFF] text-[#111111]"
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingPartNames((prev) => ({
+                                    ...prev,
+                                    [part.id]: part.name,
+                                  }))
+                                }
+                                title="Tap to rename part"
+                                className={`text-left font-sans text-[13.5px] leading-snug text-[#111111] hover:bg-[#F5F5F5] px-1.5 py-1 -ml-1 rounded-lg transition-colors truncate cursor-text ${
+                                  isPartComplete ? 'font-bold' : 'font-semibold'
+                                }`}
+                              >
+                                {part.name || `Part ${index + 1}`}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Media Watch Action + Delete */}
+                          <div className="flex items-center gap-1 flex-shrink-0 -mr-1">
+                            {safeVideoLink && (
+                              <a
+                                href={safeVideoLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                title="Open video link"
+                                aria-label={`Open video for ${part.name}`}
+                                className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] hover:bg-[#111111] hover:text-[#FFFFFF] hover:border-[#111111] text-[11px] font-sans font-semibold transition-colors whitespace-nowrap"
+                              >
+                                <Play size={11} className="fill-current" />
+                                <span>Watch</span>
+                              </a>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePart(part.id)}
+                              title="Delete part"
+                              aria-label={`Delete ${part.name}`}
+                              className="w-9 h-9 rounded-xl flex items-center justify-center text-[#8A8A8A] hover:text-[#EF4444] hover:bg-red-50/70 transition-colors cursor-pointer"
                             >
-                              <Play size={11} className="fill-current ml-0.5" />
-                            </a>
-                          )}
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Checkboxes + Delete */}
-                        <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
-                          <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={part.watched}
-                              onChange={(e) => handleToggleWatched(part.id, e.target.checked)}
-                              className="cursor-pointer accent-[#111111]"
-                            />
-                            <span className={`text-[11px] font-sans ${part.watched ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
-                              Watched
-                            </span>
-                          </label>
-
-                          <label className="inline-flex items-center gap-1.5 text-xs font-sans text-[#111111] cursor-pointer select-none py-0.5 px-1 rounded hover:bg-[#F0F0F0] transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={part.pastPaper}
-                              onChange={(e) => handleTogglePastPaper(part.id, e.target.checked)}
-                              className="cursor-pointer accent-[#111111]"
-                            />
-                            <span className={`text-[11px] font-sans ${part.pastPaper ? 'font-semibold text-[#111111]' : 'text-[#8A8A8A]'}`}>
-                              Past paper done
-                            </span>
-                          </label>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePart(part.id)}
-                            title="Delete part"
-                            className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F0F0F0] transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                        {/* Optional Part Title beneath part name (full width, wraps cleanly in Noto Sans Sinhala) */}
+                        {part.title && (
+                          <p className="mt-1.5 pl-8 pr-1 text-[12.5px] font-sans text-[#525252] leading-relaxed whitespace-normal break-words select-text m-0">
+                            {part.title}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Optional Part Title beneath part name (allows wrapping, no truncation) */}
-                      {part.title && (
-                        <p className="pl-7 pr-1 text-[11px] font-sans text-[#8A8A8A] leading-snug whitespace-normal break-words select-text m-0">
-                          {part.title}
-                        </p>
-                      )}
+                      {/* Tier 2: Progress Toggles Strip */}
+                      <div className="border-t border-[#F0F0F0] px-2.5 py-1.5 bg-[#FAFAFA]/60 rounded-b-2xl flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={part.watched}
+                          onClick={() => handleToggleWatched(part.id, !part.watched)}
+                          className={`flex-1 sm:flex-initial inline-flex items-center justify-center sm:justify-start gap-2 min-h-[36px] px-2.5 py-1 rounded-xl text-xs font-sans transition-colors cursor-pointer select-none whitespace-nowrap ${
+                            part.watched
+                              ? 'text-[#111111] font-semibold hover:bg-[#F0F0F0]'
+                              : 'text-[#6E6E6E] font-medium hover:bg-[#F0F0F0] hover:text-[#111111]'
+                          }`}
+                        >
+                          <span
+                            className={`w-[18px] h-[18px] rounded-full flex items-center justify-center flex-shrink-0 transition-colors border ${
+                              part.watched
+                                ? 'bg-[#16A34A] border-[#16A34A] text-[#FFFFFF]'
+                                : 'bg-[#FFFFFF] border-[#D4D4D4] text-transparent'
+                            }`}
+                          >
+                            <Check size={11} strokeWidth={3} />
+                          </span>
+                          <span>Watched</span>
+                        </button>
+
+                        <span className="h-4 w-px bg-[#E5E5E5] flex-shrink-0" aria-hidden="true" />
+
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={part.pastPaper}
+                          onClick={() => handleTogglePastPaper(part.id, !part.pastPaper)}
+                          className={`flex-1 sm:flex-initial inline-flex items-center justify-center sm:justify-start gap-2 min-h-[36px] px-2.5 py-1 rounded-xl text-xs font-sans transition-colors cursor-pointer select-none whitespace-nowrap ${
+                            part.pastPaper
+                              ? 'text-[#111111] font-semibold hover:bg-[#F0F0F0]'
+                              : 'text-[#6E6E6E] font-medium hover:bg-[#F0F0F0] hover:text-[#111111]'
+                          }`}
+                        >
+                          <span
+                            className={`w-[18px] h-[18px] rounded-full flex items-center justify-center flex-shrink-0 transition-colors border ${
+                              part.pastPaper
+                                ? 'bg-[#16A34A] border-[#16A34A] text-[#FFFFFF]'
+                                : 'bg-[#FFFFFF] border-[#D4D4D4] text-transparent'
+                            }`}
+                          >
+                            <Check size={11} strokeWidth={3} />
+                          </span>
+                          <span>Past paper done</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -705,7 +790,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
             {/* Import Feedback Notice (shows added + skipped duplicates count) */}
             {importFeedback && (
-              <div className="mb-2.5 px-3 py-2 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] flex items-center justify-between gap-2 text-xs font-sans text-[#111111] shadow-2xs animate-in fade-in duration-150">
+              <div className="mb-3 px-3.5 py-2.5 rounded-2xl border border-[#E0E0E0] bg-[#FFFFFF] flex items-center justify-between gap-2 text-xs font-sans text-[#111111] shadow-2xs animate-in fade-in duration-150">
                 <span className="font-medium leading-snug">
                   {importFeedback.added > 0 && importFeedback.skipped > 0
                     ? `Imported ${importFeedback.added} ${importFeedback.added === 1 ? 'part' : 'parts'} (${importFeedback.skipped} ${importFeedback.skipped === 1 ? 'duplicate' : 'duplicates'} skipped).`
@@ -716,47 +801,46 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 <button
                   type="button"
                   onClick={() => setImportFeedback(null)}
-                  className="p-1 text-[#8A8A8A] hover:text-[#111111] rounded transition-colors cursor-pointer flex-shrink-0"
+                  className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-lg transition-colors cursor-pointer flex-shrink-0"
                   aria-label="Dismiss notice"
                 >
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </div>
             )}
 
-            {/* Add Part Section: Compact single input + Add multiple + Import from Telegram */}
+            {/* Add Part Section: Single input + Even 2-column action row */}
             <div className="flex flex-col gap-2 pt-0.5">
-              <div className="flex flex-wrap gap-1.5 items-center">
-                {/* Single Add Part input */}
-                <form onSubmit={handleAddPart} className="w-full sm:flex-1 flex gap-1.5 items-center min-w-[180px]">
-                  <input
-                    type="text"
-                    value={newPartName}
-                    onChange={(e) => setNewPartName(e.target.value)}
-                    placeholder={`Add single part (e.g. Part ${parts.length + 1})...`}
-                    className="flex-1 font-sans text-xs px-3 py-2 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:border-[#BDBDBD] focus:outline-none focus:border-[#111111] shadow-2xs text-[#111111] transition-all placeholder:text-[#8A8A8A]"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#111111] text-[#FFFFFF] hover:bg-[#262626] text-xs font-sans font-semibold shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
-                  >
-                    <Plus size={13} strokeWidth={2.4} />
-                    <span>Add Part</span>
-                  </button>
-                </form>
+              <form onSubmit={handleAddPart} className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={newPartName}
+                  onChange={(e) => setNewPartName(e.target.value)}
+                  placeholder={`Add single part (e.g. Part ${parts.length + 1})...`}
+                  className="flex-1 min-w-0 font-sans text-xs px-3 py-2 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:border-[#BDBDBD] focus:outline-none focus:border-[#111111] shadow-2xs text-[#111111] transition-all placeholder:text-[#8A8A8A]"
+                />
+                <button
+                  type="submit"
+                  className="min-h-[40px] px-4 py-2 rounded-xl bg-[#111111] text-[#FFFFFF] hover:bg-[#262626] text-xs font-sans font-semibold shadow-2xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all whitespace-nowrap flex-shrink-0"
+                >
+                  <Plus size={14} strokeWidth={2.4} />
+                  <span>Add Part</span>
+                </button>
+              </form>
 
+              <div className="grid grid-cols-2 gap-2">
                 {/* Add multiple toggle button */}
                 <button
                   type="button"
                   onClick={() => setShowBulkAdd((prev) => !prev)}
-                  className={`px-3.5 py-2 text-xs font-sans font-semibold rounded-xl border transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer active:scale-95 ${
+                  className={`min-h-[40px] px-3 py-2 text-xs font-sans font-semibold rounded-xl border transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 ${
                     showBulkAdd
                       ? 'bg-[#111111] text-[#FFFFFF] border-[#111111] shadow-2xs'
                       : 'bg-[#FFFFFF] text-[#111111] border-[#E0E0E0] hover:bg-[#F0F0F0] shadow-2xs'
                   }`}
                   title="Generate multiple numbered parts at once"
                 >
-                  <ListPlus size={13} />
+                  <ListPlus size={14} />
                   <span>{showBulkAdd ? 'Hide multiple' : 'Add multiple'}</span>
                 </button>
 
@@ -767,10 +851,10 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     setImportFeedback(null);
                     openOverlay('curriculum-telegram-import', { lessonId: lesson.id });
                   }}
-                  className="px-3.5 py-2 text-xs font-sans font-semibold rounded-xl border bg-[#FFFFFF] text-[#111111] border-[#E0E0E0] hover:bg-[#F0F0F0] shadow-2xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
+                  className="min-h-[40px] px-3 py-2 text-xs font-sans font-semibold rounded-xl border bg-[#FFFFFF] text-[#111111] border-[#E0E0E0] hover:bg-[#F0F0F0] shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
                   title="Paste a Telegram post to create parts at once"
                 >
-                  <Send size={12} />
+                  <Send size={13} />
                   <span>Import from Telegram</span>
                 </button>
               </div>
@@ -1108,236 +1192,304 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         </div>
       )}
 
-      {/* Import from Telegram Modal (back-button aware via NavigationContext) */}
+      {/* Two-Step Import from Telegram Modal (back-button aware via NavigationContext) */}
       {isTelegramModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={(e) => {
             e.stopPropagation();
             closeOverlay();
           }}
         >
           <div
-            className="w-full max-w-md max-h-[88dvh] flex flex-col rounded-3xl p-5 sm:p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
+            className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[88dvh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4 flex-shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <Send size={18} className="text-[#111111] flex-shrink-0" />
+            {/* Consistent Monochrome Header */}
+            <div className="px-5 pt-5 pb-3.5 border-b border-[#F0F0F0] flex items-start justify-between gap-3 flex-shrink-0">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] flex items-center justify-center text-[#111111] flex-shrink-0 mt-0.5">
+                  <Send size={16} />
+                </div>
                 <div className="min-w-0">
-                  <h3 className="font-sans text-lg sm:text-xl font-extrabold text-[#111111] m-0 leading-tight">
+                  <h3 className="font-sans text-base sm:text-lg font-extrabold text-[#111111] m-0 leading-snug">
                     Import from Telegram
                   </h3>
-                  <p className="text-[11px] font-sans text-[#8A8A8A] truncate m-0">
+                  <p className="text-xs font-sans text-[#8A8A8A] truncate m-0">
                     {lesson.name}
+                  </p>
+                  <p className="text-[11px] font-sans font-semibold text-[#525252] tabular-nums mt-1 m-0">
+                    {importStep === 'paste'
+                      ? 'Step 1 of 2 · Paste post'
+                      : 'Step 2 of 2 · Review & links'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={closeOverlay}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer flex-shrink-0"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors cursor-pointer flex-shrink-0 -mr-1"
                 aria-label="Close"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleTelegramImport} noValidate className="flex flex-col gap-3 flex-1 min-h-0">
-              {/* Rich Paste Box (contentEditable so mobile browsers & Android preserve rich links when available) */}
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    htmlFor={`telegram-paste-${lesson.id}`}
-                    className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider m-0"
-                  >
-                    Paste the Telegram post here
-                  </label>
-                  {telegramText.length > 0 && (
+            <form onSubmit={handleTelegramImport} noValidate className="flex flex-col flex-1 min-h-0">
+              {importStep === 'paste' ? (
+                <>
+                  {/* Step 1: Dedicated Rich Paste Body */}
+                  <div className="px-5 py-4 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        id={`telegram-paste-label-${lesson.id}`}
+                        className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider"
+                      >
+                        Paste the Telegram post here
+                      </span>
+                      {telegramText.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearRichPasteBox}
+                          className="min-h-[28px] px-2 text-xs font-sans font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-lg transition-colors cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative flex-1 min-h-[190px] flex flex-col">
+                      {telegramText.length === 0 && (
+                        <div className="pointer-events-none absolute inset-0 p-3.5 font-sans text-[13px] leading-relaxed text-[#8A8A8A]/70 whitespace-pre-wrap select-none overflow-hidden">
+                          {'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
+                        </div>
+                      )}
+                      <div
+                        ref={richPasteBoxRef}
+                        id={`telegram-paste-${lesson.id}`}
+                        contentEditable
+                        role="textbox"
+                        aria-multiline="true"
+                        aria-labelledby={`telegram-paste-label-${lesson.id}`}
+                        suppressContentEditableWarning
+                        onPaste={handleTelegramRichPaste}
+                        onInput={handleTelegramRichInput}
+                        className="w-full flex-1 min-h-[190px] max-h-[42dvh] overflow-y-auto font-sans text-[13px] leading-relaxed p-3.5 rounded-2xl border border-[#E0E0E0] bg-[#FAFAFA] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none whitespace-pre-wrap break-words transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <p className="text-[11.5px] font-sans text-[#8A8A8A] m-0 leading-snug">
+                        Long-press and tap Paste to keep hidden links from Telegram.
+                      </p>
+
+                      {telegramText.trim().length > 0 && (
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          {rawParsedTelegramParts.length === 0 ? (
+                            <p className="text-xs font-sans font-medium text-[#DC2626] m-0">
+                              No DAY lines found - check the pasted text
+                            </p>
+                          ) : previewTelegramParts.length === 0 ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-sans text-[#8A8A8A]">
+                                All {rawParsedTelegramParts.length} parsed entries were removed.
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setRemovedPreviewIds({})}
+                                className="text-xs font-sans font-semibold text-[#111111] underline underline-offset-2 cursor-pointer"
+                              >
+                                Restore all
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-xs font-sans font-semibold text-[#111111] tabular-nums m-0">
+                              {previewTelegramParts.length}{' '}
+                              {previewTelegramParts.length === 1 ? 'part' : 'parts'} found
+                              {previewLinksCount > 0 &&
+                                ` · ${previewLinksCount} with ${previewLinksCount === 1 ? 'video link' : 'video links'}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 1 Sticky Footer */}
+                  <div className="px-5 py-3.5 border-t border-[#F0F0F0] bg-[#FFFFFF] flex items-center justify-between gap-2 flex-shrink-0">
                     <button
                       type="button"
-                      onClick={handleClearRichPasteBox}
-                      className="text-[11px] font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer"
+                      onClick={closeOverlay}
+                      className="min-h-[40px] px-4 text-xs font-sans font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      Clear
+                      Cancel
                     </button>
-                  )}
-                </div>
-
-                <div className="relative">
-                  {telegramText.length === 0 && (
-                    <div className="pointer-events-none absolute inset-0 p-3 font-sans text-xs sm:text-sm text-[#8A8A8A]/70 whitespace-pre-wrap select-none overflow-hidden">
-                      {'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
-                    </div>
-                  )}
-                  <div
-                    ref={richPasteBoxRef}
-                    id={`telegram-paste-${lesson.id}`}
-                    contentEditable
-                    role="textbox"
-                    aria-multiline="true"
-                    aria-label="Paste the Telegram post here"
-                    suppressContentEditableWarning
-                    onPaste={handleTelegramRichPaste}
-                    onInput={handleTelegramRichInput}
-                    className="w-full font-sans text-xs sm:text-sm p-3 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none min-h-[100px] max-h-[160px] overflow-y-auto whitespace-pre-wrap break-words transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Live Preview Area */}
-              <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex items-center justify-between gap-2 mb-1.5 flex-shrink-0 flex-wrap">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
-                      Preview
+                    <button
+                      type="button"
+                      onClick={() => setImportStep('review')}
+                      disabled={previewTelegramParts.length === 0}
+                      className="min-h-[40px] px-5 text-xs font-sans font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                    >
+                      <span>
+                        {previewTelegramParts.length > 0
+                          ? `Next: Review (${previewTelegramParts.length})`
+                          : 'Next: Review'}
+                      </span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Step 2 Summary & Bulk Toggle Bar */}
+                  <div className="px-5 py-2.5 border-b border-[#F0F0F0] bg-[#FAFAFA] flex items-center justify-between gap-2 flex-wrap flex-shrink-0">
+                    <span className="text-xs font-sans font-semibold text-[#111111] tabular-nums">
+                      {previewTelegramParts.length}{' '}
+                      {previewTelegramParts.length === 1 ? 'part' : 'parts'} found ·{' '}
+                      {previewLinksCount} with{' '}
+                      {previewLinksCount === 1 ? 'video link' : 'video links'}
                     </span>
                     {previewTelegramParts.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setShowBulkLinks((prev) => !prev)}
-                        className={`text-[11px] font-sans font-semibold underline-offset-2 hover:underline cursor-pointer transition-colors ${
-                          showBulkLinks ? 'text-[#111111] underline' : 'text-[#525252] hover:text-[#111111]'
-                        }`}
+                        className="text-xs font-sans font-semibold text-[#111111] hover:text-[#525252] underline underline-offset-2 cursor-pointer whitespace-nowrap"
                       >
                         {showBulkLinks ? 'Hide bulk links' : 'Paste links in bulk'}
                       </button>
                     )}
                   </div>
-                  {telegramText.trim().length > 0 && (
-                    <span className="text-xs font-sans font-semibold text-[#111111] text-right">
-                      {previewTelegramParts.length}{' '}
-                      {previewTelegramParts.length === 1 ? 'part' : 'parts'} found
-                      {previewTelegramParts.length > 0 &&
-                        `, ${previewLinksCount} with ${previewLinksCount === 1 ? 'video link' : 'video links'}`}
-                    </span>
-                  )}
-                </div>
 
-                {/* Bulk Link Pasting Panel */}
-                {showBulkLinks && previewTelegramParts.length > 0 && (
-                  <div className="mb-2 p-2.5 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] flex-shrink-0 shadow-2xs animate-in fade-in duration-150">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <label
-                        htmlFor={`telegram-bulk-links-${lesson.id}`}
-                        className="text-[11px] font-sans font-bold text-[#111111] uppercase tracking-wider m-0"
-                      >
-                        Paste video links (one per line)
-                      </label>
-                      <div className="flex items-center gap-2">
-                        {bulkLinksList.length > 0 && (
-                          <span className="text-[11px] font-sans text-[#8A8A8A]">
-                            {Math.min(bulkLinksList.length, previewTelegramParts.length)} of{' '}
-                            {previewTelegramParts.length} matched
-                            {bulkLinksList.length > previewTelegramParts.length
-                              ? ` (${bulkLinksList.length - previewTelegramParts.length} extra ignored)`
-                              : ''}
-                          </span>
-                        )}
-                        {bulkLinksText.length > 0 && (
+                  {/* Step 2 Scrollable Review Body */}
+                  <div className="px-5 py-3.5 flex flex-col gap-2.5 flex-1 min-h-0 overflow-y-auto bg-[#FAFAFA]">
+                    {previewTelegramParts.length > 0 && previewLinksCount === 0 && (
+                      <div className="rounded-2xl border border-[#E0E0E0] bg-[#FFFFFF] px-3.5 py-2.5 text-xs font-sans text-[#525252] leading-relaxed flex flex-col gap-1.5 flex-shrink-0">
+                        <span>
+                          No video links found in this paste. Try copying the whole post again, or add links by hand below.
+                        </span>
+                        {!showBulkLinks && (
                           <button
                             type="button"
-                            onClick={() => setBulkLinksText('')}
-                            className="text-[11px] font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] cursor-pointer"
+                            onClick={() => setShowBulkLinks(true)}
+                            className="self-start text-xs font-sans font-bold text-[#111111] underline underline-offset-2 hover:text-[#262626] cursor-pointer"
                           >
-                            Clear
+                            Paste links in bulk →
                           </button>
                         )}
                       </div>
-                    </div>
-                    <textarea
-                      id={`telegram-bulk-links-${lesson.id}`}
-                      rows={3}
-                      value={bulkLinksText}
-                      onChange={(e) => setBulkLinksText(e.target.value)}
-                      placeholder={'https://youtu.be/...\nhttps://youtu.be/...'}
-                      className="w-full font-sans text-xs p-2.5 rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none resize-y min-h-[68px] max-h-[115px]"
-                    />
-                  </div>
-                )}
+                    )}
 
-                <div className="flex-1 min-h-[84px] max-h-[240px] overflow-y-auto rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] p-2.5">
-                  {telegramText.trim().length === 0 ? (
-                    <div className="h-full min-h-[64px] flex items-center justify-center text-center px-3">
-                      <span className="text-xs font-sans text-[#8A8A8A]">
-                        Paste a Telegram post above to preview extracted parts.
-                      </span>
-                    </div>
-                  ) : rawParsedTelegramParts.length === 0 ? (
-                    <div className="h-full min-h-[64px] flex items-center justify-center text-center px-3">
-                      <span className="text-xs font-sans font-medium text-[#8A8A8A]">
-                        No DAY lines found - check the pasted text
-                      </span>
-                    </div>
-                  ) : previewTelegramParts.length === 0 ? (
-                    <div className="h-full min-h-[64px] flex flex-col items-center justify-center text-center px-3 gap-1.5">
-                      <span className="text-xs font-sans text-[#8A8A8A]">
-                        All parsed entries were removed from the preview.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setRemovedPreviewIds({})}
-                        className="text-xs font-sans font-semibold text-[#111111] underline cursor-pointer"
-                      >
-                        Restore all ({rawParsedTelegramParts.length})
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1.5">
-                      {previewLinksCount === 0 && (
-                        <div className="rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] px-3 py-2 text-[11px] font-sans text-[#8A8A8A] leading-snug flex flex-col gap-1">
-                          <span>
-                            No video links found in this paste. Telegram Android&apos;s Copy button strips hidden links — paste all links in bulk or add them below.
+                    {/* Collapsible Bulk Link Pasting Panel */}
+                    {showBulkLinks && previewTelegramParts.length > 0 && (
+                      <div className="p-3.5 rounded-2xl border border-[#E0E0E0] bg-[#FFFFFF] flex-shrink-0 flex flex-col gap-2 shadow-2xs animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-[11px] font-sans font-bold text-[#111111] uppercase tracking-wider">
+                            Paste video links (one per line)
                           </span>
-                          {!showBulkLinks && (
-                            <button
-                              type="button"
-                              onClick={() => setShowBulkLinks(true)}
-                              className="self-start text-[11px] font-sans font-bold text-[#111111] underline underline-offset-2 hover:text-[#262626] cursor-pointer"
-                            >
-                              Paste links in bulk →
-                            </button>
-                          )}
+                          <div className="flex items-center gap-2.5">
+                            {bulkLinksList.length > 0 && (
+                              <span className="text-[11px] font-sans font-medium text-[#525252] tabular-nums">
+                                {Math.min(bulkLinksList.length, previewTelegramParts.length)} of{' '}
+                                {previewTelegramParts.length} matched
+                                {bulkLinksList.length > previewTelegramParts.length
+                                  ? ` (${bulkLinksList.length - previewTelegramParts.length} extra)`
+                                  : ''}
+                              </span>
+                            )}
+                            {bulkLinksText.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setBulkLinksText('')}
+                                className="text-[11px] font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      )}
+                        <textarea
+                          id={`telegram-bulk-links-${lesson.id}`}
+                          rows={3}
+                          value={bulkLinksText}
+                          onChange={(e) => setBulkLinksText(e.target.value)}
+                          placeholder={'https://youtu.be/...\nhttps://youtu.be/...'}
+                          className="w-full font-sans text-xs p-2.5 rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none resize-y min-h-[72px] max-h-[120px]"
+                        />
+                      </div>
+                    )}
 
-                      {previewTelegramParts.map((item) => {
-                        const alreadyExists = existingPartNamesSet.has(item.name.trim().toLowerCase());
-                        return (
-                          <div
-                            key={item.id}
-                            className="rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] px-3 py-2 flex items-start justify-between gap-2 shadow-2xs"
+                    {previewTelegramParts.length === 0 ? (
+                      <div className="flex-1 min-h-[140px] flex flex-col items-center justify-center text-center px-4 gap-2">
+                        <span className="text-xs font-sans text-[#8A8A8A]">
+                          All parsed entries were removed from the preview.
+                        </span>
+                        {rawParsedTelegramParts.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setRemovedPreviewIds({})}
+                            className="text-xs font-sans font-semibold text-[#111111] underline underline-offset-2 cursor-pointer"
                           >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-sans font-bold text-xs text-[#111111]">
-                                  {item.name}
-                                </span>
-                                {item.effectiveVideoLink && (
-                                  <span
-                                    title={item.effectiveVideoLink}
-                                    className="inline-flex items-center text-[#111111]"
-                                  >
-                                    <Link2 size={12} />
-                                  </span>
-                                )}
-                                {alreadyExists && (
-                                  <span className="text-[10px] font-sans font-medium text-[#8A8A8A]">
-                                    (already exists · will skip)
-                                  </span>
-                                )}
-                              </div>
-                              {item.title && (
-                                <p className="text-[11px] font-sans text-[#8A8A8A] leading-snug whitespace-normal break-words mt-0.5 m-0">
-                                  {item.title}
-                                </p>
-                              )}
+                            Restore all ({rawParsedTelegramParts.length})
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {previewTelegramParts.map((item) => {
+                          const alreadyExists = existingPartNamesSet.has(item.name.trim().toLowerCase());
+                          return (
+                            <div
+                              key={item.id}
+                              className="rounded-2xl border border-[#E0E0E0] bg-[#FFFFFF] p-3 flex flex-col gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-sans font-bold text-xs text-[#111111]">
+                                      {item.name}
+                                    </span>
+                                    {item.effectiveVideoLink && (
+                                      <span
+                                        title={item.effectiveVideoLink}
+                                        className="inline-flex items-center text-[#16A34A]"
+                                      >
+                                        <Link2 size={12} />
+                                      </span>
+                                    )}
+                                    {alreadyExists && (
+                                      <span className="text-[11px] font-sans font-medium text-[#8A8A8A]">
+                                        · Already exists (will skip)
+                                      </span>
+                                    )}
+                                  </div>
 
-                              {/* Optional manual video link field */}
-                              <div className="mt-1.5 flex items-center gap-1.5">
+                                  {item.title && (
+                                    <p className="text-xs font-sans text-[#525252] leading-relaxed whitespace-normal break-words mt-1 m-0">
+                                      {item.title}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setRemovedPreviewIds((prev) => ({
+                                      ...prev,
+                                      [item.id]: true,
+                                    }))
+                                  }
+                                  title={`Remove ${item.name} from import`}
+                                  aria-label={`Remove ${item.name}`}
+                                  className="w-8 h-8 -mt-1 -mr-1 rounded-lg flex items-center justify-center text-[#8A8A8A] hover:text-[#EF4444] hover:bg-red-50/70 transition-colors cursor-pointer flex-shrink-0"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+
+                              {/* Optional manual video link field (type="url" bypasses unlayered text-input rule) */}
+                              <div className="flex items-center gap-2">
                                 <Link2
-                                  size={11}
+                                  size={13}
                                   className={
                                     item.effectiveVideoLink
                                       ? 'text-[#111111] flex-shrink-0'
@@ -1355,50 +1507,45 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                                   }
                                   placeholder="Optional video link (https://...)"
                                   aria-label={`Video link for ${item.name}`}
-                                  className="w-full font-sans text-[11px] px-2 py-1 rounded-lg border border-[#E0E0E0] bg-[#FAFAFA] text-[#111111] placeholder:text-[#A3A3A3] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-colors"
+                                  className="w-full font-sans text-xs px-2.5 py-2 rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] text-[#111111] placeholder:text-[#A3A3A3] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none transition-colors"
                                 />
                               </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setRemovedPreviewIds((prev) => ({
-                                  ...prev,
-                                  [item.id]: true,
-                                }))
-                              }
-                              title={`Remove ${item.name} from import`}
-                              aria-label={`Remove ${item.name}`}
-                              className="p-1 text-[#8A8A8A] hover:text-[#EF4444] rounded hover:bg-[#F5F5F5] transition-colors cursor-pointer flex-shrink-0"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        );
-                      })}
+                  {/* Step 2 Sticky Footer */}
+                  <div className="px-5 py-3.5 border-t border-[#F0F0F0] bg-[#FFFFFF] flex items-center justify-between gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setImportStep('paste')}
+                        className="min-h-[40px] px-3 text-xs font-sans font-semibold text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <ArrowLeft size={14} />
+                        <span>Back</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeOverlay}
+                        className="min-h-[40px] px-3 text-xs font-sans font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F5F5F5] rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="flex gap-2 justify-end pt-1 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={closeOverlay}
-                  className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={previewTelegramParts.length === 0}
-                  className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
-                >
-                  Import
-                </button>
-              </div>
+                    <button
+                      type="submit"
+                      disabled={previewTelegramParts.length === 0}
+                      className="min-h-[40px] px-5 text-xs font-sans font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      Import
+                    </button>
+                  </div>
+                </>
+              )}
             </form>
           </div>
         </div>
