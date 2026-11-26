@@ -20,6 +20,7 @@ interface NavigationContextType {
   activeOverlay: string | null;
   overlayData: any;
   openOverlay: (overlay: string, data?: any) => void;
+  openTabOverlay: (targetTab: Tab, overlay: string, data?: any) => void;
   closeOverlay: () => void;
   goBack: () => void;
   isPopping: boolean;
@@ -200,6 +201,26 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setNavState(next);
   }, []);
 
+  const openTabOverlay = useCallback((targetTab: Tab, overlay: string, data?: any) => {
+    const current = navStateRef.current;
+    const next: HistoryNavState = {
+      appletNavId: APPLET_NAV_ID,
+      tab: targetTab,
+      subjectId: null,
+      overlay,
+      overlayData: data !== undefined ? data : null,
+      depth: current.overlay ? current.depth : current.depth + 1,
+    };
+
+    if (current.overlay) {
+      window.history.replaceState(next, '');
+    } else {
+      window.history.pushState(next, '');
+    }
+    navStateRef.current = next;
+    setNavState(next);
+  }, []);
+
   const closeOverlay = useCallback(() => {
     const current = navStateRef.current;
     if (current.overlay === null) return;
@@ -241,6 +262,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         activeOverlay: navState.overlay,
         overlayData: navState.overlayData,
         openOverlay,
+        openTabOverlay,
         closeOverlay,
         goBack,
         isPopping,

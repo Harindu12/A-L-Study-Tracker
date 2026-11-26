@@ -3,31 +3,33 @@ import { Subject, Lesson, Revisit } from '../../types';
 import { useStore } from '../../store';
 import { StatTile } from '../ui/StatTile';
 import { ExamDateModal } from './ExamDateModal';
-import { 
-  AddSubjectModal, 
-  SubjectActionSheetModal, 
-  SubjectEditModal, 
-  DeleteConfirmModal 
+import {
+  AddSubjectModal,
+  SubjectActionSheetModal,
+  SubjectEditModal,
+  DeleteConfirmModal,
 } from './SubjectEditModal';
-import { todayStr } from '../../utils';
 import { useNavigation } from '../../navigation';
-import { calculateSubjectMetrics, calculateCurriculumMetrics, calculateDaysRemaining } from '../../utils/subjectMetrics';
+import {
+  calculateSubjectMetrics,
+  calculateCurriculumMetrics,
+  calculateDaysRemaining,
+} from '../../utils/subjectMetrics';
 import { getSubjectColorById } from '../../utils/colors';
-import { 
-  BookOpen, 
-  Layers, 
-  Calendar, 
-  Clock, 
-  Pencil, 
-  Plus, 
-  ChevronRight, 
-  Check, 
-  Video 
+import {
+  BookOpen,
+  Layers,
+  Calendar,
+  Clock,
+  Pencil,
+  ChevronRight,
+  Check,
+  Video,
+  MoreHorizontal,
 } from 'lucide-react';
 
 interface SubjectCardProps {
   subj: Subject;
-  idx: number;
   lessons: Lesson[];
   revisits: Revisit[];
   onSelectSubject: (subjectId: string) => void;
@@ -36,7 +38,6 @@ interface SubjectCardProps {
 
 const SubjectCard: React.FC<SubjectCardProps> = ({
   subj,
-  idx,
   lessons,
   revisits,
   onSelectSubject,
@@ -45,15 +46,15 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   const subjLessons = lessons.filter((l) => l.subjectId === subj.id);
   const metrics = calculateSubjectMetrics(subj, lessons);
 
-  // Checkmark indicator: clean if has lessons and 0 pending revisits and 0 low confidence
   const subjLessonIds = new Set(subjLessons.map((l) => l.id));
-  const pendingRevisitsCount = revisits.filter((r) => subjLessonIds.has(r.lessonId) && !r.completed).length;
+  const pendingRevisitsCount = revisits.filter(
+    (r) => subjLessonIds.has(r.lessonId) && !r.done
+  ).length;
   const lowConfCount = subjLessons.filter((l) => l.done && l.confidence === 'L').length;
   const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0 && lowConfCount === 0;
 
   const accentColor = getSubjectColorById(subj.id, [subj]);
 
-  // Long-press handling (500ms standard hold threshold)
   const timerRef = React.useRef<number | null>(null);
   const isLongPressTriggered = React.useRef(false);
   const touchStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -93,10 +94,8 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     clearTimer();
-    if (isLongPressTriggered.current) {
-      if (e.cancelable) {
-        e.preventDefault();
-      }
+    if (isLongPressTriggered.current && e.cancelable) {
+      e.preventDefault();
     }
   };
 
@@ -161,84 +160,71 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
           onSelectSubject(subj.id);
         }
       }}
-      title={`Tap to view ${subj.name} lessons · Press & hold to edit or delete`}
-      className="w-full bg-[#FFFFFF] hover:bg-[#F5F5F5] border border-[#E0E0E0] hover:border-[#BDBDBD] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all cursor-pointer group flex items-center gap-3.5 sm:gap-4 text-left select-none relative overflow-hidden"
+      title={`Tap to view ${subj.name} lessons`}
+      className="w-full bg-[#FFFFFF] hover:bg-[#FAFAF8] border border-[#E5E5E0] hover:border-[#C8C8C0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)] transition-colors cursor-pointer group flex items-start gap-3.5 text-left select-none"
     >
-      {/* Left-edge functional accent bar */}
+      {/* Clean Subject Monogram Tile (no thick left stripe) */}
       <div
-        className="w-1 self-stretch rounded-full flex-shrink-0 my-0.5"
-        style={{ backgroundColor: accentColor }}
-      />
-
-      {/* Clean minimal icon/category block */}
-      <div
-        className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex-shrink-0 flex flex-col items-center justify-center border transition-transform group-hover:scale-105"
+        className="w-11 h-11 rounded-xl flex-shrink-0 flex flex-col items-center justify-center border"
         style={{
-          backgroundColor: `${accentColor}10`,
-          borderColor: `${accentColor}25`,
+          backgroundColor: `${accentColor}14`,
+          borderColor: `${accentColor}26`,
           color: accentColor,
         }}
       >
-        <BookOpen size={20} strokeWidth={2.2} />
-        <span className="text-[10px] sm:text-xs font-sans font-bold uppercase tracking-wider mt-0.5">
+        <BookOpen size={17} strokeWidth={2.1} />
+        <span className="text-[9px] font-sans font-bold uppercase tracking-wider mt-0.5 leading-none">
           {subj.name.trim().slice(0, 3)}
         </span>
       </div>
 
-      {/* Card Content Column */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between">
-        {/* Top Row: Subject Name + Circular Checkmark */}
+      {/* Card Content */}
+      <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
-          <div className="font-sans font-bold text-base sm:text-lg text-[#111111] truncate">
-            {subj.name}
+          <div className="min-w-0">
+            <h3 className="font-sans font-bold text-base text-[#111111] truncate m-0 leading-snug">
+              {subj.name}
+            </h3>
+            <p className="text-xs font-sans text-[#787873] font-medium mt-0.5 m-0 tabular-nums">
+              {metrics.totalPartsAdded} {metrics.totalPartsAdded === 1 ? 'part' : 'parts'} ·{' '}
+              {metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}
+            </p>
           </div>
 
-          <div
-            className="flex-shrink-0 mt-0.5"
-            title={
-              isClean
-                ? 'All caught up: no pending revisits or low-confidence lessons'
-                : pendingRevisitsCount > 0
-                ? `${pendingRevisitsCount} revisit(s) pending`
-                : 'Pending reviews'
-            }
-          >
-            {/* Completed items: solid dark fill with white checkmark */}
-            {isClean ? (
-              <div className="w-5 h-5 rounded-full bg-[#111111] text-[#FFFFFF] flex items-center justify-center shadow-2xs">
-                <Check size={12} strokeWidth={3} />
-              </div>
-            ) : (
-              <div className="w-5 h-5 rounded-full border border-[#E0E0E0]" />
+          <div className="flex items-center gap-1 flex-shrink-0 -mr-1.5 -mt-1">
+            {isClean && (
+              <span
+                title="All caught up"
+                className="w-6 h-6 rounded-full bg-[#16A34A]/12 text-[#16A34A] flex items-center justify-center"
+              >
+                <Check size={13} strokeWidth={2.75} />
+              </span>
             )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLongPressSubject(subj);
+              }}
+              aria-label={`Options for ${subj.name}`}
+              title="Edit or delete subject"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+            >
+              <MoreHorizontal size={16} />
+            </button>
           </div>
         </div>
 
-        {/* Metadata line */}
-        <div className="text-xs font-sans text-[#8A8A8A] font-medium mt-0.5 flex flex-wrap items-center gap-x-2">
-          <span>{metrics.totalPartsAdded} {metrics.totalPartsAdded === 1 ? 'part' : 'parts'}</span>
-          <span>·</span>
-          <span>{metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}</span>
-        </div>
-
-        {/* Label + Progress Bar Row */}
-        <div className="mt-3">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-[10px] font-sans font-bold tracking-wider text-[#8A8A8A] uppercase">
-              PROGRESS
+        {/* Progress Bar & Tabular Ratio */}
+        <div className="mt-3.5">
+          <div className="flex justify-between items-baseline mb-1.5 text-xs font-sans tabular-nums">
+            <span className="text-[#787873] font-medium">
+              {metrics.watchedPartsCount} / {metrics.totalPartsAdded} watched
             </span>
-            <div className="text-right">
-              <span className="text-xs font-sans font-semibold text-[#111111]">
-                {metrics.watchedPartsCount} / {metrics.totalPartsAdded} parts completed
-              </span>
-              <span className="text-xs font-sans text-[#8A8A8A] ml-1">
-                ({metrics.percentage}%)
-              </span>
-            </div>
+            <span className="font-bold text-[#111111]">{metrics.percentage}%</span>
           </div>
 
-          {/* Horizontal progress bar */}
-          <div className="w-full h-2 rounded-full bg-[#F0F0F0] overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-[#EFEFEA] overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300 bg-[#111111]"
               style={{ width: `${metrics.percentage}%` }}
@@ -254,57 +240,46 @@ interface CurriculumDashboardProps {
   onSelectSubject: (subjectId: string) => void;
 }
 
-export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSelectSubject }) => {
-  const { 
-    subjects, 
-    lessons, 
+export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({
+  onSelectSubject,
+}) => {
+  const {
+    subjects,
+    lessons,
     revisits,
-    examDate, 
-    setExamDate, 
-    addSubject, 
-    updateSubject, 
-    deleteSubject 
+    examDate,
+    setExamDate,
+    addSubject,
+    updateSubject,
+    deleteSubject,
   } = useStore();
 
   const { activeOverlay, overlayData, openOverlay, closeOverlay } = useNavigation();
 
-  // Modals state derived from navigation overlay
   const isAddModalOpen = activeOverlay === 'curriculum-add-subject';
   const isExamModalOpen = activeOverlay === 'curriculum-exam-date';
-  const actionSheetSubject = activeOverlay === 'curriculum-subject-menu' ? (overlayData as Subject) : null;
-  const editingSubject = activeOverlay === 'curriculum-edit-subject' ? (overlayData as Subject) : null;
-  const deletingSubject = activeOverlay === 'curriculum-delete-subject' ? (overlayData as Subject) : null;
+  const actionSheetSubject =
+    activeOverlay === 'curriculum-subject-menu' ? (overlayData as Subject) : null;
+  const editingSubject =
+    activeOverlay === 'curriculum-edit-subject' ? (overlayData as Subject) : null;
+  const deletingSubject =
+    activeOverlay === 'curriculum-delete-subject' ? (overlayData as Subject) : null;
 
-  // Top stats calculations
   const overallMetrics = calculateCurriculumMetrics(subjects, lessons);
 
-  // Days remaining calculation
-  let daysRemainingText: string | React.ReactNode = 'Set exam date';
+  let daysRemainingText = 'Set exam date';
   if (examDate) {
     const diffDays = calculateDaysRemaining(examDate);
-    
-    if (diffDays > 1) {
-      daysRemainingText = `${diffDays} days`;
-    } else if (diffDays === 1) {
-      daysRemainingText = '1 day';
-    } else if (diffDays === 0) {
-      daysRemainingText = 'Today!';
-    } else {
-      daysRemainingText = 'Passed';
-    }
+    if (diffDays > 1) daysRemainingText = `${diffDays} days`;
+    else if (diffDays === 1) daysRemainingText = '1 day';
+    else if (diffDays === 0) daysRemainingText = 'Today';
+    else daysRemainingText = 'Passed';
   }
 
   return (
-    <div className="flex flex-col gap-4 relative">
-      {/* Title */}
-      <div className="text-left pt-2 pb-1">
-        <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight m-0">
-          Curriculum
-        </h1>
-      </div>
-
-      {/* Top Stat Tiles Row matching image 1's tile style */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="flex flex-col gap-6">
+      {/* KPI Summary Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile
           icon={Video}
           value={`${overallMetrics.totalWatchedVideos} / ${overallMetrics.totalPartsAdded}`}
@@ -317,25 +292,36 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
           label="Subjects tracked"
         />
 
-        <div 
+        <div
           onClick={() => openOverlay('curriculum-exam-date')}
-          className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between flex-1 shadow-[0_1px_3px_rgba(0,0,0,0.04)] cursor-pointer hover:border-[#BDBDBD] transition-all group"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openOverlay('curriculum-exam-date');
+            }
+          }}
+          className="bg-[#FFFFFF] border border-[#E5E5E0] hover:border-[#C8C8C0] rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(17,17,17,0.03)] cursor-pointer transition-colors group"
         >
-          <div className="flex justify-between items-center text-[#111111] mb-2">
-            <Calendar size={18} strokeWidth={2.2} />
-            <Pencil size={13} className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8A8A]" />
+          <div className="flex justify-between items-center text-[#787873] mb-2.5">
+            <Calendar size={17} strokeWidth={2} />
+            <Pencil
+              size={13}
+              className="opacity-60 group-hover:opacity-100 transition-opacity text-[#787873]"
+            />
           </div>
           <div>
             {examDate ? (
-              <div className="text-2xl sm:text-[1.65rem] font-extrabold font-sans text-[#111111] tracking-tight leading-tight">
+              <div className="text-2xl sm:text-[1.65rem] font-extrabold font-sans text-[#111111] tracking-tight leading-none tabular-nums">
                 {daysRemainingText}
               </div>
             ) : (
-              <div className="text-sm font-bold font-sans text-[#111111] underline leading-tight py-1">
+              <div className="text-sm font-bold font-sans text-[#111111] underline underline-offset-2 leading-tight py-1">
                 Set exam date
               </div>
             )}
-            <div className="text-xs text-[#8A8A8A] font-sans font-medium mt-1 leading-snug">
+            <div className="text-xs text-[#787873] font-sans font-medium mt-1.5 leading-snug">
               Days remaining
             </div>
           </div>
@@ -348,26 +334,26 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         />
       </div>
 
-      {/* Subject Progress Section */}
-      <div className="flex flex-col gap-3">
-        <div className="flex justify-between items-center px-1">
-          <h2 className="section !mb-0 text-base sm:text-lg font-bold text-[#111111]">Progress</h2>
-          <span className="text-xs font-sans text-[#8A8A8A]">
-            Tap a card to view lessons
-          </span>
+      {/* Subjects Progress Grid */}
+      <section className="flex flex-col gap-3">
+        <div className="flex justify-between items-center px-0.5">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+            Subjects
+          </h2>
+          <span className="text-xs font-sans text-[#787873]">Tap a subject to view lessons</span>
         </div>
 
         {subjects.length === 0 ? (
-          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-6 text-center text-sm text-[#8A8A8A]">
-            No subjects yet. Tap the <strong className="text-[#111111]">+</strong> button below to start tracking your curriculum.
+          <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-8 text-center text-sm font-sans text-[#787873]">
+            No subjects yet. Tap <strong className="text-[#111111]">Add Subject</strong> to start
+            tracking your curriculum.
           </div>
         ) : (
-          <div className="flex flex-col gap-3 sm:gap-4">
-            {subjects.map((subj, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {subjects.map((subj) => (
               <SubjectCard
                 key={subj.id}
                 subj={subj}
-                idx={idx}
                 lessons={lessons}
                 revisits={revisits}
                 onSelectSubject={onSelectSubject}
@@ -376,15 +362,22 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Confidence Overview Section */}
-      <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <h2 className="section text-base font-bold text-[#111111] mb-3">Confidence breakdown</h2>
+      {/* Confidence Overview (Single Hairline-Divided Sheet) */}
+      <section className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFEFEA]">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+            Confidence Breakdown
+          </h2>
+        </div>
+
         {subjects.length === 0 ? (
-          <div className="text-xs text-[#8A8A8A] text-center py-4">No subjects added yet.</div>
+          <div className="text-xs font-sans text-[#787873] text-center py-8">
+            No subjects added yet.
+          </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="divide-y divide-[#EFEFEA]">
             {subjects.map((subj) => {
               const subjDone = lessons.filter((l) => l.subjectId === subj.id && l.done);
               const lowCount = subjDone.filter((l) => l.confidence === 'L').length;
@@ -394,55 +387,54 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
               const totalRated = lowCount + medCount + highCount;
 
               return (
-                <div
+                <button
                   key={subj.id}
+                  type="button"
                   onClick={() => onSelectSubject(subj.id)}
-                  className="p-3 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:border-[#BDBDBD] hover:bg-[#F5F5F5] transition-all cursor-pointer group"
+                  className="w-full px-4 sm:px-5 py-3.5 text-left hover:bg-[#FAFAF8] transition-colors cursor-pointer group block"
                 >
                   <div className="flex justify-between items-center mb-1.5">
-                    <div className="font-sans font-bold text-sm text-[#111111] group-hover:text-black transition-colors">
+                    <span className="font-sans font-bold text-sm text-[#111111]">
                       {subj.name}
-                    </div>
-                    <ChevronRight size={16} className="text-[#8A8A8A] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all" />
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="text-[#787873] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all"
+                    />
                   </div>
 
                   {!hasCompleted ? (
-                    <div className="text-xs font-sans text-[#8A8A8A] italic">
-                      No lessons completed yet
-                    </div>
+                    <div className="text-xs font-sans text-[#787873]">No lessons completed yet</div>
                   ) : (
                     <div>
-                      {/* Compact textual format */}
-                      <div className="text-xs font-sans text-[#111111] flex flex-wrap items-center gap-1.5">
-                        <span className="font-bold text-[#111111]">{subj.name} —</span>
-                        <span className="text-[#EF4444] font-medium">{lowCount} Low</span>
-                        <span className="text-[#8A8A8A]">·</span>
-                        <span className="text-[#8B5CF6] font-medium">{medCount} Medium</span>
-                        <span className="text-[#8A8A8A]">·</span>
-                        <span className="text-[#10B981] font-medium">{highCount} High</span>
+                      <div className="text-xs font-sans flex flex-wrap items-center gap-1.5 tabular-nums">
+                        <span className="text-[#DC2626] font-semibold">{lowCount} Low</span>
+                        <span className="text-[#D6D6D0]" aria-hidden="true">·</span>
+                        <span className="text-[#7C3AED] font-semibold">{medCount} Medium</span>
+                        <span className="text-[#D6D6D0]" aria-hidden="true">·</span>
+                        <span className="text-[#16A34A] font-semibold">{highCount} High</span>
                       </div>
 
-                      {/* Horizontal progress bar */}
                       {totalRated > 0 && (
-                        <div className="w-full h-2 rounded-full bg-[#F0F0F0] mt-2 overflow-hidden flex">
+                        <div className="w-full h-1.5 rounded-full bg-[#EFEFEA] mt-2.5 overflow-hidden flex">
                           {lowCount > 0 && (
                             <div
                               style={{ width: `${(lowCount / totalRated) * 100}%` }}
-                              className="bg-[#EF4444] h-full"
+                              className="bg-[#DC2626] h-full"
                               title={`${lowCount} Low`}
                             />
                           )}
                           {medCount > 0 && (
                             <div
                               style={{ width: `${(medCount / totalRated) * 100}%` }}
-                              className="bg-[#8B5CF6] h-full"
+                              className="bg-[#7C3AED] h-full"
                               title={`${medCount} Medium`}
                             />
                           )}
                           {highCount > 0 && (
                             <div
                               style={{ width: `${(highCount / totalRated) * 100}%` }}
-                              className="bg-[#10B981] h-full"
+                              className="bg-[#16A34A] h-full"
                               title={`${highCount} High`}
                             />
                           )}
@@ -450,12 +442,12 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
                       )}
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Modals & Action Sheets */}
       <AddSubjectModal
@@ -471,12 +463,8 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({ onSele
         subject={actionSheetSubject}
         isOpen={!!actionSheetSubject}
         onClose={closeOverlay}
-        onEdit={(subj) => {
-          openOverlay('curriculum-edit-subject', subj);
-        }}
-        onDelete={(subj) => {
-          openOverlay('curriculum-delete-subject', subj);
-        }}
+        onEdit={(subj) => openOverlay('curriculum-edit-subject', subj)}
+        onDelete={(subj) => openOverlay('curriculum-delete-subject', subj)}
       />
 
       <ExamDateModal

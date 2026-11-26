@@ -1,6 +1,9 @@
 import React from 'react';
 import { CalendarDays, BarChart2, RotateCcw, BookOpen, Plus } from 'lucide-react';
 import { useNavigation, Tab } from '../navigation';
+import { useStore } from '../store';
+import { todayStr } from '../utils';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface TabItem {
   id: Tab;
@@ -9,110 +12,177 @@ interface TabItem {
 }
 
 const TABS: TabItem[] = [
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
-  { id: 'stats', label: 'Stats', icon: BarChart2 },
+  { id: 'calendar', label: 'Today', icon: CalendarDays },
+  { id: 'lessons', label: 'Curriculum', icon: BookOpen },
   { id: 'revisit', label: 'Revisit', icon: RotateCcw },
-  { id: 'lessons', label: 'Lessons', icon: BookOpen },
+  { id: 'stats', label: 'Stats', icon: BarChart2 },
 ];
 
-export const BottomNav: React.FC = () => {
-  const { tab, setTab, activeSubjectId, openOverlay, activeOverlay } = useNavigation();
+export function useDueRevisitsCount(): number {
+  const { revisits, lessons } = useStore();
+  const today = todayStr();
+  return revisits.filter(
+    (r) => !r.done && r.date <= today && lessons.some((l) => l.id === r.lessonId)
+  ).length;
+}
 
-  // If a full-screen overlay or modal is active, do not render the floating bottom bar
-  if (activeOverlay) {
-    return null;
-  }
+export function useQuickAddAction() {
+  const { tab, activeSubjectId, openOverlay, openTabOverlay } = useNavigation();
 
-  // Quick Action triggered by the floating accent circular button
-  const handleQuickAction = () => {
+  const label =
+    tab === 'lessons' ? (activeSubjectId ? 'Add Lesson' : 'Add Subject') : 'Add Task';
+
+  const trigger = () => {
     if (tab === 'calendar') {
       openOverlay('calendar-add-task');
     } else if (tab === 'lessons') {
-      if (activeSubjectId) {
-        openOverlay('curriculum-add-lesson');
-      } else {
-        openOverlay('curriculum-add-subject');
-      }
-    } else if (tab === 'revisit') {
-      openOverlay('calendar-add-task');
-    } else if (tab === 'stats') {
-      openOverlay('calendar-add-task');
+      openOverlay(activeSubjectId ? 'curriculum-add-lesson' : 'curriculum-add-subject');
+    } else {
+      openTabOverlay('calendar', 'calendar-add-task');
     }
   };
 
-  const getQuickActionTitle = () => {
-    if (tab === 'calendar') return 'Add task or study log';
-    if (tab === 'lessons') return activeSubjectId ? 'Add lesson' : 'Add subject';
-    if (tab === 'revisit') return 'Add revision task';
-    return 'Quick add';
-  };
+  return { label, trigger };
+}
+
+export const DesktopNavRail: React.FC = () => {
+  const { tab, setTab } = useNavigation();
+  const dueCount = useDueRevisitsCount();
+  const quickAdd = useQuickAddAction();
 
   return (
-    <div
-      id="bottom-navigation-cluster"
-      className="fixed bottom-4 sm:bottom-6 left-0 right-0 z-40 pointer-events-none flex justify-center px-3.5 sm:px-4"
+    <aside
+      aria-label="Primary Sidebar Navigation"
+      className="hidden md:flex flex-col justify-between w-[228px] lg:w-[248px] flex-shrink-0 bg-[#FFFFFF] border-r border-[#E5E5E0] px-4 py-6 select-none"
     >
-      <div className="w-full max-w-[420px] flex items-center gap-2.5 sm:gap-3 pointer-events-auto">
-        {/* Main Nav Bar containing 4 items (Matching squircle shape of highlight) */}
-        <nav
-          id="main-nav-pill"
-          aria-label="Main Navigation"
-          className="flex-1 bg-[#111111] border border-[#262626] rounded-[26px] h-[70px] sm:h-[74px] px-2 py-1.5 flex items-center justify-between shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-xl"
+      <div className="flex flex-col gap-6">
+        {/* Clean Brand Wordmark (single text element) */}
+        <div className="px-2">
+          <span className="font-sans text-lg font-extrabold tracking-tight text-[#111111] whitespace-nowrap">
+            A/L Tracker
+          </span>
+        </div>
+
+        {/* Contextual Primary CTA */}
+        <button
+          type="button"
+          onClick={quickAdd.trigger}
+          className="w-full min-h-[42px] px-4 py-2.5 rounded-xl bg-[#111111] text-[#FFFFFF] hover:bg-[#262626] active:scale-[0.98] transition-all text-xs font-sans font-bold flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shadow-[0_1px_2px_rgba(17,17,17,0.08)]"
         >
+          <Plus size={16} strokeWidth={2.4} />
+          <span>{quickAdd.label}</span>
+        </button>
+
+        {/* Primary Destinations */}
+        <nav aria-label="Main Navigation" className="flex flex-col gap-1">
           {TABS.map((item) => {
             const isActive = tab === item.id;
             const Icon = item.icon;
+            const showCount = item.id === 'revisit' && dueCount > 0;
 
             return (
               <button
                 key={item.id}
-                id={`nav-tab-${item.id}`}
+                id={`rail-tab-${item.id}`}
                 type="button"
                 onClick={() => setTab(item.id)}
-                aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
-                className="flex-1 flex items-center justify-center h-full transition-all duration-150 cursor-pointer select-none group focus:outline-none active:scale-95 px-0.5"
+                className={`w-full min-h-[42px] px-3 py-2 rounded-xl flex items-center justify-between gap-2.5 text-sm font-sans transition-colors cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-[#F2F2EE] text-[#111111] font-bold'
+                    : 'text-[#525252] font-medium hover:bg-[#F7F7F5] hover:text-[#111111]'
+                }`}
               >
-                {/* Active Highlight Container: Highlights BOTH the icon and the text */}
-                <div
-                  className={`w-full max-w-[74px] sm:max-w-[78px] h-[56px] sm:h-[60px] rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[#2A2A2A] text-[#FFFFFF] shadow-2xs'
-                      : 'text-[#8A8A8A] group-hover:bg-[#1A1A1A] group-hover:text-[#FFFFFF]'
-                  }`}
-                >
+                <span className="flex items-center gap-2.5 min-w-0">
                   <Icon
-                    size={20}
-                    strokeWidth={isActive ? 2.5 : 2}
-                    className="transition-colors"
+                    size={18}
+                    strokeWidth={isActive ? 2.4 : 2}
+                    className={isActive ? 'text-[#111111]' : 'text-[#787873]'}
                   />
-                  <span
-                    className={`text-[11px] font-sans tracking-tight text-center leading-none transition-colors ${
-                      isActive
-                        ? 'text-[#FFFFFF] font-bold'
-                        : 'text-[#8A8A8A] font-medium group-hover:text-[#FFFFFF]'
-                    }`}
-                  >
-                    {item.label}
+                  <span>{item.label}</span>
+                </span>
+
+                {showCount && (
+                  <span className="text-xs font-sans font-bold text-[#DC2626] tabular-nums">
+                    {dueCount}
                   </span>
-                </div>
+                )}
               </button>
             );
           })}
         </nav>
-
-        {/* Floating Quick Action Button: Matching squircle shape of the bar and highlight */}
-        <button
-          id="floating-quick-action-btn"
-          type="button"
-          onClick={handleQuickAction}
-          title={getQuickActionTitle()}
-          aria-label={getQuickActionTitle()}
-          className="h-[70px] w-[70px] sm:h-[74px] sm:w-[74px] rounded-[26px] aspect-square flex-shrink-0 flex items-center justify-center bg-[#111111] text-[#FFFFFF] border border-[#262626] shadow-[0_16px_40px_rgba(0,0,0,0.38)] hover:bg-[#1F1F1F] hover:scale-[1.03] active:scale-95 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#111111]/30"
-        >
-          <Plus size={28} strokeWidth={2.4} />
-        </button>
       </div>
-    </div>
+
+      <div className="pt-4 border-t border-[#EFEFEA] px-1">
+        <PWAInstallButton />
+      </div>
+    </aside>
+  );
+};
+
+export const BottomNav: React.FC = () => {
+  const { tab, setTab, activeOverlay } = useNavigation();
+  const dueCount = useDueRevisitsCount();
+
+  // If an overlay sheet/modal is active, hide the docked bottom bar
+  if (activeOverlay) {
+    return null;
+  }
+
+  return (
+    <nav
+      id="bottom-navigation-bar"
+      aria-label="Main Navigation"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/94 backdrop-blur-md border-t border-[#E5E5E0] pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className="max-w-lg mx-auto grid grid-cols-4 h-16 px-2">
+        {TABS.map((item) => {
+          const isActive = tab === item.id;
+          const Icon = item.icon;
+          const showCount = item.id === 'revisit' && dueCount > 0;
+
+          return (
+            <button
+              key={item.id}
+              id={`nav-tab-${item.id}`}
+              type="button"
+              onClick={() => setTab(item.id)}
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
+              className="relative flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[44px] cursor-pointer select-none focus:outline-none active:scale-95 transition-transform"
+            >
+              {/* Subtle top active hairline */}
+              <span
+                aria-hidden="true"
+                className={`absolute top-0 w-7 h-[2px] rounded-full transition-opacity ${
+                  isActive ? 'bg-[#111111] opacity-100' : 'opacity-0'
+                }`}
+              />
+
+              <div className="relative flex items-center justify-center">
+                <Icon
+                  size={20}
+                  strokeWidth={isActive ? 2.4 : 1.9}
+                  className={isActive ? 'text-[#111111]' : 'text-[#787873]'}
+                />
+                {showCount && (
+                  <span className="absolute -top-1.5 -right-3 text-[10px] font-sans font-extrabold text-[#DC2626] tabular-nums leading-none">
+                    {dueCount > 99 ? '99+' : dueCount}
+                  </span>
+                )}
+              </div>
+
+              <span
+                className={`text-[11px] font-sans tracking-tight leading-none whitespace-nowrap ${
+                  isActive ? 'text-[#111111] font-bold' : 'text-[#787873] font-medium'
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 };

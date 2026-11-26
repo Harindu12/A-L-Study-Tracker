@@ -15,11 +15,12 @@ export const PWAInstallButton: React.FC = () => {
   if (isInstallable) {
     return (
       <button
+        type="button"
         onClick={install}
-        className="flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[#FFFFFF] transition hover:opacity-90 shadow-sm"
+        className="w-full min-h-[38px] flex items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-[#F7F7F5] hover:bg-[#EFEFEA] px-3 py-1.5 text-xs font-sans font-semibold text-[#111111] transition-colors cursor-pointer whitespace-nowrap"
       >
         <Download size={14} />
-        Install App
+        <span>Install App</span>
       </button>
     );
   }
@@ -28,30 +29,35 @@ export const PWAInstallButton: React.FC = () => {
     return (
       <>
         <button
+          type="button"
           onClick={() => openOverlay('pwa-ios-guide')}
-          className="flex items-center gap-1.5 rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/10"
+          className="w-full min-h-[38px] flex items-center justify-center gap-1.5 rounded-xl border border-[#E5E5E0] bg-[#F7F7F5] hover:bg-[#EFEFEA] px-3 py-1.5 text-xs font-sans font-semibold text-[#111111] transition-colors cursor-pointer whitespace-nowrap"
         >
           <Download size={14} />
-          Install
+          <span>Install App</span>
         </button>
 
         {showIOSGuide && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#000000]/60 backdrop-blur-xs p-4"
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#000000]/55 backdrop-blur-xs p-0 sm:p-4"
             onClick={closeOverlay}
           >
-            <div 
-              className="w-full max-w-sm rounded-3xl bg-[#FFFFFF] border border-[#E0E0E0] p-6 shadow-2xl"
+            <div
+              className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl bg-[#FFFFFF] border border-[#E5E5E0] p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-sans font-bold text-[#111111] mb-2">Install on iPhone / iPad</h3>
-              <p className="text-sm text-[#8A8A8A] font-sans leading-relaxed mb-4">
-                1. Tap the <strong className="text-[#111111]">Share</strong> button in the Safari toolbar.<br />
+              <h3 className="text-lg font-sans font-extrabold text-[#111111] mb-2">
+                Install on iPhone / iPad
+              </h3>
+              <p className="text-sm text-[#525252] font-sans leading-relaxed mb-5">
+                1. Tap the <strong className="text-[#111111]">Share</strong> button in the Safari toolbar.
+                <br />
                 2. Scroll down and tap <strong className="text-[#111111]">Add to Home Screen</strong>.
               </p>
               <button
+                type="button"
                 onClick={closeOverlay}
-                className="w-full rounded-xl bg-[#111111] py-2.5 text-sm font-sans font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors"
+                className="w-full min-h-[42px] rounded-xl bg-[#111111] py-2.5 text-sm font-sans font-semibold text-[#FFFFFF] hover:bg-[#262626] transition-colors cursor-pointer"
               >
                 Close
               </button>

@@ -6,39 +6,39 @@ interface StatTileProps {
   value: string | number;
   label: string;
   sublabel?: string;
-  iconColor?: string;
-  bgColor?: string;
   onClick?: () => void;
   className?: string;
 }
 
-export const StatTile: React.FC<StatTileProps> = ({ 
-  icon: Icon, 
-  value, 
-  label, 
+export const StatTile: React.FC<StatTileProps> = ({
+  icon: Icon,
+  value,
+  label,
   sublabel,
   onClick,
-  className = ''
+  className = '',
 }) => {
   return (
-    <div 
+    <div
       onClick={onClick}
-      className={`bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between flex-1 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-[#CCCCCC] transition-all ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      className={`bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between flex-1 shadow-[0_1px_2px_rgba(17,17,17,0.03)] hover:border-[#C8C8C0] transition-colors ${
+        onClick ? 'cursor-pointer' : ''
+      } ${className}`}
     >
       {Icon && (
-        <div className="text-[#111111] mb-2 flex items-center justify-between">
-          <Icon size={18} strokeWidth={2.2} />
+        <div className="text-[#787873] mb-2.5 flex items-center justify-between">
+          <Icon size={17} strokeWidth={2} />
         </div>
       )}
       <div>
-        <div className="text-2xl sm:text-[1.65rem] font-extrabold font-sans text-[#111111] tracking-tight leading-tight">
+        <div className="text-2xl sm:text-[1.65rem] font-extrabold font-sans text-[#111111] tracking-tight leading-none tabular-nums">
           {value}
         </div>
-        <div className="text-xs text-[#8A8A8A] font-sans font-medium mt-1 leading-snug">
+        <div className="text-xs text-[#787873] font-sans font-medium mt-1.5 leading-snug">
           {label}
         </div>
         {sublabel && (
-          <div className="text-[10px] sm:text-xs text-[#8A8A8A] font-sans mt-0.5 font-normal truncate">
+          <div className="text-[11px] text-[#787873] font-sans mt-0.5 font-normal truncate">
             {sublabel}
           </div>
         )}

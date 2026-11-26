@@ -28,7 +28,7 @@ export const LessonsTab: React.FC = () => {
   };
 
   return (
-    <div className="pb-6">
+    <div>
       {activeSubject ? (
         <SubjectLessonList
           subject={activeSubject}

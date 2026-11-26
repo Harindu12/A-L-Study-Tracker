@@ -33,57 +33,61 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/55 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
-      <div 
-        className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
+      <div
+        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-[#111111]" />
-            <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Target Exam Date</h3>
+            <Calendar size={17} className="text-[#111111]" />
+            <h3 className="font-sans text-lg font-extrabold text-[#111111] m-0">
+              Target Exam Date
+            </h3>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+            aria-label="Close"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
         </div>
 
-        <p className="text-xs font-sans text-[#8A8A8A] mb-4">
-          Set your upcoming exam or target deadline to track days remaining on your Curriculum dashboard.
+        <p className="text-xs font-sans text-[#787873] mb-4 leading-relaxed">
+          Set your upcoming exam date to calculate days remaining and weekly pace targets.
         </p>
 
         <form onSubmit={handleSave} className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-sans font-semibold text-[#525252] mb-1.5">
               Exam Date
             </label>
-            <input 
-              type="date" 
-              value={date} 
+            <input
+              type="date"
+              value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
+              className="w-full font-sans text-sm px-3.5 py-2.5 rounded-xl border border-[#E5E5E0] bg-[#F7F7F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF]"
               required
             />
           </div>
 
-          <div className="flex gap-2 justify-end mt-2">
+          <div className="flex gap-2 justify-end pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+              className="min-h-[40px] px-4 py-2 text-xs font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-xl cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!date}
-              className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
+              className="min-h-[40px] px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
             >
               Save Exam Date
             </button>

@@ -27,7 +27,8 @@ import {
   Play,
   Link2,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  MoreHorizontal
 } from 'lucide-react';
 import { todayStr } from '../../utils';
 
@@ -547,16 +548,16 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        className="rounded-2xl border border-[#E0E0E0] bg-[#FFFFFF] hover:border-[#BDBDBD] transition-all cursor-pointer select-none overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+        className="rounded-2xl border border-[#E5E5E0] bg-[#FFFFFF] hover:border-[#C8C8C0] transition-colors cursor-pointer select-none overflow-hidden shadow-[0_1px_2px_rgba(17,17,17,0.03)]"
       >
         {/* Collapsed Card Main Row */}
-        <div className="p-4 sm:p-4.5 flex items-center justify-between gap-3.5 sm:gap-4">
+        <div className="p-4 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-3.5">
           {/* Left Square Badge */}
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors tabular-nums ${
               isFullyComplete
-                ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs'
-                : 'bg-[#F5F5F5] text-[#111111] border border-[#E0E0E0]'
+                ? 'bg-[#111111] text-[#FFFFFF]'
+                : 'bg-[#F7F7F5] text-[#111111] border border-[#E5E5E0]'
             }`}
           >
             {isFullyComplete ? (
@@ -570,21 +571,36 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
           {/* Title & Parts Count */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-sans font-bold text-base text-[#111111] truncate leading-snug">
+            <h3 className="font-sans font-bold text-base text-[#111111] truncate leading-snug m-0">
               {lesson.name}
             </h3>
-            <p className="text-xs font-sans text-[#8A8A8A] font-medium mt-0.5">
+            <p className="text-xs font-sans text-[#787873] font-medium mt-0.5 tabular-nums m-0">
               {watchedPartsCount} / {parts.length} parts
             </p>
           </div>
 
-          {/* Chevron to expand/collapse */}
-          <div className="flex-shrink-0 text-[#8A8A8A] pl-1">
-            {isExpanded ? (
-              <ChevronUp size={18} strokeWidth={2.2} className="text-[#111111]" />
-            ) : (
-              <ChevronDown size={18} strokeWidth={2.2} />
-            )}
+          {/* Explicit Options Menu + Expand Chevron */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActionMenu(true);
+              }}
+              aria-label={`Lesson options for ${lesson.name}`}
+              title="Lesson options"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+
+            <div className="text-[#787873] pl-0.5">
+              {isExpanded ? (
+                <ChevronUp size={18} strokeWidth={2.2} className="text-[#111111]" />
+              ) : (
+                <ChevronDown size={18} strokeWidth={2.2} />
+              )}
+            </div>
           </div>
         </div>
 
@@ -592,12 +608,12 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         {isExpanded && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#FAFAFA] border-t border-[#E0E0E0] p-3.5 sm:p-4 animate-in fade-in duration-150"
+            className="bg-[#F7F7F5] border-t border-[#EFEFEA] p-3.5 sm:p-4 animate-in fade-in duration-150"
           >
             {/* Clean Section Header (zero-pill unboxed typography) */}
             <div className="flex items-center justify-between gap-2 mb-2.5 px-0.5">
               <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                <span className="text-[11px] font-sans font-bold uppercase tracking-wider text-[#8A8A8A] flex items-center gap-1.5 tabular-nums">
+                <span className="text-[11px] font-sans font-bold uppercase tracking-wider text-[#787873] flex items-center gap-1.5 tabular-nums">
                   <Video size={13} className="text-[#111111]" />
                   <span>Parts ({parts.length})</span>
                 </span>
@@ -622,7 +638,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
             {/* Two-Tier Parts List */}
             {parts.length === 0 ? (
-              <div className="p-4 text-center rounded-2xl border border-dashed border-[#E0E0E0] text-xs font-sans text-[#8A8A8A] mb-3 bg-[#FFFFFF]">
+              <div className="p-4 text-center rounded-2xl border border-dashed border-[#E5E5E0] text-xs font-sans text-[#787873] mb-3 bg-[#FFFFFF]">
                 No parts added yet. Add individual parts below or import from Telegram.
               </div>
             ) : (
@@ -636,17 +652,17 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                   return (
                     <div
                       key={part.id}
-                      className={`rounded-2xl border bg-[#FFFFFF] transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.03)] ${
+                      className={`rounded-2xl border bg-[#FFFFFF] transition-colors shadow-[0_1px_2px_rgba(17,17,17,0.02)] ${
                         isPartComplete
-                          ? 'border-[#D4D4D4]'
-                          : 'border-[#E0E0E0] hover:border-[#BDBDBD]'
+                          ? 'border-[#D4D4CE]'
+                          : 'border-[#E5E5E0] hover:border-[#C8C8C0]'
                       }`}
                     >
                       {/* Tier 1: Identity, Actions & Full-Width Wrapped Sinhala Title */}
                       <div className="px-3.5 pt-3 pb-2.5">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="w-6 h-6 rounded-lg bg-[#F5F5F5] border border-[#E0E0E0] text-[#525252] font-sans font-bold text-[11px] tabular-nums flex items-center justify-center flex-shrink-0 select-none">
+                            <span className="w-6 h-6 rounded-lg bg-[#F7F7F5] border border-[#E5E5E0] text-[#525252] font-sans font-bold text-[11px] tabular-nums flex items-center justify-center flex-shrink-0 select-none">
                               {String(index + 1).padStart(2, '0')}
                             </span>
 
@@ -733,7 +749,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                       </div>
 
                       {/* Tier 2: Progress Toggles Strip */}
-                      <div className="border-t border-[#F0F0F0] px-2.5 py-1.5 bg-[#FAFAFA]/60 rounded-b-2xl flex items-center gap-1.5">
+                      <div className="border-t border-[#EFEFEA] px-2.5 py-1.5 bg-[#FAFAF8] rounded-b-2xl flex items-center gap-1.5">
                         <button
                           type="button"
                           role="checkbox"
@@ -952,30 +968,30 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         )}
       </div>
 
-      {/* Long-Press Action Sheet Modal */}
+      {/* Action Sheet Modal */}
       {showActionMenu && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={(e) => {
             e.stopPropagation();
             setShowActionMenu(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200"
+            className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#E0E0E0]">
+            <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#EFEFEA]">
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] text-[#111111] border border-[#E0E0E0] flex items-center justify-center font-bold text-xs flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[#F7F7F5] text-[#111111] border border-[#E5E5E0] flex items-center justify-center font-bold text-xs flex-shrink-0">
                   <BookOpen size={16} />
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-sans text-base font-bold text-[#111111] truncate m-0">
                     {lesson.name}
                   </h3>
-                  <p className="text-xs font-sans text-[#8A8A8A] m-0">
+                  <p className="text-xs font-sans text-[#787873] m-0">
                     Lesson options
                   </p>
                 </div>
@@ -983,7 +999,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
               <button
                 type="button"
                 onClick={() => setShowActionMenu(false)}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-full transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -1083,25 +1099,25 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       {/* Edit Title Modal */}
       {showEditTitleModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={(e) => {
             e.stopPropagation();
             setShowEditTitleModal(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
+            className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <Pencil size={18} className="text-[#111111]" />
-                <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Edit Lesson Title</h3>
+                <h3 className="font-sans text-lg font-extrabold text-[#111111] m-0">Edit Lesson Title</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowEditTitleModal(false)}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-full transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -1110,14 +1126,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
             <form onSubmit={handleSaveTitle} className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1.5">
                   Lesson Name
                 </label>
                 <input
                   type="text"
                   value={editTitleValue}
                   onChange={(e) => setEditTitleValue(e.target.value)}
-                  className="w-full font-sans text-sm p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F5F5F5] text-[#111111] focus:border-[#111111] focus:outline-none"
+                  className="w-full font-sans text-sm px-3.5 py-2.5 rounded-xl border border-[#E5E5E0] bg-[#F7F7F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none"
                   placeholder="e.g. Chemical Bonding"
                   autoFocus
                   required
@@ -1128,14 +1144,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowEditTitleModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+                  className="min-h-[40px] px-4 py-2 text-xs font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!editTitleValue.trim()}
-                  className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
+                  className="min-h-[40px] px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl disabled:opacity-40 hover:bg-[#262626] transition-colors cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -1148,25 +1164,25 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       {/* Delete Lesson Confirmation Modal */}
       {showDeleteConfirmModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteConfirmModal(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
+            className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-3">
-              <div className="p-2.5 rounded-full bg-red-100 text-red-600 flex-shrink-0">
+              <div className="p-2.5 rounded-xl bg-[#DC2626]/10 text-[#DC2626] flex-shrink-0">
                 <AlertTriangle size={20} />
               </div>
               <div>
                 <h3 className="font-sans text-base font-bold text-[#111111] m-0">
                   Delete Lesson?
                 </h3>
-                <p className="text-xs font-sans text-[#8A8A8A] mt-1.5 leading-relaxed">
+                <p className="text-xs font-sans text-[#787873] mt-1.5 leading-relaxed">
                   Delete <strong className="text-[#111111] font-semibold">{lesson.name}</strong> and all its parts? This cannot be undone.
                 </p>
               </div>
@@ -1176,14 +1192,14 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirmModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+                className="min-h-[40px] px-4 py-2 text-xs font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-sans font-bold text-xs py-2 px-5 rounded-xl shadow-2xs transition-colors cursor-pointer"
+                className="min-h-[40px] bg-[#DC2626] hover:bg-[#B91C1C] text-[#FFFFFF] font-sans font-bold text-xs py-2 px-5 rounded-xl transition-colors cursor-pointer"
               >
                 Delete Lesson
               </button>
@@ -1195,20 +1211,20 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       {/* Two-Step Import from Telegram Modal (back-button aware via NavigationContext) */}
       {isTelegramModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={(e) => {
             e.stopPropagation();
             closeOverlay();
           }}
         >
           <div
-            className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[88dvh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+            className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[88dvh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Consistent Monochrome Header */}
-            <div className="px-5 pt-5 pb-3.5 border-b border-[#F0F0F0] flex items-start justify-between gap-3 flex-shrink-0">
+            <div className="px-5 pt-5 pb-3.5 border-b border-[#EFEFEA] flex items-start justify-between gap-3 flex-shrink-0">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] flex items-center justify-center text-[#111111] flex-shrink-0 mt-0.5">
+                <div className="w-9 h-9 rounded-xl bg-[#F7F7F5] border border-[#E5E5E0] flex items-center justify-center text-[#111111] flex-shrink-0 mt-0.5">
                   <Send size={16} />
                 </div>
                 <div className="min-w-0">

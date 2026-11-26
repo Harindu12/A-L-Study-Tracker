@@ -5,18 +5,17 @@ import { useNavigation } from '../navigation';
 import { DailyEntry, DailySubjectLog, HourBlock } from '../types';
 import { todayStr, uid, addDays } from '../utils';
 import { SUBJECT_ACCENT_COLORS, getSubjectColorById } from '../utils/colors';
-import { 
-  Plus, 
-  Check, 
-  X, 
-  Calendar as CalendarIcon, 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronDown, 
-  Sparkles, 
-  MapPin, 
-  Search, 
-  PenTool, 
+import {
+  Plus,
+  Check,
+  X,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Sparkles,
+  Search,
+  PenTool,
   Clock,
   AlertCircle,
   Pencil,
@@ -25,7 +24,10 @@ import {
   BookOpen,
   Sun,
   CloudSun,
-  Moon
+  Moon,
+  MoreHorizontal,
+  ArrowRight,
+  RotateCcw,
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -52,34 +54,33 @@ interface AgendaTask {
 }
 
 const MONTH_ACCENT_COLORS = [
-  '#EF4444', // Jan - Red / Rose
-  '#3B82F6', // Feb - Blue
-  '#10B981', // Mar - Emerald
-  '#F59E0B', // Apr - Amber
-  '#8B5CF6', // May - Purple
-  '#06B6D4', // Jun - Cyan
-  '#F97316', // Jul - Orange
-  '#6366F1', // Aug - Indigo
-  '#EC4899', // Sep - Pink
-  '#14B8A6', // Oct - Teal
-  '#84CC16', // Nov - Lime
-  '#64748B', // Dec - Slate
+  '#EF4444',
+  '#3B82F6',
+  '#10B981',
+  '#F59E0B',
+  '#8B5CF6',
+  '#06B6D4',
+  '#F97316',
+  '#6366F1',
+  '#EC4899',
+  '#14B8A6',
+  '#84CC16',
+  '#64748B',
 ];
 
-interface AgendaTaskCardProps {
+interface AgendaTaskRowProps {
   task: AgendaTask;
   onToggle: (task: AgendaTask) => void;
   onTogglePastPaper: (task: AgendaTask) => void;
   onLongPress: (task: AgendaTask) => void;
 }
 
-const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
+const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
   task,
   onToggle,
   onTogglePastPaper,
   onLongPress,
 }) => {
-  // Long-press handling (500ms threshold) matching Curriculum's LessonCardItem
   const timerRef = React.useRef<number | null>(null);
   const isLongPressTriggered = React.useRef(false);
   const touchStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -102,7 +103,9 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
           navigator.vibrate(40);
-        } catch (_) {}
+        } catch {
+          // ignore
+        }
       }
       onLongPress(task);
     }, 500);
@@ -119,8 +122,8 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     clearTimer();
-    if (isLongPressTriggered.current) {
-      if (e.cancelable) e.preventDefault();
+    if (isLongPressTriggered.current && e.cancelable) {
+      e.preventDefault();
     }
   };
 
@@ -144,13 +147,8 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
     }
   };
 
-  const handleMouseUp = () => {
-    clearTimer();
-  };
-
-  const handleMouseLeave = () => {
-    clearTimer();
-  };
+  const handleMouseUp = () => clearTimer();
+  const handleMouseLeave = () => clearTimer();
 
   const handleClick = () => {
     if (isLongPressTriggered.current) {
@@ -163,7 +161,6 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
   const isSubjectWithPart = task.source === 'subject' && !!task.partId;
   const isWatched = task.done;
   const isPastPaper = !!task.pastPaperDone;
-  const isFullyComplete = isSubjectWithPart ? (isWatched && isPastPaper) : isWatched;
 
   return (
     <div
@@ -181,71 +178,85 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
         clearTimer();
         onLongPress(task);
       }}
-      title="Tap to toggle · Hold to edit or delete"
-      className={`group relative border rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] transition-all cursor-pointer flex items-center gap-3 select-none ${
-        isFullyComplete
-          ? 'bg-[#F9FAF9] border-[#D1D5DB] hover:border-[#9CA3AF]'
-          : 'bg-[#FFFFFF] border-[#E0E0E0] hover:border-[#CCCCCC]'
+      title="Tap to toggle · Hold or use menu to edit or delete"
+      className={`group px-4 sm:px-5 py-3.5 transition-colors cursor-pointer flex items-start gap-3 select-none ${
+        isWatched ? 'bg-[#FAFAF8]/65 hover:bg-[#FAFAF8]' : 'bg-[#FFFFFF] hover:bg-[#FAFAF8]'
       }`}
     >
-      {/* Subject-accent-colored left edge indicator: solid when active/unwatched, soft/muted when fully complete */}
-      <div
-        className="w-1.5 self-stretch rounded-full flex-shrink-0 my-0.5 transition-transform group-hover:scale-y-105"
-        style={{
-          backgroundColor: isFullyComplete ? '#9CA3AF' : task.accentColor,
-          opacity: isFullyComplete ? 0.75 : 1,
-        }}
-      />
-
-      {/* Primary Step 1: Circular Checkbox for "Watched / Done" */}
+      {/* 40px touch target around 20px circle */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onToggle(task);
         }}
-        className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
-          isWatched
-            ? 'border-[#111111] text-[#FFFFFF]'
-            : 'border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF]'
-        }`}
-        style={isWatched ? { backgroundColor: task.accentColor, borderColor: task.accentColor } : undefined}
+        className="w-10 h-10 -ml-2 -my-1 flex items-center justify-center rounded-xl hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0"
         aria-label={isWatched ? 'Mark incomplete' : 'Mark watched'}
-        title={isWatched ? 'Watched (click to unmark)' : 'Click to mark Watched (Step 1)'}
+        title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
       >
-        {isWatched && <Check size={12} strokeWidth={3} className="text-[#FFFFFF]" />}
+        <span
+          className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
+            isWatched ? 'text-[#FFFFFF]' : 'border-[#C8C8C0] bg-[#FFFFFF]'
+          }`}
+          style={
+            isWatched
+              ? { backgroundColor: task.accentColor, borderColor: task.accentColor }
+              : undefined
+          }
+        >
+          {isWatched && <Check size={11} strokeWidth={3} className="text-[#FFFFFF]" />}
+        </span>
       </button>
 
-      {/* Content area: Full Title (wrapping, no truncation, no redundant subtitle) */}
-      <div className="flex-1 min-w-0 pr-1">
-        <h3
-          className={`font-sans font-bold text-sm sm:text-[15px] leading-snug tracking-tight break-words ${
-            isWatched
-              ? 'line-through text-[#8A8A8A]'
-              : 'text-[#111111]'
-          }`}
-        >
-          {task.title}
-        </h3>
-
-        {/* Single inline meta row: Subject pill tag + Step 2 Past Paper Chip/Toggle + Duration */}
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {/* Subject badge with uniform accent color */}
-          <span
-            className="text-[10px] sm:text-[11px] font-sans font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 flex-shrink-0"
-            style={{
-              backgroundColor: `${task.accentColor}14`,
-              color: task.accentColor,
-            }}
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <h3
+            className={`font-sans font-semibold text-sm sm:text-[15px] leading-snug tracking-tight break-words m-0 ${
+              isWatched ? 'line-through text-[#787873]' : 'text-[#111111]'
+            }`}
           >
-            <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: task.accentColor }}
-            />
-            {task.subjectLabel}
-          </span>
+            {task.title}
+          </h3>
 
-          {/* Step 2 Control: Compact chip/toggle for Past Paper */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onLongPress(task);
+            }}
+            aria-label={`Task options for ${task.title}`}
+            title="Edit or delete"
+            className="w-8 h-8 -mr-1.5 -mt-1 rounded-lg flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0"
+          >
+            <MoreHorizontal size={16} />
+          </button>
+        </div>
+
+        {/* Unboxed Metadata + Interactive Step 2 Past Paper Toggle */}
+        <div className="flex items-center justify-between gap-2 flex-wrap mt-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap text-xs font-sans text-[#787873] tabular-nums">
+            <span className="inline-flex items-center gap-1.5 font-medium text-[#525252]">
+              <span
+                className="w-2 h-2 rounded-[3px] flex-shrink-0"
+                style={{ backgroundColor: task.accentColor }}
+                aria-hidden="true"
+              />
+              <span>{task.subjectLabel}</span>
+            </span>
+            {task.duration && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>{task.duration}</span>
+              </>
+            )}
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1 text-[#525252] font-medium">
+              <Clock size={11} className="text-[#787873]" />
+              {task.timeDisplay}
+            </span>
+          </div>
+
           {isSubjectWithPart && (
             <button
               type="button"
@@ -256,80 +267,58 @@ const AgendaTaskCard: React.FC<AgendaTaskCardProps> = ({
                   onTogglePastPaper(task);
                 }
               }}
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-sans font-semibold transition-all flex-shrink-0 ${
+              className={`min-h-[28px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-sans font-semibold border transition-colors flex-shrink-0 ${
                 !isWatched
-                  ? 'bg-[#F5F5F5] text-[#A3A3A3] border border-[#E5E5E5] opacity-55 cursor-not-allowed select-none'
+                  ? 'bg-[#F7F7F5] text-[#A8A8A2] border-[#EFEFEA] cursor-not-allowed'
                   : isPastPaper
-                  ? 'bg-[#111111] text-[#FFFFFF] border border-[#111111] shadow-2xs hover:bg-[#262626] cursor-pointer'
-                  : 'bg-[#FFFFFF] text-[#333333] border border-[#CCCCCC] hover:border-[#111111] hover:bg-[#F5F5F5] cursor-pointer shadow-2xs'
+                  ? 'bg-[#16A34A]/10 text-[#15803D] border-[#16A34A]/30 hover:bg-[#16A34A]/15 cursor-pointer'
+                  : 'bg-[#FFFFFF] text-[#525252] border-[#E5E5E0] hover:border-[#111111] hover:text-[#111111] cursor-pointer'
               }`}
               title={
                 !isWatched
-                  ? 'Step 2: Mark "Watched" first to unlock Past Paper practice'
+                  ? 'Mark "Watched" first to unlock Past Paper'
                   : isPastPaper
                   ? 'Past Paper done (click to toggle)'
-                  : 'Step 2: Click to mark Past Paper done'
-              }
-              aria-label={
-                !isWatched
-                  ? 'Past Paper practice locked until watched'
-                  : isPastPaper
-                  ? 'Mark past paper not done'
-                  : 'Mark past paper done'
+                  : 'Mark Past Paper done'
               }
             >
-              {/* Distinctive mini indicator dot / pill (not a duplicate primary checkbox) */}
               <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${
+                className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${
                   !isWatched
-                    ? 'bg-[#D4D4D4]'
+                    ? 'border-[#D8D8D2] bg-[#FFFFFF]'
                     : isPastPaper
-                    ? 'bg-[#FFFFFF]'
-                    : 'bg-[#8A8A8A]'
+                    ? 'bg-[#16A34A] border-[#16A34A] text-[#FFFFFF]'
+                    : 'border-[#C8C8C0] bg-[#FFFFFF]'
                 }`}
-              />
+              >
+                {isWatched && isPastPaper && <Check size={9} strokeWidth={3.5} />}
+              </span>
               <span>Past paper</span>
-              {isWatched && isPastPaper && (
-                <Check size={10} strokeWidth={3.5} className="text-[#FFFFFF] -ml-0.5" />
-              )}
             </button>
           )}
-
-          {task.duration && (
-            <span className="text-[10px] sm:text-[11px] font-sans text-[#8A8A8A] flex-shrink-0">
-              {task.duration}
-            </span>
-          )}
         </div>
-      </div>
-
-      {/* Right side: Time shown as a small badge */}
-      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-        <span className="inline-flex items-center gap-1 bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] text-[11px] font-sans font-semibold px-2.5 py-1 rounded-full shadow-2xs">
-          <Clock size={11} className="text-[#8A8A8A]" />
-          {task.timeDisplay}
-        </span>
       </div>
     </div>
   );
 };
 
-export const CalendarTab: React.FC<CalendarTabProps> = () => {
-  const { 
-    dailyEntries, 
-    saveDailyEntry, 
-    updateDailyEntry, 
-    subjects, 
-    lessons, 
-    revisits, 
+export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit }) => {
+  const {
+    dailyEntries,
+    saveDailyEntry,
+    updateDailyEntry,
+    subjects,
+    lessons,
+    revisits,
     updateRevisit,
-    updateLessonParts 
+    updateLessonParts,
   } = useStore();
+
   const today = todayStr();
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [filterMode, setFilterMode] = useState<'today' | 'tomorrow' | 'all' | 'custom'>('today');
 
-  // Expandable month calendar grid state
+  // Mobile collapsible month grid
   const [isMonthGridExpanded, setIsMonthGridExpanded] = useState<boolean>(false);
   const [viewingYear, setViewingYear] = useState<number>(() => {
     const d = new Date(today.replace(/-/g, '/'));
@@ -342,18 +331,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
 
   const { activeOverlay, openOverlay, closeOverlay, setTab, openSubject } = useNavigation();
 
-  // Floating toolbar & overlay states
   const isSearchOpen = activeOverlay === 'calendar-search';
   const [searchQuery, setSearchQuery] = useState('');
   const isNotesModalOpen = activeOverlay === 'calendar-notes';
   const isAddModalOpen = activeOverlay === 'calendar-add-task';
   const isMonthModalOpen = activeOverlay === 'calendar-month';
-  const [modalYear, setModalYear] = useState<number>(() => {
-    const d = new Date();
-    return d.getFullYear();
-  });
+  const [modalYear, setModalYear] = useState<number>(() => new Date().getFullYear());
 
-  // Keep modalYear synced when overlay opens or selectedDate changes
   useEffect(() => {
     if (isMonthModalOpen) {
       const d = new Date(selectedDate.replace(/-/g, '/'));
@@ -363,7 +347,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
   }, [isMonthModalOpen, selectedDate]);
 
-  // Keep viewingYear & viewingMonth in sync when selectedDate changes and grid is closed
   useEffect(() => {
     if (!isMonthGridExpanded) {
       const d = new Date(selectedDate.replace(/-/g, '/'));
@@ -374,7 +357,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
   }, [selectedDate, isMonthGridExpanded]);
 
-  // Keep filterMode in sync when selectedDate changes outside of chips
   useEffect(() => {
     if (selectedDate === today) {
       setFilterMode('today');
@@ -383,10 +365,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
   }, [selectedDate, today]);
 
-  // Helpers for expandable month calendar
-  const viewingMonthName = useMemo(() => {
-    return new Date(viewingYear, viewingMonth, 1).toLocaleDateString('en-US', { month: 'long' });
-  }, [viewingYear, viewingMonth]);
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setSearchQuery('');
+    }
+  }, [isSearchOpen]);
+
+  const viewingMonthName = useMemo(
+    () => new Date(viewingYear, viewingMonth, 1).toLocaleDateString('en-US', { month: 'long' }),
+    [viewingYear, viewingMonth]
+  );
 
   const handlePrevMonth = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -419,7 +407,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     setIsMonthGridExpanded((prev) => !prev);
   };
 
-  // Check if a date has any tasks or lessons logged
   const hasTasksForDate = (dateStr: string): boolean => {
     const dayEntry = dailyEntries[dateStr];
     if (dayEntry) {
@@ -430,7 +417,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return false;
   };
 
-  // Generate calendar grid cells (Monday-first: Mo-Su) with adjacent month overflow days
   const calendarGridCells = useMemo(() => {
     const cells: {
       dateStr: string;
@@ -441,12 +427,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       hasTasks: boolean;
     }[] = [];
 
-    const toDateKey = (year: number, monthIndex: number, day: number) => {
-      return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    };
+    const toDateKey = (year: number, monthIndex: number, day: number) =>
+      `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     const firstDayOfMonth = new Date(viewingYear, viewingMonth, 1);
-    // Monday-based day of week: Monday is 0, Sunday is 6
     const firstDayIndex = (firstDayOfMonth.getDay() + 6) % 7;
     const daysInCurrentMonth = new Date(viewingYear, viewingMonth + 1, 0).getDate();
     const daysInPrevMonth = new Date(viewingYear, viewingMonth, 0).getDate();
@@ -454,7 +438,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     const prevYear = viewingMonth === 0 ? viewingYear - 1 : viewingYear;
     const prevMonth = viewingMonth === 0 ? 11 : viewingMonth - 1;
 
-    // Previous month overflow days
     for (let i = 0; i < firstDayIndex; i++) {
       const dayNum = daysInPrevMonth - firstDayIndex + 1 + i;
       const dateStr = toDateKey(prevYear, prevMonth, dayNum);
@@ -468,7 +451,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       });
     }
 
-    // Current month days
     for (let d = 1; d <= daysInCurrentMonth; d++) {
       const dateStr = toDateKey(viewingYear, viewingMonth, d);
       cells.push({
@@ -481,7 +463,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       });
     }
 
-    // Next month overflow days (fill out remaining slots in the last week, minimum 35 cells)
     const nextYear = viewingMonth === 11 ? viewingYear + 1 : viewingYear;
     const nextMonth = viewingMonth === 11 ? 0 : viewingMonth + 1;
     const totalSlots = Math.ceil(cells.length / 7) * 7;
@@ -518,20 +499,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     setIsMonthGridExpanded(false);
   };
 
-  useEffect(() => {
-    if (!isSearchOpen) {
-      setSearchQuery('');
-    }
-  }, [isSearchOpen]);
-
-  // Add modal form state
+  // Add modal state
   const [addMode, setAddMode] = useState<'task' | 'subject'>('task');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDetail, setNewTaskDetail] = useState('');
   const [newTaskPeriod, setNewTaskPeriod] = useState<'morning' | 'afternoon' | 'evening'>('morning');
   const [newTaskDuration, setNewTaskDuration] = useState('50 min');
 
-  // Subject log form state
   const [newSubjId, setNewSubjId] = useState('');
   const [newLessonId, setNewLessonId] = useState('');
   const [newPartId, setNewPartId] = useState('');
@@ -540,13 +514,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
   const [newSubjPastPaper, setNewSubjPastPaper] = useState(false);
   const [newSubjConfidence, setNewSubjConfidence] = useState<'L' | 'M' | 'H'>('M');
 
-  // Long-press Action Sheet & Edit/Delete Modals State
+  // Action Sheet & Edit/Delete Modals
   const [actionTask, setActionTask] = useState<AgendaTask | null>(null);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  // Edit Task Modal Form State
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskDetail, setEditTaskDetail] = useState('');
   const [editTaskPeriod, setEditTaskPeriod] = useState<'morning' | 'afternoon' | 'evening'>('morning');
@@ -559,6 +532,33 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
   const [editSubjStudied, setEditSubjStudied] = useState(false);
   const [editSubjPastPaper, setEditSubjPastPaper] = useState(false);
   const [editSubjConfidence, setEditSubjConfidence] = useState<'L' | 'M' | 'H'>('M');
+
+  const activeTargetDate = filterMode === 'tomorrow' ? addDays(today, 1) : selectedDate;
+  const currentTargetEntry: DailyEntry = dailyEntries[activeTargetDate] || {
+    date: activeTargetDate,
+    hours: [],
+    subjects: [],
+    teachback: '',
+    notes: '',
+    wakeTime: '',
+    sleepTime: '',
+  };
+
+  const updateEntryForDate = (targetDate: string, updates: Partial<DailyEntry>) => {
+    const baseEntry = dailyEntries[targetDate] || {
+      date: targetDate,
+      hours: [],
+      subjects: [],
+      teachback: '',
+      notes: '',
+      wakeTime: '',
+      sleepTime: '',
+    };
+    const saveFn = saveDailyEntry || updateDailyEntry;
+    if (typeof saveFn === 'function') {
+      saveFn(targetDate, { ...baseEntry, ...updates });
+    }
+  };
 
   const handleTaskLongPress = (task: AgendaTask) => {
     setActionTask(task);
@@ -624,7 +624,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       });
       updateEntryForDate(targetDate, { subjects: updatedSubjects });
 
-      // Sync to Curriculum if part checkboxes were updated in edit modal:
       if (editLessonId && editPartId) {
         const lessonObj = lessons.find((l) => l.id === editLessonId);
         if (lessonObj && lessonObj.parts) {
@@ -636,8 +635,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       }
     } else if (actionTask.source === 'hour') {
       if (!editTaskTitle.trim()) return;
-      const fullTaskStr = editTaskDetail.trim() 
-        ? `${editTaskTitle.trim()}: ${editTaskDetail.trim()}` 
+      const fullTaskStr = editTaskDetail.trim()
+        ? `${editTaskTitle.trim()}: ${editTaskDetail.trim()}`
         : editTaskTitle.trim();
       const updatedHours = (baseEntry.hours || []).map((h) => {
         if (h.id === actionTask.originalId) {
@@ -671,7 +670,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     if (actionTask.source === 'subject') {
       const updatedSubjects = (baseEntry.subjects || []).filter((s) => s.id !== actionTask.originalId);
       updateEntryForDate(targetDate, { subjects: updatedSubjects });
-      // Note: Deleting the calendar task does NOT un-mark that part as "Watched" in Curriculum per requirement!
     } else if (actionTask.source === 'hour') {
       const updatedHours = (baseEntry.hours || []).filter((h) => h.id !== actionTask.originalId);
       updateEntryForDate(targetDate, { hours: updatedHours });
@@ -685,34 +683,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     setActionTask(null);
   };
 
-  const activeTargetDate = filterMode === 'tomorrow' ? addDays(today, 1) : selectedDate;
-  const currentTargetEntry: DailyEntry = dailyEntries[activeTargetDate] || {
-    date: activeTargetDate,
-    hours: [],
-    subjects: [],
-    teachback: '',
-    notes: '',
-    wakeTime: '',
-    sleepTime: '',
-  };
-
-  const updateEntryForDate = (targetDate: string, updates: Partial<DailyEntry>) => {
-    const baseEntry = dailyEntries[targetDate] || {
-      date: targetDate,
-      hours: [],
-      subjects: [],
-      teachback: '',
-      notes: '',
-      wakeTime: '',
-      sleepTime: '',
-    };
-    const saveFn = saveDailyEntry || updateDailyEntry;
-    if (typeof saveFn === 'function') {
-      saveFn(targetDate, { ...baseEntry, ...updates });
-    }
-  };
-
-  // Helper to parse time string to 24-hr hour
   const parseTimeToHour = (timeStr: string) => {
     const m = timeStr.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i);
     if (!m) return 9;
@@ -723,7 +693,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return h;
   };
 
-  // Format time to standard 12-hour format with colon and AM/PM (e.g. "8:00 AM", "2:00 PM")
   const formatTime12h = (timeStr?: string, defaultHour = 9): string => {
     if (!timeStr || !timeStr.trim()) {
       const h12 = defaultHour % 12 === 0 ? 12 : defaultHour % 12;
@@ -732,7 +701,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
 
     const trimmed = timeStr.trim();
-    // Match patterns like "8:00 am", "08.00", "8am", "14:30", "2 pm"
     const m = trimmed.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i);
     if (!m) return trimmed;
 
@@ -750,12 +718,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return `${finalH12}:${min} ${finalAmpm}`;
   };
 
-  // Extract agenda tasks for any specific date using real app data
   const getTasksForDate = (dateStr: string): AgendaTask[] => {
     const dayEntry = dailyEntries[dateStr];
     const result: AgendaTask[] = [];
 
-    // 1. Hourly schedule blocks from dailyEntries
     if (dayEntry && dayEntry.hours) {
       dayEntry.hours.forEach((h, hIdx) => {
         let period: 'morning' | 'afternoon' | 'evening' = 'morning';
@@ -802,7 +768,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       });
     }
 
-    // 2. Subject study logs from dailyEntries
     if (dayEntry && dayEntry.subjects) {
       dayEntry.subjects.forEach((s, idx) => {
         const subj = subjects.find((sub) => sub.id === s.subjectId);
@@ -812,19 +777,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
         const part = lesson?.parts?.find((p) => p.id === s.partId);
         const partName = part ? part.name : '';
 
-        // Two-way sync: part in Curriculum is the source of truth for watched and pastPaper!
         const isWatched = part ? !!part.watched : !!s.studied;
         const isPastPaper = part ? !!part.pastPaper : !!s.pastPaper;
 
-        // Consistent title format:
-        // "[Subject] — [Lesson]: [Part]" when a part is selected,
-        // or "[Subject] — [Lesson]" if no specific part was chosen.
-        let title = '';
-        if (partName) {
-          title = `${subjName} — ${lessonName}: ${partName}`;
-        } else {
-          title = `${subjName} — ${lessonName}`;
-        }
+        const title = partName ? `${subjName} — ${lessonName}: ${partName}` : `${subjName} — ${lessonName}`;
 
         const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
         const period = (s as any).period || defaultPeriod;
@@ -839,7 +795,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           date: dateStr,
           title,
           timeDisplay,
-          subjectLabel: partName ? `${subjName} · Part` : s.pastPaper ? `${subjName} · Past Paper` : `${subjName} · Lesson`,
+          subjectLabel: partName
+            ? `${subjName} · Part`
+            : s.pastPaper
+            ? `${subjName} · Past Paper`
+            : `${subjName} · Lesson`,
           duration: (s as any).duration || (isPastPaper ? '60 min' : '45 min'),
           period,
           done: isWatched,
@@ -852,9 +812,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       });
     }
 
-    // 3. Spaced repetition revisits scheduled for this date
+    // Future scheduled revisits (or already completed revisits for this date); pending due/overdue
+    // revisits on Today are shown in the unified "Due for Review" card without duplication.
     (revisits || [])
-      .filter((r) => r.date === dateStr)
+      .filter((r) => r.date === dateStr && (dateStr > today || r.done))
       .forEach((r) => {
         const subj = subjects.find((sub) => sub.id === r.subjectId);
         const lesson = lessons.find((l) => l.id === r.lessonId);
@@ -880,7 +841,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return result;
   };
 
-  // Toggle task done state
   const handleToggleTask = (task: AgendaTask) => {
     if (task.source === 'revisit') {
       if (typeof updateRevisit === 'function') {
@@ -911,7 +871,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     } else {
       const nextDone = !task.done;
 
-      // Two-way sync with Curriculum: If linked to a lesson part, sync "watched"
       if (task.lessonId && task.partId) {
         const lesson = lessons.find((l) => l.id === task.lessonId);
         if (lesson && lesson.parts) {
@@ -922,21 +881,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
         }
       }
 
-      const updatedSubjects = (targetEntry.subjects || []).map((s) => {
-        if (s.id === task.originalId) {
-          return { ...s, studied: nextDone };
-        }
-        return s;
-      });
+      const updatedSubjects = (targetEntry.subjects || []).map((s) =>
+        s.id === task.originalId ? { ...s, studied: nextDone } : s
+      );
       saveFn(targetDate, { ...targetEntry, subjects: updatedSubjects });
     }
   };
 
-  // Toggle past paper done state for a task card, syncing back to Curriculum part
   const handleToggleTaskPastPaper = (task: AgendaTask) => {
     const nextPP = !task.pastPaperDone;
 
-    // Two-way sync with Curriculum: If linked to a lesson part, sync "pastPaper"
     if (task.lessonId && task.partId) {
       const lesson = lessons.find((l) => l.id === task.lessonId);
       if (lesson && lesson.parts) {
@@ -959,24 +913,31 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     };
     const saveFn = saveDailyEntry || updateDailyEntry;
     if (typeof saveFn === 'function') {
-      const updatedSubjects = (targetEntry.subjects || []).map((s) => {
-        if (s.id === task.originalId) {
-          return { ...s, pastPaper: nextPP };
-        }
-        return s;
-      });
+      const updatedSubjects = (targetEntry.subjects || []).map((s) =>
+        s.id === task.originalId ? { ...s, pastPaper: nextPP } : s
+      );
       saveFn(targetDate, { ...targetEntry, subjects: updatedSubjects });
     }
   };
 
-  // Compute daily streak for the secondary info block
+  // Due & overdue revisits for the unified Today view
+  const dueRevisits = useMemo(() => {
+    return (revisits || [])
+      .filter((r) => !r.done && r.date <= today && lessons.some((l) => l.id === r.lessonId))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [revisits, today, lessons]);
+
+  const showDueRevisitsStrip =
+    (filterMode === 'today' || (filterMode === 'custom' && selectedDate === today)) &&
+    dueRevisits.length > 0;
+
   const streak = useMemo(() => {
     let count = 0;
     let curr = today;
-    const hasTodayActivity = !!dailyEntries[today] && (
-      (dailyEntries[today].hours || []).some(h => h.done) || 
-      (dailyEntries[today].subjects || []).some(s => s.studied || s.pastPaper)
-    );
+    const hasTodayActivity =
+      !!dailyEntries[today] &&
+      ((dailyEntries[today].hours || []).some((h) => h.done) ||
+        (dailyEntries[today].subjects || []).some((s) => s.studied || s.pastPaper));
     if (hasTodayActivity) {
       count++;
       curr = addDays(today, -1);
@@ -985,10 +946,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
     for (let i = 0; i < 90; i++) {
       const e = dailyEntries[curr];
-      const had = !!e && (
-        (e.hours || []).some(h => h.done) || 
-        (e.subjects || []).some(s => s.studied || s.pastPaper)
-      );
+      const had =
+        !!e &&
+        ((e.hours || []).some((h) => h.done) ||
+          (e.subjects || []).some((s) => s.studied || s.pastPaper));
       if (had) {
         count++;
         curr = addDays(curr, -1);
@@ -999,18 +960,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return Math.max(count, 1);
   }, [dailyEntries, today]);
 
-  // Tasks to display based on filterMode ('today' | 'tomorrow' | 'all' | 'custom')
   const displayedTasks = useMemo(() => {
-    if (filterMode === 'today') {
-      return getTasksForDate(today);
-    }
-    if (filterMode === 'tomorrow') {
-      return getTasksForDate(addDays(today, 1));
-    }
-    if (filterMode === 'custom') {
-      return getTasksForDate(selectedDate);
-    }
-    // 'all': collect tasks starting from today onwards
+    if (filterMode === 'today') return getTasksForDate(today);
+    if (filterMode === 'tomorrow') return getTasksForDate(addDays(today, 1));
+    if (filterMode === 'custom') return getTasksForDate(selectedDate);
+
     const upcomingTasks: AgendaTask[] = [];
     const dateKeys = Array.from(
       new Set([
@@ -1029,11 +983,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
       const dTasks = getTasksForDate(d);
       dTasks.forEach((t) => {
         const dateObj = new Date(d.replace(/-/g, '/'));
-        const dayLabel = d === today 
-          ? 'Today' 
-          : d === addDays(today, 1) 
-          ? 'Tomorrow' 
-          : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
+        const dayLabel =
+          d === today
+            ? 'Today'
+            : d === addDays(today, 1)
+            ? 'Tomorrow'
+            : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
         upcomingTasks.push({
           ...t,
           subjectLabel: `${t.subjectLabel} · ${dayLabel}`,
@@ -1042,9 +997,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     });
 
     return upcomingTasks;
-  }, [filterMode, today, dailyEntries, subjects, lessons]);
+  }, [filterMode, selectedDate, today, dailyEntries, subjects, lessons, revisits]);
 
-  // Filter tasks by search query if active
   const tasksToRender = useMemo(() => {
     if (!searchQuery.trim()) return displayedTasks;
     const q = searchQuery.toLowerCase();
@@ -1059,8 +1013,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
 
   const tasksCompletedCount = tasksToRender.filter((t) => t.done).length;
 
-  // Helper to determine time-of-day section automatically based on time
-  // before 12:00 = morning, 12:00-17:00 = afternoon, after 17:00 = evening
   const getTimeOfDayPeriod = (timeStr?: string): 'morning' | 'afternoon' | 'evening' => {
     if (!timeStr) return 'morning';
     const hour = parseTimeToHour(timeStr);
@@ -1069,23 +1021,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     return 'evening';
   };
 
-  // Group tasks into visible time-of-day sections: Morning, Afternoon, Evening
-  // If a time-of-day section has no tasks, it is omitted entirely
   const groupedSections = useMemo(() => {
     const morningTasks: AgendaTask[] = [];
     const afternoonTasks: AgendaTask[] = [];
     const eveningTasks: AgendaTask[] = [];
 
     tasksToRender.forEach((task) => {
-      // Determine automatically from its time string
       const period = getTimeOfDayPeriod(task.timeDisplay);
-      if (period === 'morning') {
-        morningTasks.push(task);
-      } else if (period === 'afternoon') {
-        afternoonTasks.push(task);
-      } else {
-        eveningTasks.push(task);
-      }
+      if (period === 'morning') morningTasks.push(task);
+      else if (period === 'afternoon') afternoonTasks.push(task);
+      else eveningTasks.push(task);
     });
 
     const sections: Array<{
@@ -1096,74 +1041,61 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }> = [];
 
     if (morningTasks.length > 0) {
-      sections.push({
-        key: 'morning',
-        title: 'MORNING',
-        icon: Sun,
-        tasks: morningTasks,
-      });
+      sections.push({ key: 'morning', title: 'Morning', icon: Sun, tasks: morningTasks });
     }
-
     if (afternoonTasks.length > 0) {
-      sections.push({
-        key: 'afternoon',
-        title: 'AFTERNOON',
-        icon: CloudSun,
-        tasks: afternoonTasks,
-      });
+      sections.push({ key: 'afternoon', title: 'Afternoon', icon: CloudSun, tasks: afternoonTasks });
     }
-
     if (eveningTasks.length > 0) {
-      sections.push({
-        key: 'evening',
-        title: 'EVENING',
-        icon: Moon,
-        tasks: eveningTasks,
-      });
+      sections.push({ key: 'evening', title: 'Evening', icon: Moon, tasks: eveningTasks });
     }
 
     return sections;
   }, [tasksToRender]);
 
-  // Greeting helper matching reference "Good Morning"
-  const getGreetingText = () => {
-    const hr = new Date().getHours();
-    if (hr >= 4 && hr < 12) return 'Good Morning';
-    if (hr >= 12 && hr < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
-  const getGreetingIcon = () => {
-    const hr = new Date().getHours();
-    if (hr >= 4 && hr < 17) return '☀️';
-    return '🌙';
-  };
-
-  // Date values for oversized date display
-  const activeDisplayDate = filterMode === 'tomorrow' 
-    ? addDays(today, 1) 
-    : filterMode === 'all' 
-    ? today 
-    : selectedDate;
+  const activeDisplayDate =
+    filterMode === 'tomorrow' ? addDays(today, 1) : filterMode === 'all' ? today : selectedDate;
 
   const activeDateObj = new Date(activeDisplayDate.replace(/-/g, '/'));
-  const displayDayName = filterMode === 'all' 
-    ? 'All Tasks' 
-    : activeDateObj.toLocaleDateString('en-US', { weekday: 'long' });
-  const displayDayNum = activeDateObj.getDate();
-  const displayMonthName = activeDateObj.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+  const formattedHeaderDate =
+    filterMode === 'all'
+      ? 'Next 7 days & upcoming'
+      : activeDateObj.toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+        });
 
-  // Add task handler
+  // 7-day Monday-Sunday week strip centered around activeDisplayDate
+  const weekStripDays = useMemo(() => {
+    const base = new Date(activeDisplayDate.replace(/-/g, '/'));
+    const mondayOffset = -((base.getDay() + 6) % 7);
+    const mondayStr = addDays(activeDisplayDate, mondayOffset);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const dateStr = addDays(mondayStr, i);
+      const d = new Date(dateStr.replace(/-/g, '/'));
+      return {
+        dateStr,
+        dayShort: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
+        dayNumber: d.getDate(),
+        isToday: dateStr === today,
+        isSelected: filterMode !== 'all' && dateStr === activeDisplayDate,
+        hasTasks: hasTasksForDate(dateStr),
+      };
+    });
+  }, [activeDisplayDate, filterMode, today, dailyEntries, revisits]);
+
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     const targetDate = filterMode === 'tomorrow' ? addDays(today, 1) : selectedDate;
 
     if (addMode === 'task') {
       if (!newTaskTitle.trim()) return;
-      const fullTaskStr = newTaskDetail.trim() 
-        ? `${newTaskTitle.trim()}: ${newTaskDetail.trim()}` 
+      const fullTaskStr = newTaskDetail.trim()
+        ? `${newTaskTitle.trim()}: ${newTaskDetail.trim()}`
         : newTaskTitle.trim();
-      
+
       const newHour: HourBlock & { duration?: string; period?: string } = {
         id: uid(),
         time: newTaskPeriod === 'morning' ? '8:00 AM' : newTaskPeriod === 'afternoon' ? '2:00 PM' : '7:00 PM',
@@ -1213,7 +1145,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
 
       updateEntryForDate(targetDate, { subjects: [...(baseEntry.subjects || []), newLog] });
 
-      // If a part was selected and checkboxes were toggled in the modal, sync to lesson part in Curriculum!
       if (newLessonId && newPartId) {
         const lessonObj = lessons.find((l) => l.id === newLessonId);
         if (lessonObj && lessonObj.parts) {
@@ -1231,14 +1162,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     }
   };
 
-  // Year-at-a-glance multi-month grid renderer matching reference image
   const renderMultiMonthGrid = () => {
     const months = Array.from({ length: 12 }, (_, i) => i);
     const toDateString = (year: number, month: number, day: number) =>
       `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto max-h-[64vh] p-1 scrollbar-hide">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto max-h-[62dvh] p-0.5 scrollbar-hide">
         {months.map((monthIndex) => {
           const monthColor = MONTH_ACCENT_COLORS[monthIndex % MONTH_ACCENT_COLORS.length];
           const firstDayOfWeek = new Date(modalYear, monthIndex, 1).getDay();
@@ -1246,46 +1176,40 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
           const monthName = new Date(modalYear, monthIndex, 1).toLocaleDateString('en-US', { month: 'long' });
 
           const cells: (number | null)[] = [];
-          for (let i = 0; i < firstDayOfWeek; i++) {
-            cells.push(null);
-          }
-          for (let d = 1; d <= daysInCurrentMonth; d++) {
-            cells.push(d);
-          }
+          for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+          for (let d = 1; d <= daysInCurrentMonth; d++) cells.push(d);
 
           return (
             <div
               key={monthIndex}
-              className="rounded-2xl p-2.5 sm:p-3 border flex flex-col shadow-2xs transition-all"
-              style={{
-                backgroundColor: `${monthColor}14`,
-                borderColor: `${monthColor}35`,
-              }}
+              className="rounded-2xl p-2.5 sm:p-3 border border-[#E5E5E0] bg-[#FAFAF8] flex flex-col"
             >
-              {/* Month Header */}
               <div className="flex items-center justify-between mb-2 px-0.5">
-                <span className="font-sans font-bold text-xs sm:text-sm text-[#111111]">
+                <span className="inline-flex items-center gap-1.5 font-sans font-bold text-xs sm:text-sm text-[#111111]">
+                  <span
+                    className="w-2 h-2 rounded-[3px] flex-shrink-0"
+                    style={{ backgroundColor: monthColor }}
+                    aria-hidden="true"
+                  />
                   {monthName}
                 </span>
-                <span className="text-[10px] font-sans font-medium text-[#8A8A8A]">
+                <span className="text-[10px] font-sans font-medium text-[#787873] tabular-nums">
                   {modalYear}
                 </span>
               </div>
 
-              {/* Day of week initials */}
               <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((wd, i) => (
-                  <span key={i} className="text-[8px] sm:text-[9px] font-sans font-semibold text-[#8A8A8A]">
+                  <span key={i} className="text-[9px] font-sans font-semibold text-[#787873]">
                     {wd}
                   </span>
                 ))}
               </div>
 
-              {/* Days grid */}
-              <div className="grid grid-cols-7 gap-0.5 text-center">
+              <div className="grid grid-cols-7 gap-0.5 text-center tabular-nums">
                 {cells.map((dayNum, i) => {
                   if (dayNum === null) {
-                    return <div key={`empty-${i}`} className="h-5 w-5 mx-auto" />;
+                    return <div key={`empty-${i}`} className="h-6 w-6 mx-auto" />;
                   }
 
                   const dateStr = toDateString(modalYear, monthIndex, dayNum);
@@ -1305,15 +1229,15 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
                         setSelectedDate(dateStr);
                         if (dateStr === today) setFilterMode('today');
                         else if (dateStr === addDays(today, 1)) setFilterMode('tomorrow');
-                        else setFilterMode('all');
+                        else setFilterMode('custom');
                         closeOverlay();
                       }}
-                      className={`h-5.5 w-5.5 mx-auto rounded-full flex flex-col items-center justify-center text-[10px] sm:text-[11px] font-sans transition-all cursor-pointer select-none ${
+                      className={`h-6 w-6 mx-auto rounded-full flex flex-col items-center justify-center text-[10px] sm:text-[11px] font-sans transition-colors cursor-pointer select-none ${
                         isSelected
-                          ? 'bg-[#111111] text-[#FFFFFF] font-bold shadow-xs'
+                          ? 'bg-[#111111] text-[#FFFFFF] font-bold'
                           : isTodayDate
-                          ? 'ring-1 ring-[#111111] font-bold text-[#111111] hover:bg-[#111111]/10'
-                          : 'text-[#111111] hover:bg-[#111111]/10'
+                          ? 'ring-1 ring-[#111111] font-bold text-[#111111] hover:bg-[#EFEFEA]'
+                          : 'text-[#111111] hover:bg-[#EFEFEA]'
                       }`}
                     >
                       <span>{dayNum}</span>
@@ -1331,1306 +1255,1424 @@ export const CalendarTab: React.FC<CalendarTabProps> = () => {
     );
   };
 
-  // Render individual task card matching the app's established black-and-white-with-accent theme
-  const renderTaskCard = (task: AgendaTask) => {
-    return (
-      <AgendaTaskCard
-        key={task.id}
-        task={task}
-        onToggle={handleToggleTask}
-        onTogglePastPaper={handleToggleTaskPastPaper}
-        onLongPress={handleTaskLongPress}
-      />
-    );
-  };
-
-  return (
-    <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden relative">
-      {/* Pinned / Fixed Header Section (greeting, filter chips + quick-add, large bold date display) */}
-      <div className="flex-shrink-0 space-y-2 pb-2 bg-[#FAFAFA] z-20">
-        {/* Top Control Bar: Month Selector Pill Button (left) + Utility Icons (right) */}
-        <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
-          {/* Collapsed state month button matching reference image */}
+  const monthCalendarCard = (
+    <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-sans font-bold text-sm text-[#111111]">{viewingMonthName}</span>
+          <span className="font-sans font-semibold text-xs text-[#787873] tabular-nums">
+            {viewingYear}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={handleToggleMonthGrid}
-            className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E0E0E0] hover:border-[#111111] text-[#111111] shadow-2xs hover:shadow-xs transition-all cursor-pointer select-none"
-            aria-expanded={isMonthGridExpanded}
-            aria-label="Toggle month calendar grid"
+            onClick={handlePrevMonth}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+            aria-label="Previous month"
           >
-            <CalendarIcon size={14} className="text-[#111111] group-hover:scale-105 transition-transform" />
-            <span className="text-xs font-sans font-bold capitalize">
-              {viewingMonthName}
-            </span>
-            <ChevronDown
-              size={14}
-              className={`text-[#8A8A8A] transition-transform duration-300 ease-in-out ${
-                isMonthGridExpanded ? 'rotate-180 text-[#111111]' : ''
-              }`}
-            />
+            <ChevronLeft size={16} />
           </button>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+            aria-label="Next month"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
 
-          {/* Utility icons on the top-right replacing the avatar */}
-          <div className="flex items-center gap-1">
+      <div className="grid grid-cols-7 text-center pb-1.5 border-b border-[#EFEFEA]">
+        {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((wd) => (
+          <span key={wd} className="text-[11px] font-sans font-semibold text-[#787873] py-0.5">
+            {wd}
+          </span>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-y-1 text-center pt-2 tabular-nums">
+        {calendarGridCells.map((cell) => (
+          <div key={cell.dateStr} className="flex items-center justify-center">
             <button
               type="button"
-              onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                isSearchOpen ? 'text-[#111111] bg-[#F0F0F0]' : 'text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0]'
+              onClick={() => handleSelectCalendarDate(cell.dateStr)}
+              className={`w-8 h-8 rounded-full flex flex-col items-center justify-center text-xs font-sans transition-colors cursor-pointer relative select-none ${
+                cell.isSelected
+                  ? 'bg-[#111111] text-[#FFFFFF] font-bold'
+                  : cell.isToday
+                  ? 'border border-[#111111] text-[#111111] font-bold hover:bg-[#F2F2EE]'
+                  : !cell.isCurrentMonth
+                  ? 'text-[#B8B8B2] hover:bg-[#F2F2EE] hover:text-[#525252]'
+                  : 'text-[#111111] font-medium hover:bg-[#F2F2EE]'
               }`}
-              title="Search tasks"
-              aria-label="Search tasks"
             >
-              <Search size={18} strokeWidth={2.2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => openOverlay('calendar-notes')}
-              className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
-              title="Teach-back & Daily Reflections"
-              aria-label="Daily Reflections"
-            >
-              <PenTool size={18} strokeWidth={2.2} />
-            </button>
-            <button
-              type="button"
-              onClick={() => openOverlay('calendar-month')}
-              className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
-              title="Year at a glance"
-              aria-label="Year at a glance"
-            >
-              <CalendarIcon size={18} strokeWidth={2.2} />
+              <span className={cell.hasTasks ? '-mt-0.5' : ''}>{cell.dayNumber}</span>
+              {cell.hasTasks && (
+                <span
+                  className={`w-1 h-1 rounded-full absolute bottom-1 left-1/2 -translate-x-1/2 ${
+                    cell.isSelected ? 'bg-[#FFFFFF]' : 'bg-[#111111]'
+                  }`}
+                />
+              )}
             </button>
           </div>
-        </div>
+        ))}
+      </div>
+    </div>
+  );
 
-        {/* Smooth Expandable Month Calendar Grid */}
-        <div
-          className={`transition-all duration-300 ease-in-out overflow-hidden ${
-            isMonthGridExpanded
-              ? 'max-h-[380px] opacity-100 scale-y-100 my-1'
-              : 'max-h-0 opacity-0 scale-y-95 pointer-events-none my-0'
-          } origin-top`}
-        >
-          <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-2xl p-3 sm:p-4 shadow-xs mx-0.5">
-            {/* Month & Year header with prev/next arrows */}
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="font-sans font-bold text-sm sm:text-base text-[#111111]">
-                {viewingMonthName} <span className="text-[#8A8A8A] font-semibold text-xs ml-1">{viewingYear}</span>
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handlePrevMonth}
-                  className="p-1.5 rounded-full text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
-                  aria-label="Previous month"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextMonth}
-                  className="p-1.5 rounded-full text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F5F5F5] transition-colors cursor-pointer"
-                  aria-label="Next month"
-                >
-                  <ChevronRight size={16} />
-                </button>
+  const dueRevisitsCard = showDueRevisitsStrip && (
+    <section className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+      <div className="px-4 sm:px-5 py-3 border-b border-[#EFEFEA] flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <RotateCcw size={15} className="text-[#111111] flex-shrink-0" />
+          <h2 className="font-sans text-sm font-bold text-[#111111] m-0">
+            Due for Review
+          </h2>
+          <span className="text-xs font-sans font-semibold text-[#787873] tabular-nums">
+            ({dueRevisits.length})
+          </span>
+        </div>
+        {onNavigateToRevisit && (
+          <button
+            type="button"
+            onClick={onNavigateToRevisit}
+            className="inline-flex items-center gap-1 text-xs font-sans font-semibold text-[#525252] hover:text-[#111111] transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <span>View all</span>
+            <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
+
+      <div className="divide-y divide-[#EFEFEA]">
+        {dueRevisits.slice(0, 4).map((r) => {
+          const isOverdue = r.date < today;
+          const subject = subjects.find((s) => s.id === r.subjectId);
+          const lesson = lessons.find((l) => l.id === r.lessonId);
+          const accentColor = getSubjectColorById(r.subjectId, subjects);
+
+          return (
+            <div
+              key={r.id}
+              className="px-4 sm:px-5 py-3 hover:bg-[#FAFAF8] transition-colors flex items-center gap-3"
+            >
+              <button
+                type="button"
+                onClick={() => updateRevisit(r.id, { done: true })}
+                aria-label={`Complete review for ${lesson?.name || 'lesson'}`}
+                className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0 group"
+              >
+                <span className="w-5 h-5 rounded-full border-[1.5px] border-[#C8C8C0] group-hover:border-[#16A34A] bg-[#FFFFFF] block transition-colors" />
+              </button>
+
+              <div className="flex-1 min-w-0">
+                <div className="font-sans font-semibold text-sm text-[#111111] leading-snug break-words">
+                  {lesson?.name || 'Lesson Revisit'}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5 text-xs font-sans text-[#787873] tabular-nums">
+                  <span className="inline-flex items-center gap-1.5 font-medium text-[#525252]">
+                    <span
+                      className="w-2 h-2 rounded-[3px] flex-shrink-0"
+                      style={{ backgroundColor: accentColor }}
+                      aria-hidden="true"
+                    />
+                    <span>{subject?.name || 'Subject'}</span>
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{r.type}</span>
+                  <span aria-hidden="true">·</span>
+                  {isOverdue ? (
+                    <span className="inline-flex items-center gap-1 text-[#DC2626] font-semibold">
+                      <AlertCircle size={12} />
+                      <span>Overdue</span>
+                    </span>
+                  ) : (
+                    <span className="text-[#111111] font-semibold">Due today</span>
+                  )}
+                </div>
               </div>
             </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 
-            {/* Day of week labels (Mo–Su) at top matching reference */}
-            <div className="grid grid-cols-7 text-center mb-1 border-b border-[#F0F0F0] pb-1">
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((wd) => (
-                <span key={wd} className="text-[10px] sm:text-[11px] font-sans font-semibold text-[#8A8A8A] py-0.5">
-                  {wd}
-                </span>
-              ))}
+  return (
+    <div className="flex flex-col gap-4 sm:gap-5">
+      {/* Top Workspace Strip: Date Summary, Mode Switcher, Utility Actions */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-sans text-sm sm:text-base font-bold text-[#111111] leading-snug">
+              {formattedHeaderDate}
             </div>
+            <div className="text-xs font-sans text-[#787873] tabular-nums mt-0.5">
+              {tasksCompletedCount}/{tasksToRender.length} tasks done · {streak}d streak
+            </div>
+          </div>
 
-            {/* Dates Grid */}
-            <div className="grid grid-cols-7 gap-y-1 text-center pt-1">
-              {calendarGridCells.map((cell) => {
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Segmented View Filter */}
+            <div className="inline-flex bg-[#EFEFEA] p-1 rounded-xl border border-[#E5E5E0]">
+              {[
+                { id: 'today', label: 'Today' },
+                { id: 'tomorrow', label: 'Tomorrow' },
+                { id: 'all', label: 'Upcoming' },
+              ].map((chip) => {
+                const isSelected = filterMode === chip.id;
                 return (
-                  <div key={cell.dateStr} className="flex flex-col items-center justify-center p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCalendarDate(cell.dateStr)}
-                      className={`w-7.5 h-7.5 sm:w-8.5 sm:h-8.5 rounded-full flex flex-col items-center justify-center text-[11px] sm:text-xs font-sans transition-all cursor-pointer relative select-none ${
-                        cell.isSelected
-                          ? 'bg-[#111111] text-[#FFFFFF] font-bold shadow-xs'
-                          : cell.isToday
-                          ? 'border border-[#111111] text-[#111111] font-bold hover:bg-[#F5F5F5]'
-                          : !cell.isCurrentMonth
-                          ? 'text-[#C4C4C4] hover:bg-[#F5F5F5] hover:text-[#8A8A8A]'
-                          : 'text-[#111111] font-medium hover:bg-[#F5F5F5]'
-                      }`}
-                    >
-                      <span className={cell.hasTasks ? '-mt-0.5' : ''}>{cell.dayNumber}</span>
-                      {cell.hasTasks && (
-                        <span
-                          className={`w-1 h-1 rounded-full absolute bottom-1 left-1/2 -translate-x-1/2 ${
-                            cell.isSelected ? 'bg-[#FFFFFF]' : 'bg-[#111111]'
-                          }`}
-                        />
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => {
+                      if (chip.id === 'today') {
+                        setSelectedDate(today);
+                        setFilterMode('today');
+                      } else if (chip.id === 'tomorrow') {
+                        setSelectedDate(addDays(today, 1));
+                        setFilterMode('tomorrow');
+                      } else {
+                        setFilterMode('all');
+                      }
+                    }}
+                    className={`min-h-[30px] px-2.5 sm:px-3 py-1 rounded-lg text-xs font-sans font-semibold transition-colors cursor-pointer select-none whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
+                        : 'text-[#787873] hover:text-[#111111]'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
                 );
               })}
             </div>
+
+            {/* Mobile Month Toggle + Toolbar Actions */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleToggleMonthGrid}
+                aria-expanded={isMonthGridExpanded}
+                aria-label="Toggle month calendar"
+                title="Toggle month calendar"
+                className={`lg:hidden h-9 px-2.5 rounded-xl border text-xs font-sans font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer ${
+                  isMonthGridExpanded
+                    ? 'bg-[#111111] text-[#FFFFFF] border-[#111111]'
+                    : 'bg-[#FFFFFF] text-[#111111] border-[#E5E5E0] hover:bg-[#F2F2EE]'
+                }`}
+              >
+                <span className="truncate max-w-[68px]">{viewingMonthName.slice(0, 3)}</span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${isMonthGridExpanded ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => (isSearchOpen ? closeOverlay() : openOverlay('calendar-search'))}
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
+                  isSearchOpen
+                    ? 'bg-[#111111] text-[#FFFFFF] border-[#111111]'
+                    : 'bg-[#FFFFFF] text-[#525252] border-[#E5E5E0] hover:text-[#111111] hover:bg-[#F2F2EE]'
+                }`}
+                title="Search tasks"
+                aria-label="Search tasks"
+              >
+                <Search size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openOverlay('calendar-notes')}
+                className="w-9 h-9 rounded-xl border bg-[#FFFFFF] text-[#525252] border-[#E5E5E0] hover:text-[#111111] hover:bg-[#F2F2EE] flex items-center justify-center transition-colors cursor-pointer"
+                title="Daily Reflections"
+                aria-label="Daily Reflections"
+              >
+                <PenTool size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openOverlay('calendar-month')}
+                className="w-9 h-9 rounded-xl border bg-[#FFFFFF] text-[#525252] border-[#E5E5E0] hover:text-[#111111] hover:bg-[#F2F2EE] flex items-center justify-center transition-colors cursor-pointer"
+                title="Year at a glance"
+                aria-label="Year at a glance"
+              >
+                <CalendarIcon size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 1. Greeting Header Row (Screen 1 in Reference) */}
-        <div className="px-1 pt-0.5 pb-0.5">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight leading-tight m-0 flex items-center gap-1.5">
-            {getGreetingText()}{' '}
-            <span className="text-base select-none">
-              {getGreetingIcon()}
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm font-sans text-[#8A8A8A] mt-0.5 m-0 font-normal">
-            Have a great day!
-          </p>
-        </div>
-
-        {/* Optional Search bar */}
+        {/* Collapsible Search Input */}
         {isSearchOpen && (
-          <div className="flex items-center gap-2 bg-[#FFFFFF] border border-[#E0E0E0] rounded-full px-3.5 py-1.5 shadow-xs mt-1 mb-1 animate-in fade-in duration-150">
-            <Search size={16} className="text-[#8A8A8A]" />
+          <div className="flex items-center gap-2 bg-[#FFFFFF] border border-[#E5E5E0] focus-within:border-[#111111] rounded-xl px-3.5 py-2 transition-colors">
+            <Search size={15} className="text-[#787873] flex-shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tasks or subjects..."
-              className="flex-1 bg-transparent border-none text-xs sm:text-sm text-[#111111] focus:outline-none placeholder-[#8A8A8A]"
+              placeholder="Search tasks, lessons, or subjects..."
+              className="flex-1 bg-transparent border-none text-sm text-[#111111] focus:outline-none placeholder:text-[#787873] p-0"
               autoFocus
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-[#8A8A8A] hover:text-[#111111] cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="p-1 text-[#787873] hover:text-[#111111] cursor-pointer"
+                aria-label="Clear search"
+              >
                 <X size={14} />
               </button>
             )}
           </div>
         )}
 
-        {/* 2. Filter Chip Row: "Today", "Tomorrow", "All" + circular "+" button */}
-        <div className="flex items-center justify-between gap-2 px-1">
-          <div className="flex items-center gap-2">
-            {[
-              { id: 'today', label: 'Today' },
-              { id: 'tomorrow', label: 'Tomorrow' },
-              { id: 'all', label: 'All' },
-            ].map((chip) => {
-              const isSelected = filterMode === chip.id;
-              return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  onClick={() => {
-                    if (chip.id === 'today') {
-                      setSelectedDate(today);
-                      setFilterMode('today');
-                    } else if (chip.id === 'tomorrow') {
-                      setSelectedDate(addDays(today, 1));
-                      setFilterMode('tomorrow');
-                    } else {
-                      setFilterMode('all');
-                    }
-                  }}
-                  className={`px-5 py-1.5 rounded-full text-xs font-sans font-bold transition-all cursor-pointer select-none ${
-                    isSelected
-                      ? 'bg-[#111111] text-[#FFFFFF] border border-[#111111] shadow-xs'
-                      : 'bg-[#FFFFFF] text-[#111111] border border-[#D4D4D4] hover:border-[#111111]'
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Small circular "+" button at the end of the row */}
-          <button
-            type="button"
-            onClick={() => openOverlay('calendar-add-task')}
-            className="w-8.5 h-8.5 rounded-full border border-[#D4D4D4] hover:border-[#111111] bg-[#FFFFFF] text-[#111111] flex items-center justify-center transition-all hover:bg-[#F5F5F5] cursor-pointer shadow-2xs flex-shrink-0"
-            title="Add task or lesson"
-            aria-label="Add task"
-          >
-            <Plus size={17} strokeWidth={2.4} />
-          </button>
-        </div>
-
-        {/* 3. Date Display Block (Oversized date treatment + secondary info line on the right) */}
-        <div className="flex items-center justify-between px-1 pt-1">
-          <div
-            onClick={() => openOverlay('calendar-month')}
-            className="cursor-pointer select-none group"
-            title="Tap to view Year at a Glance"
-          >
-            <div className="text-xs sm:text-sm font-sans font-medium text-[#8A8A8A]">
-              {displayDayName}
-            </div>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="font-sans text-4xl sm:text-5xl font-black text-[#111111] tracking-tight leading-none">
-                {displayDayNum}
-              </span>
-              <span className="font-sans text-lg sm:text-xl font-black text-[#111111] tracking-wider uppercase">
-                {displayMonthName}
-              </span>
-            </div>
-          </div>
-
-          {/* Right side secondary info line matching reference Screen 1 */}
-          <div className="flex items-center gap-3 pl-3">
-            <div className="w-[1px] h-10 bg-[#E0E0E0]" />
-            <div className="text-left">
-              <div className="font-sans text-base sm:text-lg font-black text-[#111111] leading-tight">
-                {tasksToRender.length} {tasksToRender.length === 1 ? 'task' : 'tasks'}
-              </div>
-              <div className="text-[11px] sm:text-xs font-sans text-[#8A8A8A] font-medium leading-tight mt-0.5">
-                {tasksCompletedCount} completed · {streak}d streak
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Independently scrollable task card list container below the fixed header */}
-      <div
-        id="calendar-tasks-scroll-container"
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pt-1 pb-32 space-y-5 pr-0.5"
-      >
-        {tasksToRender.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#D4D4D4] p-8 text-center bg-[#FFFFFF] shadow-2xs my-auto flex flex-col items-center justify-center">
-            <div className="w-12 h-12 mb-3 rounded-full bg-[#F5F5F5] border border-[#E0E0E0] flex items-center justify-center text-[#8A8A8A]">
-              <CalendarIcon size={20} />
-            </div>
-            <h3 className="font-sans text-sm font-bold text-[#111111] m-0">
-              {filterMode === 'tomorrow'
-                ? 'Nothing planned for tomorrow'
-                : filterMode === 'all'
-                ? 'No upcoming tasks'
-                : filterMode === 'custom' && selectedDate !== today
-                ? `Nothing planned for ${activeDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                : 'Nothing planned for today'}
-            </h3>
-            <p className="font-sans text-xs text-[#8A8A8A] mt-1 mb-4 max-w-[230px]">
-              Tap the <strong className="text-[#111111]">+</strong> button to schedule a lesson or study block.
-            </p>
+        {/* Horizontal 7-Day Week Strip */}
+        <div className="grid grid-cols-7 gap-1 bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-1.5 shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+          {weekStripDays.map((day) => (
             <button
+              key={day.dateStr}
               type="button"
-              onClick={() => openOverlay('calendar-add-task')}
-              className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full bg-[#111111] text-[#FFFFFF] text-xs font-bold hover:bg-[#262626] transition-colors cursor-pointer shadow-xs"
+              onClick={() => handleSelectCalendarDate(day.dateStr)}
+              className={`min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer select-none ${
+                day.isSelected
+                  ? 'bg-[#111111] text-[#FFFFFF]'
+                  : day.isToday
+                  ? 'bg-[#F2F2EE] text-[#111111] ring-1 ring-[#111111]/25'
+                  : 'text-[#525252] hover:bg-[#F7F7F5] hover:text-[#111111]'
+              }`}
             >
-              <Plus size={14} strokeWidth={2.4} /> Add Task
+              <span
+                className={`text-[10px] font-sans font-semibold uppercase ${
+                  day.isSelected ? 'text-[#FFFFFF]/75' : 'text-[#787873]'
+                }`}
+              >
+                {day.dayShort}
+              </span>
+              <span className="text-sm font-sans font-bold tabular-nums leading-none">
+                {day.dayNumber}
+              </span>
+              <span
+                className={`w-1 h-1 rounded-full mt-0.5 ${
+                  day.hasTasks
+                    ? day.isSelected
+                      ? 'bg-[#FFFFFF]'
+                      : 'bg-[#111111]'
+                    : 'bg-transparent'
+                }`}
+              />
             </button>
-          </div>
-        ) : (
-          groupedSections.map((sec) => {
-            const IconComp = sec.icon;
-            return (
-              <div key={sec.key} className="space-y-2.5">
-                {/* Visible time-of-day section header label row (icon + text, e.g. sun icon + "MORNING") */}
-                <div className="flex items-center gap-2 px-1 pt-1 select-none">
-                  <div className="w-5 h-5 rounded-md bg-[#F0F0F0] border border-[#E5E5E5] flex items-center justify-center text-[#666666] flex-shrink-0">
-                    <IconComp size={12} strokeWidth={2.5} />
-                  </div>
-                  <span className="font-sans font-bold text-[11px] tracking-wider uppercase text-[#737373]">
-                    {sec.title}
-                  </span>
-                  <div className="h-[1px] flex-1 bg-[#EAEAEA]" />
-                  <span className="text-[10px] font-sans font-semibold text-[#8A8A8A]">
-                    {sec.tasks.length}
-                  </span>
-                </div>
-
-                {/* Section tasks list */}
-                <div className="space-y-2.5">
-                  {sec.tasks.map((task) => renderTaskCard(task))}
-                </div>
-              </div>
-            );
-          })
-        )}
+          ))}
+        </div>
       </div>
 
-      {/* Notes & Teach-back Modal */}
-      {isNotesModalOpen && typeof document !== 'undefined' && createPortal(
+      {/* Responsive 2-Column Workspace Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+        {/* Left Column: Month Picker + Desktop Reflections Preview */}
         <div
-          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[999] flex items-center justify-center p-4"
-          onClick={closeOverlay}
+          className={`${
+            isMonthGridExpanded ? 'flex' : 'hidden lg:flex'
+          } lg:col-span-5 xl:col-span-4 flex-col gap-4`}
         >
-          <div
-            className="bg-[#FFFFFF] rounded-3xl shadow-2xl border border-[#E0E0E0] w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
+          {monthCalendarCard}
+
+          {/* Desktop Reflections Card */}
+          <div className="hidden lg:flex flex-col gap-3 bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-[#111111]" />
-                <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Daily Reflections</h3>
+                <PenTool size={14} className="text-[#111111]" />
+                <h3 className="font-sans text-sm font-bold text-[#111111] m-0">
+                  Daily Reflections
+                </h3>
               </div>
               <button
-                onClick={closeOverlay}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full cursor-pointer"
+                type="button"
+                onClick={() => openOverlay('calendar-notes')}
+                className="text-xs font-sans font-semibold text-[#525252] hover:text-[#111111] cursor-pointer"
               >
-                <X size={18} />
+                Edit
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
-                  Teach-back Summary
-                </label>
-                <textarea
-                  value={currentTargetEntry.teachback || ''}
-                  onChange={(e) => updateEntryForDate(activeTargetDate, { teachback: e.target.value })}
-                  placeholder="Explain today's core concept in your own words (Feynman technique)..."
-                  rows={4}
-                  className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-3 text-sm focus:border-[#111111] focus:outline-none resize-none text-[#111111]"
-                />
-              </div>
+            {currentTargetEntry.teachback || currentTargetEntry.notes ? (
+              <p className="text-xs font-sans text-[#525252] leading-relaxed line-clamp-3 m-0">
+                {currentTargetEntry.teachback || currentTargetEntry.notes}
+              </p>
+            ) : (
+              <p className="text-xs font-sans text-[#787873] leading-relaxed m-0">
+                Summarize what you learned today or log mistakes to revisit.
+              </p>
+            )}
 
-              <div>
-                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
-                  Personal Notes / Mistake Log
-                </label>
-                <textarea
-                  value={currentTargetEntry.notes || ''}
-                  onChange={(e) => updateEntryForDate(activeTargetDate, { notes: e.target.value })}
-                  placeholder="What went well? What needs more attention tomorrow?"
-                  rows={3}
-                  className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-3 text-sm focus:border-[#111111] focus:outline-none resize-none text-[#111111]"
-                />
+            {(currentTargetEntry.wakeTime || currentTargetEntry.sleepTime) && (
+              <div className="pt-2 border-t border-[#EFEFEA] flex items-center gap-3 text-[11px] font-sans text-[#787873] tabular-nums">
+                {currentTargetEntry.wakeTime && <span>Wake {currentTargetEntry.wakeTime}</span>}
+                {currentTargetEntry.sleepTime && <span>Sleep {currentTargetEntry.sleepTime}</span>}
               </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-[0.7rem] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                    Wake Time
-                  </label>
-                  <input
-                    type="time"
-                    value={currentTargetEntry.wakeTime || ''}
-                    onChange={(e) => updateEntryForDate(activeTargetDate, { wakeTime: e.target.value })}
-                    className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[0.7rem] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                    Sleep Time
-                  </label>
-                  <input
-                    type="time"
-                    value={currentTargetEntry.sleepTime || ''}
-                    onChange={(e) => updateEntryForDate(activeTargetDate, { sleepTime: e.target.value })}
-                    className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={closeOverlay}
-              className="mt-6 w-full py-3 bg-[#111111] text-[#FFFFFF] font-sans font-bold text-sm rounded-xl hover:bg-[#262626] transition-colors cursor-pointer"
-            >
-              Done
-            </button>
+            )}
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
 
-      {/* Add Task / Study Session Modal */}
-      {isAddModalOpen && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[999] flex items-center justify-center p-4"
-          onClick={closeOverlay}
-        >
-          <div
-            className="bg-[#FFFFFF] rounded-3xl shadow-2xl border border-[#E0E0E0] w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Add to Agenda</h3>
-              <button
-                onClick={closeOverlay}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
+        {/* Right / Main Column: Unified Due for Review + Timeline */}
+        <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5 min-w-0">
+          {dueRevisitsCard}
 
-            {/* Mode Toggle */}
-            <div className="flex bg-[#F5F5F5] p-1 rounded-xl mb-4">
-              <button
-                type="button"
-                onClick={() => setAddMode('task')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  addMode === 'task' ? 'bg-[#FFFFFF] text-[#111111] shadow-2xs' : 'text-[#8A8A8A]'
-                }`}
-              >
-                General Task
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddMode('subject')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  addMode === 'subject' ? 'bg-[#FFFFFF] text-[#111111] shadow-2xs' : 'text-[#8A8A8A]'
-                }`}
-              >
-                Subject Log
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTask} className="space-y-3">
-              {addMode === 'task' ? (
-                <>
-                  <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Task Title
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      placeholder="e.g. Physics Past Paper 2021"
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      autoFocus
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Details / Notes (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={newTaskDetail}
-                      onChange={(e) => setNewTaskDetail(e.target.value)}
-                      placeholder="e.g. Structured Essay questions 1 to 4"
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                        Time of Day
-                      </label>
-                      <select
-                        value={newTaskPeriod}
-                        onChange={(e) => setNewTaskPeriod(e.target.value as any)}
-                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      >
-                        <option value="morning">Morning (8 AM)</option>
-                        <option value="afternoon">Afternoon (2 PM)</option>
-                        <option value="evening">Evening (7 PM)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                        Duration
-                      </label>
-                      <select
-                        value={newTaskDuration}
-                        onChange={(e) => setNewTaskDuration(e.target.value)}
-                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      >
-                        <option value="30 min">30 min</option>
-                        <option value="45 min">45 min</option>
-                        <option value="50 min">50 min</option>
-                        <option value="1 hr">1 hr</option>
-                        <option value="1.5 hr">1.5 hr</option>
-                        <option value="2 hr">2 hr</option>
-                      </select>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* Subject Dropdown */}
-                  <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Subject
-                    </label>
-                    <select
-                      required
-                      value={newSubjId}
-                      onChange={(e) => {
-                        const sId = e.target.value;
-                        setNewSubjId(sId);
-                        setNewLessonId('');
-                        setNewPartId('');
-                      }}
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                    >
-                      <option value="">-- Choose Subject --</option>
-                      {subjects.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* If Subject chosen, check for lessons */}
-                  {newSubjId && (() => {
-                    const subjLessons = lessons.filter((l) => l.subjectId === newSubjId);
-                    if (subjLessons.length === 0) {
-                      return (
-                        <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] space-y-2">
-                          <div className="flex items-center gap-1.5 font-bold">
-                            <AlertCircle size={15} className="text-[#D97706] flex-shrink-0" />
-                            <span>No lessons in this subject yet</span>
-                          </div>
-                          <p className="text-[11px] leading-relaxed m-0 text-[#B45309]">
-                            Please add lessons and parts in the Curriculum tab first before scheduling tasks.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              closeOverlay();
-                              openSubject(newSubjId);
-                              setTab('lessons');
-                            }}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] underline hover:text-[#78350F] cursor-pointer pt-0.5"
-                          >
-                            <span>Open Curriculum tab to add lessons →</span>
-                          </button>
-                        </div>
-                      );
-                    }
-
-                    const selectedLessonObj = lessons.find((l) => l.id === newLessonId);
-                    const lessonParts = selectedLessonObj?.parts || [];
-
-                    return (
-                      <>
-                        {/* Lesson Dropdown */}
-                        <div>
-                          <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                            Lesson
-                          </label>
-                          <select
-                            required
-                            value={newLessonId}
-                            onChange={(e) => {
-                              const lId = e.target.value;
-                              setNewLessonId(lId);
-                              const chosen = lessons.find((l) => l.id === lId);
-                              const parts = chosen?.parts || [];
-                              const firstUnwatched = parts.find((p) => !p.watched);
-                              const initialPartId = firstUnwatched ? firstUnwatched.id : parts[0]?.id || '';
-                              setNewPartId(initialPartId);
-                              if (initialPartId) {
-                                const pObj = parts.find((p) => p.id === initialPartId);
-                                setNewSubjStudied(pObj ? !!pObj.watched : false);
-                                setNewSubjPastPaper(pObj ? !!pObj.pastPaper : false);
-                              }
-                            }}
-                            className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                          >
-                            <option value="">-- Choose Lesson --</option>
-                            {subjLessons.map((l) => (
-                              <option key={l.id} value={l.id}>
-                                {l.name} {l.done ? '✓ (Completed)' : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* If Lesson chosen, check for parts */}
-                        {newLessonId && (() => {
-                          if (lessonParts.length === 0) {
-                            return (
-                              <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] space-y-2">
-                                <div className="flex items-center gap-1.5 font-bold">
-                                  <AlertCircle size={15} className="text-[#D97706] flex-shrink-0" />
-                                  <span>No parts in this lesson yet</span>
-                                </div>
-                                <p className="text-[11px] leading-relaxed m-0 text-[#B45309]">
-                                  Please add parts (e.g. Day 01, Day 02) to this lesson in the Curriculum tab first.
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    closeOverlay();
-                                    openSubject(newSubjId);
-                                    setTab('lessons');
-                                  }}
-                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] underline hover:text-[#78350F] cursor-pointer pt-0.5"
-                                >
-                                  <span>Open Curriculum tab to add parts →</span>
-                                </button>
-                              </div>
-                            );
-                          }
-
-                          const unwatchedCount = lessonParts.filter((p) => !p.watched).length;
-
-                          return (
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
-                                  Specific Part
-                                </label>
-                                <span className="text-[10px] font-sans font-medium text-[#8A8A8A]">
-                                  {unwatchedCount} unwatched
-                                </span>
-                              </div>
-                              <select
-                                required
-                                value={newPartId}
-                                onChange={(e) => {
-                                  const pId = e.target.value;
-                                  setNewPartId(pId);
-                                  const pObj = lessonParts.find((p) => p.id === pId);
-                                  if (pObj) {
-                                    setNewSubjStudied(pObj.watched);
-                                    setNewSubjPastPaper(pObj.pastPaper);
-                                  }
-                                }}
-                                className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                              >
-                                <option value="">-- Choose Part --</option>
-                                {lessonParts.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name} {p.watched ? '✓ (Watched)' : '(Unwatched)'} {p.pastPaper ? '· PP Done' : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })()}
-                      </>
-                    );
-                  })()}
-
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                        Time of Day
-                      </label>
-                      <select
-                        value={newSubjPeriod}
-                        onChange={(e) => setNewSubjPeriod(e.target.value as any)}
-                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      >
-                        <option value="morning">Morning (8 AM)</option>
-                        <option value="afternoon">Afternoon (2 PM)</option>
-                        <option value="evening">Evening (7 PM)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                        Confidence
-                      </label>
-                      <div className="flex gap-2 pt-0.5">
-                        {(['L', 'M', 'H'] as const).map((lvl) => (
-                          <button
-                            key={lvl}
-                            type="button"
-                            onClick={() => setNewSubjConfidence(lvl)}
-                            className={`flex-1 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                              newSubjConfidence === lvl
-                                ? 'bg-[#111111] text-[#FFFFFF] border-[#111111]'
-                                : 'bg-[#F5F5F5] text-[#8A8A8A] border-[#E0E0E0]'
-                            }`}
-                          >
-                            {lvl}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-5 pt-1 border-t border-[#F0F0F0]">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
-                      <input
-                        type="checkbox"
-                        checked={newSubjStudied}
-                        onChange={(e) => setNewSubjStudied(e.target.checked)}
-                        className="rounded accent-black"
-                      />
-                      Watched / Done
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
-                      <input
-                        type="checkbox"
-                        checked={newSubjPastPaper}
-                        onChange={(e) => setNewSubjPastPaper(e.target.checked)}
-                        className="rounded accent-black"
-                      />
-                      Past Paper Done
-                    </label>
-                  </div>
-                </>
-              )}
-
-              <div className="pt-2">
+          {tasksToRender.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#D4D4CE] p-8 sm:p-10 text-center bg-[#FFFFFF] flex flex-col items-center justify-center">
+              <div className="w-11 h-11 mb-3 rounded-xl bg-[#F7F7F5] border border-[#E5E5E0] flex items-center justify-center text-[#787873]">
+                <CalendarIcon size={20} />
+              </div>
+              <h3 className="font-sans text-sm font-bold text-[#111111] m-0">
+                {searchQuery.trim()
+                  ? 'No matching tasks'
+                  : filterMode === 'tomorrow'
+                  ? 'Nothing planned for tomorrow'
+                  : filterMode === 'all'
+                  ? 'No upcoming tasks'
+                  : filterMode === 'custom' && selectedDate !== today
+                  ? `Nothing planned for ${activeDateObj.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}`
+                  : 'Nothing planned for today'}
+              </h3>
+              <p className="font-sans text-xs text-[#787873] mt-1 mb-4 max-w-[260px]">
+                {searchQuery.trim()
+                  ? 'Try a different search keyword or clear the filter.'
+                  : 'Schedule a lesson part or study block to build your day.'}
+              </p>
+              {!searchQuery.trim() && (
                 <button
-                  type="submit"
-                  disabled={
-                    addMode === 'subject' &&
-                    (!newSubjId ||
-                      !newLessonId ||
-                      !newPartId ||
-                      lessons.filter((l) => l.subjectId === newSubjId).length === 0 ||
-                      (lessons.find((l) => l.id === newLessonId)?.parts || []).length === 0)
-                  }
-                  className={`w-full py-3 font-sans font-bold text-sm rounded-xl transition-colors cursor-pointer ${
-                    addMode === 'subject' &&
-                    (!newSubjId ||
-                      !newLessonId ||
-                      !newPartId ||
-                      lessons.filter((l) => l.subjectId === newSubjId).length === 0 ||
-                      (lessons.find((l) => l.id === newLessonId)?.parts || []).length === 0)
-                      ? 'bg-[#E5E5E5] text-[#A0A0A0] cursor-not-allowed'
-                      : 'bg-[#111111] text-[#FFFFFF] hover:bg-[#262626]'
-                  }`}
+                  type="button"
+                  onClick={() => openOverlay('calendar-add-task')}
+                  className="min-h-[40px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111111] text-[#FFFFFF] text-xs font-sans font-bold hover:bg-[#262626] transition-colors cursor-pointer"
                 >
-                  Add Task
+                  <Plus size={14} strokeWidth={2.4} />
+                  <span>Add Task</span>
                 </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+              )}
+            </div>
+          ) : (
+            groupedSections.map((sec) => {
+              const IconComp = sec.icon;
+              return (
+                <section key={sec.key} className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between px-1 select-none">
+                    <div className="flex items-center gap-2 text-[#525252]">
+                      <IconComp size={14} strokeWidth={2.2} className="text-[#787873]" />
+                      <h2 className="font-sans font-bold text-xs uppercase tracking-wider text-[#787873] m-0">
+                        {sec.title}
+                      </h2>
+                    </div>
+                    <span className="text-xs font-sans font-semibold text-[#787873] tabular-nums">
+                      {sec.tasks.length}
+                    </span>
+                  </div>
 
-      {/* Month Picker Modal - Year-at-a-glance multi-month grid */}
-      {isMonthModalOpen && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 bg-[#000000]/60 backdrop-blur-xs z-[999] flex items-center justify-center p-3 sm:p-4"
-          onClick={closeOverlay}
-        >
+                  <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl overflow-hidden divide-y divide-[#EFEFEA] shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+                    {sec.tasks.map((task) => (
+                      <AgendaTaskRow
+                        key={task.id}
+                        task={task}
+                        onToggle={handleToggleTask}
+                        onTogglePastPaper={handleToggleTaskPastPaper}
+                        onLongPress={handleTaskLongPress}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Daily Reflections Modal */}
+      {isNotesModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
           <div
-            className="bg-[#FFFFFF] rounded-3xl shadow-2xl border border-[#E0E0E0] w-full max-w-2xl p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[88vh]"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-[#111111]/45 backdrop-blur-xs z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+            onClick={closeOverlay}
           >
-            {/* Modal Header */}
-            <div className="flex justify-between items-center pb-3 mb-3 border-b border-[#E0E0E0]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#F5F5F5] border border-[#E0E0E0] flex items-center justify-center flex-shrink-0">
-                  <CalendarIcon size={16} className="text-[#111111]" />
+            <div
+              className="bg-[#FFFFFF] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E5E5E0] w-full sm:max-w-md p-6 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col max-h-[90dvh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={18} className="text-[#111111]" />
+                  <h3 className="font-sans text-lg font-extrabold text-[#111111] m-0">
+                    Daily Reflections
+                  </h3>
                 </div>
-                <div>
-                  <h2 className="font-sans text-base sm:text-lg font-extrabold text-[#111111] m-0 leading-tight">
-                    Year at a Glance
-                  </h2>
-                  <p className="text-[11px] font-sans text-[#8A8A8A] m-0">
-                    Tap any date to view agenda
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Year Switcher */}
-                <div className="flex items-center gap-1 bg-[#F5F5F5] rounded-full p-1 border border-[#E0E0E0]">
-                  <button
-                    type="button"
-                    onClick={() => setModalYear((y) => y - 1)}
-                    className="p-1 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#FFFFFF] rounded-full transition-colors cursor-pointer"
-                    title="Previous year"
-                  >
-                    <ChevronLeft size={16} strokeWidth={2.5} />
-                  </button>
-                  <span className="font-sans font-bold text-xs sm:text-sm px-2 text-[#111111]">
-                    {modalYear}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setModalYear((y) => y + 1)}
-                    className="p-1 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#FFFFFF] rounded-full transition-colors cursor-pointer"
-                    title="Next year"
-                  >
-                    <ChevronRight size={16} strokeWidth={2.5} />
-                  </button>
-                </div>
-
                 <button
                   type="button"
                   onClick={closeOverlay}
-                  className="p-1.5 text-[#8A8A8A] hover:text-[#111111] hover:bg-[#F0F0F0] rounded-full transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] cursor-pointer"
                   aria-label="Close"
                 >
                   <X size={18} />
                 </button>
               </div>
-            </div>
 
-            {/* Multi-Month Grid */}
-            {renderMultiMonthGrid()}
-
-            {/* Modal Footer */}
-            <div className="mt-3 pt-3 border-t border-[#E0E0E0] flex items-center justify-between">
-              <button
-                type="button"
-                className="text-xs font-sans font-bold text-[#111111] bg-[#F5F5F5] hover:bg-[#EAEAEA] border border-[#E0E0E0] px-3.5 py-1.5 rounded-full transition-colors cursor-pointer"
-                onClick={() => {
-                  setSelectedDate(today);
-                  setFilterMode('today');
-                  closeOverlay();
-                }}
-              >
-                Jump to Today
-              </button>
-              <span className="text-[11px] font-sans text-[#8A8A8A]">
-                Selected: <strong className="text-[#111111]">{selectedDate}</strong>
-              </span>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Long-Press Action Sheet / Context Menu Modal */}
-      {isActionMenuOpen && actionTask && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => {
-            setIsActionMenuOpen(false);
-            setActionTask(null);
-          }}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl p-5 sm:p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#E0E0E0]">
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 border"
-                  style={{
-                    backgroundColor: `${actionTask.accentColor}15`,
-                    borderColor: `${actionTask.accentColor}35`,
-                    color: actionTask.accentColor,
-                  }}
-                >
-                  <BookOpen size={16} />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1.5">
+                    Teach-back Summary
+                  </label>
+                  <textarea
+                    value={currentTargetEntry.teachback || ''}
+                    onChange={(e) => updateEntryForDate(activeTargetDate, { teachback: e.target.value })}
+                    placeholder="Explain today's core concept in your own words (Feynman technique)..."
+                    rows={4}
+                    className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl p-3 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none resize-none text-[#111111]"
+                  />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-sans text-sm sm:text-base font-bold text-[#111111] truncate m-0">
-                    {actionTask.title}
-                  </h3>
-                  <p className="text-xs font-sans text-[#8A8A8A] m-0 truncate">
-                    {actionTask.subjectLabel} · {actionTask.timeDisplay}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsActionMenuOpen(false);
-                  setActionTask(null);
-                }}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            {/* Options */}
-            <div className="flex flex-col gap-2 my-1">
-              {/* Option 1: Edit */}
-              <button
-                type="button"
-                onClick={handleOpenEditModal}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E0E0E0] bg-[#FFFFFF] hover:bg-[#F5F5F5] hover:border-[#111111] text-left transition-colors cursor-pointer group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] border border-[#E0E0E0] text-[#111111] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111111] group-hover:text-[#FFFFFF] transition-colors">
-                  <Pencil size={17} />
+                <div>
+                  <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1.5">
+                    Personal Notes / Mistake Log
+                  </label>
+                  <textarea
+                    value={currentTargetEntry.notes || ''}
+                    onChange={(e) => updateEntryForDate(activeTargetDate, { notes: e.target.value })}
+                    placeholder="What went well? What needs more attention tomorrow?"
+                    rows={3}
+                    className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl p-3 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none resize-none text-[#111111]"
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-sans font-bold text-sm text-[#111111]">
-                    Edit
-                  </div>
-                  <div className="text-xs font-sans text-[#8A8A8A]">
-                    Modify subject, lesson, part, or time block
-                  </div>
-                </div>
-              </button>
 
-              {/* Option 2: Delete */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsActionMenuOpen(false);
-                  setIsDeleteConfirmOpen(true);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-[#FFFFFF] hover:bg-red-50/50 hover:border-red-400 text-left transition-colors cursor-pointer group"
-              >
-                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                  <Trash2 size={17} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-sans font-bold text-sm text-red-600">
-                    Delete
-                  </div>
-                  <div className="text-xs font-sans text-red-500">
-                    Remove from today's agenda
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {/* Cancel Button */}
-            <div className="mt-3 pt-2 border-t border-[#E0E0E0]">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsActionMenuOpen(false);
-                  setActionTask(null);
-                }}
-                className="w-full py-2 text-center text-xs font-sans font-semibold text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Edit Task Modal */}
-      {isEditModalOpen && actionTask && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => {
-            setIsEditModalOpen(false);
-            setActionTask(null);
-          }}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <Pencil size={18} className="text-[#111111]" />
-                <h3 className="font-sans text-xl font-extrabold text-[#111111] m-0">Edit Task</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setActionTask(null);
-                }}
-                className="p-1.5 text-[#8A8A8A] hover:text-[#111111] rounded-full transition-colors cursor-pointer"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditTask} className="space-y-3.5">
-              {actionTask.source === 'subject' ? (
-                <>
-                  {/* Subject Dropdown */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
                   <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Subject
+                    <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                      Wake Time
                     </label>
-                    <select
-                      required
-                      value={editSubjId}
-                      onChange={(e) => {
-                        const sId = e.target.value;
-                        setEditSubjId(sId);
-                        const subjLessons = lessons.filter((l) => l.subjectId === sId);
-                        const firstL = subjLessons[0];
-                        setEditLessonId(firstL ? firstL.id : '');
-                        const parts = firstL?.parts || [];
-                        const firstP = parts.find((p) => !p.watched) || parts[0];
-                        setEditPartId(firstP ? firstP.id : '');
-                      }}
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                    >
-                      <option value="">-- Choose Subject --</option>
-                      {subjects.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="time"
+                      value={currentTargetEntry.wakeTime || ''}
+                      onChange={(e) => updateEntryForDate(activeTargetDate, { wakeTime: e.target.value })}
+                      className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                    />
                   </div>
+                  <div>
+                    <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                      Sleep Time
+                    </label>
+                    <input
+                      type="time"
+                      value={currentTargetEntry.sleepTime || ''}
+                      onChange={(e) => updateEntryForDate(activeTargetDate, { sleepTime: e.target.value })}
+                      className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                  {/* Lesson Dropdown */}
-                  {editSubjId && (() => {
-                    const subjLessons = lessons.filter((l) => l.subjectId === editSubjId);
-                    if (subjLessons.length === 0) {
-                      return (
-                        <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E]">
-                          No lessons found for this subject.
-                        </div>
-                      );
-                    }
+              <button
+                type="button"
+                onClick={closeOverlay}
+                className="mt-6 w-full min-h-[44px] py-2.5 bg-[#111111] text-[#FFFFFF] font-sans font-bold text-sm rounded-xl hover:bg-[#262626] transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
 
-                    const selectedLessonObj = lessons.find((l) => l.id === editLessonId);
-                    const lessonParts = selectedLessonObj?.parts || [];
+      {/* Add Task / Subject Log Modal */}
+      {isAddModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-[#111111]/45 backdrop-blur-xs z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+            onClick={closeOverlay}
+          >
+            <div
+              className="bg-[#FFFFFF] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E5E5E0] w-full sm:max-w-md p-6 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 max-h-[90dvh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-sans text-lg font-extrabold text-[#111111] m-0">
+                  Add to Agenda
+                </h3>
+                <button
+                  type="button"
+                  onClick={closeOverlay}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-                    return (
-                      <>
-                        <div>
-                          <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                            Lesson
-                          </label>
-                          <select
-                            required
-                            value={editLessonId}
-                            onChange={(e) => {
-                              const lId = e.target.value;
-                              setEditLessonId(lId);
-                              const chosen = lessons.find((l) => l.id === lId);
-                              const parts = chosen?.parts || [];
-                              const firstP = parts.find((p) => !p.watched) || parts[0];
-                              setEditPartId(firstP ? firstP.id : '');
-                            }}
-                            className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                          >
-                            <option value="">-- Choose Lesson --</option>
-                            {subjLessons.map((l) => (
-                              <option key={l.id} value={l.id}>
-                                {l.name} {l.done ? '✓ (Completed)' : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+              <div className="flex bg-[#F2F2EE] p-1 rounded-xl border border-[#E5E5E0] mb-4">
+                <button
+                  type="button"
+                  onClick={() => setAddMode('task')}
+                  className={`flex-1 min-h-[34px] py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    addMode === 'task'
+                      ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
+                      : 'text-[#787873] hover:text-[#111111]'
+                  }`}
+                >
+                  General Task
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddMode('subject')}
+                  className={`flex-1 min-h-[34px] py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    addMode === 'subject'
+                      ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
+                      : 'text-[#787873] hover:text-[#111111]'
+                  }`}
+                >
+                  Subject Log
+                </button>
+              </div>
 
-                        {/* Part Dropdown */}
-                        {editLessonId && (() => {
-                          if (lessonParts.length === 0) {
-                            return (
-                              <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E]">
-                                No parts found in this lesson.
-                              </div>
-                            );
-                          }
+              <form onSubmit={handleCreateTask} className="space-y-3.5">
+                {addMode === 'task' ? (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Task Title
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="e.g. Physics Past Paper 2021"
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3.5 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Details / Notes (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newTaskDetail}
+                        onChange={(e) => setNewTaskDetail(e.target.value)}
+                        placeholder="e.g. Structured Essay questions 1 to 4"
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3.5 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                          Time of Day
+                        </label>
+                        <select
+                          value={newTaskPeriod}
+                          onChange={(e) => setNewTaskPeriod(e.target.value as any)}
+                          className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        >
+                          <option value="morning">Morning (8 AM)</option>
+                          <option value="afternoon">Afternoon (2 PM)</option>
+                          <option value="evening">Evening (7 PM)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={newTaskDuration}
+                          onChange={(e) => setNewTaskDuration(e.target.value)}
+                          className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        >
+                          <option value="30 min">30 min</option>
+                          <option value="45 min">45 min</option>
+                          <option value="50 min">50 min</option>
+                          <option value="1 hr">1 hr</option>
+                          <option value="1.5 hr">1.5 hr</option>
+                          <option value="2 hr">2 hr</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Subject
+                      </label>
+                      <select
+                        required
+                        value={newSubjId}
+                        onChange={(e) => {
+                          const sId = e.target.value;
+                          setNewSubjId(sId);
+                          setNewLessonId('');
+                          setNewPartId('');
+                        }}
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                      >
+                        <option value="">-- Choose Subject --</option>
+                        {subjects.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {newSubjId &&
+                      (() => {
+                        const subjLessons = lessons.filter((l) => l.subjectId === newSubjId);
+                        if (subjLessons.length === 0) {
                           return (
+                            <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] space-y-2">
+                              <div className="flex items-center gap-1.5 font-bold">
+                                <AlertCircle size={15} className="text-[#D97706] flex-shrink-0" />
+                                <span>No lessons in this subject yet</span>
+                              </div>
+                              <p className="text-[11px] leading-relaxed m-0 text-[#B45309]">
+                                Please add lessons and parts in the Curriculum tab first before scheduling tasks.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  closeOverlay();
+                                  openSubject(newSubjId);
+                                  setTab('lessons');
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] underline hover:text-[#78350F] cursor-pointer pt-0.5"
+                              >
+                                <span>Open Curriculum tab to add lessons →</span>
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        const selectedLessonObj = lessons.find((l) => l.id === newLessonId);
+                        const lessonParts = selectedLessonObj?.parts || [];
+
+                        return (
+                          <>
                             <div>
-                              <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                                Specific Part
+                              <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                                Lesson
                               </label>
                               <select
                                 required
-                                value={editPartId}
+                                value={newLessonId}
                                 onChange={(e) => {
-                                  const pId = e.target.value;
-                                  setEditPartId(pId);
-                                  const pObj = lessonParts.find((p) => p.id === pId);
-                                  if (pObj) {
-                                    setEditSubjStudied(pObj.watched);
-                                    setEditSubjPastPaper(pObj.pastPaper);
+                                  const lId = e.target.value;
+                                  setNewLessonId(lId);
+                                  const chosen = lessons.find((l) => l.id === lId);
+                                  const parts = chosen?.parts || [];
+                                  const firstUnwatched = parts.find((p) => !p.watched);
+                                  const initialPartId = firstUnwatched ? firstUnwatched.id : parts[0]?.id || '';
+                                  setNewPartId(initialPartId);
+                                  if (initialPartId) {
+                                    const pObj = parts.find((p) => p.id === initialPartId);
+                                    setNewSubjStudied(pObj ? !!pObj.watched : false);
+                                    setNewSubjPastPaper(pObj ? !!pObj.pastPaper : false);
                                   }
                                 }}
-                                className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                                className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
                               >
-                                <option value="">-- Choose Part --</option>
-                                {lessonParts.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name} {p.watched ? '✓ (Watched)' : '(Unwatched)'} {p.pastPaper ? '· PP Done' : ''}
+                                <option value="">-- Choose Lesson --</option>
+                                {subjLessons.map((l) => (
+                                  <option key={l.id} value={l.id}>
+                                    {l.name} {l.done ? '✓ (Completed)' : ''}
                                   </option>
                                 ))}
                               </select>
                             </div>
-                          );
-                        })()}
-                      </>
-                    );
-                  })()}
 
-                  {/* Time Block (Time of day) */}
+                            {newLessonId &&
+                              (() => {
+                                if (lessonParts.length === 0) {
+                                  return (
+                                    <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E] space-y-2">
+                                      <div className="flex items-center gap-1.5 font-bold">
+                                        <AlertCircle size={15} className="text-[#D97706] flex-shrink-0" />
+                                        <span>No parts in this lesson yet</span>
+                                      </div>
+                                      <p className="text-[11px] leading-relaxed m-0 text-[#B45309]">
+                                        Please add parts (e.g. Day 01, Day 02) to this lesson in the Curriculum tab first.
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          closeOverlay();
+                                          openSubject(newSubjId);
+                                          setTab('lessons');
+                                        }}
+                                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] underline hover:text-[#78350F] cursor-pointer pt-0.5"
+                                      >
+                                        <span>Open Curriculum tab to add parts →</span>
+                                      </button>
+                                    </div>
+                                  );
+                                }
+
+                                const unwatchedCount = lessonParts.filter((p) => !p.watched).length;
+
+                                return (
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider">
+                                        Specific Part
+                                      </label>
+                                      <span className="text-[11px] font-sans font-medium text-[#787873] tabular-nums">
+                                        {unwatchedCount} unwatched
+                                      </span>
+                                    </div>
+                                    <select
+                                      required
+                                      value={newPartId}
+                                      onChange={(e) => {
+                                        const pId = e.target.value;
+                                        setNewPartId(pId);
+                                        const pObj = lessonParts.find((p) => p.id === pId);
+                                        if (pObj) {
+                                          setNewSubjStudied(pObj.watched);
+                                          setNewSubjPastPaper(pObj.pastPaper);
+                                        }
+                                      }}
+                                      className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                                    >
+                                      <option value="">-- Choose Part --</option>
+                                      {lessonParts.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                          {p.name} {p.watched ? '✓ (Watched)' : '(Unwatched)'}{' '}
+                                          {p.pastPaper ? '· PP Done' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                );
+                              })()}
+                          </>
+                        );
+                      })()}
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                          Time of Day
+                        </label>
+                        <select
+                          value={newSubjPeriod}
+                          onChange={(e) => setNewSubjPeriod(e.target.value as any)}
+                          className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        >
+                          <option value="morning">Morning (8 AM)</option>
+                          <option value="afternoon">Afternoon (2 PM)</option>
+                          <option value="evening">Evening (7 PM)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                          Confidence
+                        </label>
+                        <div className="flex gap-1.5 pt-0.5">
+                          {(['L', 'M', 'H'] as const).map((lvl) => (
+                            <button
+                              key={lvl}
+                              type="button"
+                              onClick={() => setNewSubjConfidence(lvl)}
+                              className={`flex-1 min-h-[38px] rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                                newSubjConfidence === lvl
+                                  ? 'bg-[#111111] text-[#FFFFFF] border-[#111111]'
+                                  : 'bg-[#F7F7F5] text-[#787873] border-[#E5E5E0] hover:text-[#111111]'
+                              }`}
+                            >
+                              {lvl}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-5 pt-2 border-t border-[#EFEFEA]">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
+                        <input
+                          type="checkbox"
+                          checked={newSubjStudied}
+                          onChange={(e) => setNewSubjStudied(e.target.checked)}
+                          className="rounded accent-black"
+                        />
+                        Watched / Done
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
+                        <input
+                          type="checkbox"
+                          checked={newSubjPastPaper}
+                          onChange={(e) => setNewSubjPastPaper(e.target.checked)}
+                          className="rounded accent-black"
+                        />
+                        Past Paper Done
+                      </label>
+                    </div>
+                  </>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={
+                      addMode === 'subject' &&
+                      (!newSubjId ||
+                        !newLessonId ||
+                        !newPartId ||
+                        lessons.filter((l) => l.subjectId === newSubjId).length === 0 ||
+                        (lessons.find((l) => l.id === newLessonId)?.parts || []).length === 0)
+                    }
+                    className="w-full min-h-[44px] py-2.5 font-sans font-bold text-sm rounded-xl transition-colors cursor-pointer bg-[#111111] text-[#FFFFFF] hover:bg-[#262626] disabled:bg-[#E5E5E0] disabled:text-[#9A9A94] disabled:cursor-not-allowed"
+                  >
+                    Add Task
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Year at a Glance Modal */}
+      {isMonthModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-[#111111]/45 backdrop-blur-xs z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+            onClick={closeOverlay}
+          >
+            <div
+              className="bg-[#FFFFFF] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E5E5E0] w-full sm:max-w-2xl p-5 sm:p-6 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center pb-3 mb-3 border-b border-[#EFEFEA]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#F7F7F5] border border-[#E5E5E0] flex items-center justify-center flex-shrink-0">
+                    <CalendarIcon size={16} className="text-[#111111]" />
+                  </div>
                   <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Time Block
-                    </label>
-                    <select
-                      value={editSubjPeriod}
-                      onChange={(e) => setEditSubjPeriod(e.target.value as any)}
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
+                    <h2 className="font-sans text-base sm:text-lg font-extrabold text-[#111111] m-0 leading-tight">
+                      Year at a Glance
+                    </h2>
+                    <p className="text-xs font-sans text-[#787873] m-0">
+                      Tap any date to view agenda
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-[#F2F2EE] rounded-xl p-1 border border-[#E5E5E0]">
+                    <button
+                      type="button"
+                      onClick={() => setModalYear((y) => y - 1)}
+                      className="p-1.5 text-[#787873] hover:text-[#111111] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
+                      title="Previous year"
                     >
-                      <option value="morning">Morning (8 AM)</option>
-                      <option value="afternoon">Afternoon (2 PM)</option>
-                      <option value="evening">Evening (7 PM)</option>
-                    </select>
+                      <ChevronLeft size={15} />
+                    </button>
+                    <span className="font-sans font-bold text-xs sm:text-sm px-2 text-[#111111] tabular-nums">
+                      {modalYear}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setModalYear((y) => y + 1)}
+                      className="p-1.5 text-[#787873] hover:text-[#111111] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
+                      title="Next year"
+                    >
+                      <ChevronRight size={15} />
+                    </button>
                   </div>
 
-                  {/* Checkboxes: Watched & Past Paper */}
-                  <div className="flex items-center gap-5 pt-1 border-t border-[#F0F0F0]">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
-                      <input
-                        type="checkbox"
-                        checked={editSubjStudied}
-                        onChange={(e) => setEditSubjStudied(e.target.checked)}
-                        className="rounded accent-black"
-                      />
-                      Watched / Done
-                    </label>
+                  <button
+                    type="button"
+                    onClick={closeOverlay}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
-                      <input
-                        type="checkbox"
-                        checked={editSubjPastPaper}
-                        onChange={(e) => setEditSubjPastPaper(e.target.checked)}
-                        className="rounded accent-black"
-                      />
-                      Past Paper Done
-                    </label>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Task Title
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editTaskTitle}
-                      onChange={(e) => setEditTaskTitle(e.target.value)}
-                      placeholder="e.g. Physics Revision"
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      autoFocus
-                    />
-                  </div>
+              {renderMultiMonthGrid()}
 
-                  <div>
-                    <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                      Details / Notes (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={editTaskDetail}
-                      onChange={(e) => setEditTaskDetail(e.target.value)}
-                      placeholder="e.g. Questions 1 to 5"
-                      className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2.5 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                    />
-                  </div>
+              <div className="mt-3 pt-3 border-t border-[#EFEFEA] flex items-center justify-between">
+                <button
+                  type="button"
+                  className="text-xs font-sans font-bold text-[#111111] bg-[#F7F7F5] hover:bg-[#EFEFEA] border border-[#E5E5E0] px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedDate(today);
+                    setFilterMode('today');
+                    closeOverlay();
+                  }}
+                >
+                  Jump to Today
+                </button>
+                <span className="text-xs font-sans text-[#787873] tabular-nums">
+                  Selected: <strong className="text-[#111111]">{selectedDate}</strong>
+                </span>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                        Time Block
-                      </label>
-                      <select
-                        value={editTaskPeriod}
-                        onChange={(e) => setEditTaskPeriod(e.target.value as any)}
-                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      >
-                        <option value="morning">Morning (8 AM)</option>
-                        <option value="afternoon">Afternoon (2 PM)</option>
-                        <option value="evening">Evening (7 PM)</option>
-                      </select>
+      {/* Task Action Sheet Modal */}
+      {isActionMenuOpen &&
+        actionTask &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => {
+              setIsActionMenuOpen(false);
+              setActionTask(null);
+            }}
+          >
+            <div
+              className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#EFEFEA]">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border"
+                    style={{
+                      backgroundColor: `${actionTask.accentColor}15`,
+                      borderColor: `${actionTask.accentColor}35`,
+                      color: actionTask.accentColor,
+                    }}
+                  >
+                    <BookOpen size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-sans text-sm sm:text-base font-bold text-[#111111] truncate m-0">
+                      {actionTask.title}
+                    </h3>
+                    <p className="text-xs font-sans text-[#787873] m-0 truncate tabular-nums">
+                      {actionTask.subjectLabel} · {actionTask.timeDisplay}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    setActionTask(null);
+                  }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {actionTask.source !== 'revisit' && (
+                  <button
+                    type="button"
+                    onClick={handleOpenEditModal}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E5E5E0] bg-[#FFFFFF] hover:bg-[#F7F7F5] hover:border-[#111111] text-left transition-colors cursor-pointer group"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#F7F7F5] border border-[#E5E5E0] text-[#111111] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111111] group-hover:text-[#FFFFFF] transition-colors">
+                      <Pencil size={16} />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-sans font-bold text-sm text-[#111111]">Edit</div>
+                      <div className="text-xs font-sans text-[#787873]">
+                        Modify subject, lesson, part, or time block
+                      </div>
+                    </div>
+                  </button>
+                )}
 
-                    <div>
-                      <label className="block text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                        Duration
-                      </label>
-                      <select
-                        value={editTaskDuration}
-                        onChange={(e) => setEditTaskDuration(e.target.value)}
-                        className="w-full bg-[#F5F5F5] border border-[#E0E0E0] rounded-xl p-2 text-sm focus:border-[#111111] focus:outline-none text-[#111111]"
-                      >
-                        <option value="30 min">30 min</option>
-                        <option value="45 min">45 min</option>
-                        <option value="50 min">50 min</option>
-                        <option value="1 hr">1 hr</option>
-                        <option value="1.5 hr">1.5 hr</option>
-                        <option value="2 hr">2 hr</option>
-                      </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    setIsDeleteConfirmOpen(true);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#DC2626]/25 bg-[#FFFFFF] hover:bg-[#DC2626]/5 hover:border-[#DC2626]/50 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[#DC2626]/10 text-[#DC2626] flex items-center justify-center flex-shrink-0 group-hover:bg-[#DC2626] group-hover:text-[#FFFFFF] transition-colors">
+                    <Trash2 size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-sans font-bold text-sm text-[#DC2626]">Delete</div>
+                    <div className="text-xs font-sans text-[#DC2626]/80">
+                      Remove from agenda
                     </div>
                   </div>
-                </>
-              )}
+                </button>
+              </div>
 
-              <div className="flex gap-2 justify-end pt-3 border-t border-[#E0E0E0]">
+              <div className="mt-4 pt-2 border-t border-[#EFEFEA]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    setActionTask(null);
+                  }}
+                  className="w-full min-h-[40px] py-2 text-center text-xs font-sans font-semibold text-[#787873] hover:text-[#111111] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Edit Task Modal */}
+      {isEditModalOpen &&
+        actionTask &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => {
+              setIsEditModalOpen(false);
+              setActionTask(null);
+            }}
+          >
+            <div
+              className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 max-h-[90dvh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <Pencil size={18} className="text-[#111111]" />
+                  <h3 className="font-sans text-lg font-extrabold text-[#111111] m-0">Edit Task</h3>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
                     setIsEditModalOpen(false);
                     setActionTask(null);
                   }}
-                  className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditTask} className="space-y-3.5">
+                {actionTask.source === 'subject' ? (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Subject
+                      </label>
+                      <select
+                        required
+                        value={editSubjId}
+                        onChange={(e) => {
+                          const sId = e.target.value;
+                          setEditSubjId(sId);
+                          const subjLessons = lessons.filter((l) => l.subjectId === sId);
+                          const firstL = subjLessons[0];
+                          setEditLessonId(firstL ? firstL.id : '');
+                          const parts = firstL?.parts || [];
+                          const firstP = parts.find((p) => !p.watched) || parts[0];
+                          setEditPartId(firstP ? firstP.id : '');
+                        }}
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                      >
+                        <option value="">-- Choose Subject --</option>
+                        {subjects.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {editSubjId &&
+                      (() => {
+                        const subjLessons = lessons.filter((l) => l.subjectId === editSubjId);
+                        if (subjLessons.length === 0) {
+                          return (
+                            <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E]">
+                              No lessons found for this subject.
+                            </div>
+                          );
+                        }
+
+                        const selectedLessonObj = lessons.find((l) => l.id === editLessonId);
+                        const lessonParts = selectedLessonObj?.parts || [];
+
+                        return (
+                          <>
+                            <div>
+                              <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                                Lesson
+                              </label>
+                              <select
+                                required
+                                value={editLessonId}
+                                onChange={(e) => {
+                                  const lId = e.target.value;
+                                  setEditLessonId(lId);
+                                  const chosen = lessons.find((l) => l.id === lId);
+                                  const parts = chosen?.parts || [];
+                                  const firstP = parts.find((p) => !p.watched) || parts[0];
+                                  setEditPartId(firstP ? firstP.id : '');
+                                }}
+                                className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                              >
+                                <option value="">-- Choose Lesson --</option>
+                                {subjLessons.map((l) => (
+                                  <option key={l.id} value={l.id}>
+                                    {l.name} {l.done ? '✓ (Completed)' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {editLessonId &&
+                              (() => {
+                                if (lessonParts.length === 0) {
+                                  return (
+                                    <div className="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl text-xs text-[#92400E]">
+                                      No parts found in this lesson.
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div>
+                                    <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                                      Specific Part
+                                    </label>
+                                    <select
+                                      required
+                                      value={editPartId}
+                                      onChange={(e) => {
+                                        const pId = e.target.value;
+                                        setEditPartId(pId);
+                                        const pObj = lessonParts.find((p) => p.id === pId);
+                                        if (pObj) {
+                                          setEditSubjStudied(pObj.watched);
+                                          setEditSubjPastPaper(pObj.pastPaper);
+                                        }
+                                      }}
+                                      className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                                    >
+                                      <option value="">-- Choose Part --</option>
+                                      {lessonParts.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                          {p.name} {p.watched ? '✓ (Watched)' : '(Unwatched)'}{' '}
+                                          {p.pastPaper ? '· PP Done' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                );
+                              })()}
+                          </>
+                        );
+                      })()}
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Time Block
+                      </label>
+                      <select
+                        value={editSubjPeriod}
+                        onChange={(e) => setEditSubjPeriod(e.target.value as any)}
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                      >
+                        <option value="morning">Morning (8 AM)</option>
+                        <option value="afternoon">Afternoon (2 PM)</option>
+                        <option value="evening">Evening (7 PM)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-5 pt-2 border-t border-[#EFEFEA]">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
+                        <input
+                          type="checkbox"
+                          checked={editSubjStudied}
+                          onChange={(e) => setEditSubjStudied(e.target.checked)}
+                          className="rounded accent-black"
+                        />
+                        Watched / Done
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#111111]">
+                        <input
+                          type="checkbox"
+                          checked={editSubjPastPaper}
+                          onChange={(e) => setEditSubjPastPaper(e.target.checked)}
+                          className="rounded accent-black"
+                        />
+                        Past Paper Done
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Task Title
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editTaskTitle}
+                        onChange={(e) => setEditTaskTitle(e.target.value)}
+                        placeholder="e.g. Physics Revision"
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3.5 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                        Details / Notes (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editTaskDetail}
+                        onChange={(e) => setEditTaskDetail(e.target.value)}
+                        placeholder="e.g. Questions 1 to 5"
+                        className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3.5 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                          Time Block
+                        </label>
+                        <select
+                          value={editTaskPeriod}
+                          onChange={(e) => setEditTaskPeriod(e.target.value as any)}
+                          className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        >
+                          <option value="morning">Morning (8 AM)</option>
+                          <option value="afternoon">Afternoon (2 PM)</option>
+                          <option value="evening">Evening (7 PM)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#787873] uppercase tracking-wider mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={editTaskDuration}
+                          onChange={(e) => setEditTaskDuration(e.target.value)}
+                          className="w-full bg-[#F7F7F5] border border-[#E5E5E0] rounded-xl px-3 py-2.5 text-sm focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none text-[#111111]"
+                        >
+                          <option value="30 min">30 min</option>
+                          <option value="45 min">45 min</option>
+                          <option value="50 min">50 min</option>
+                          <option value="1 hr">1 hr</option>
+                          <option value="1.5 hr">1.5 hr</option>
+                          <option value="2 hr">2 hr</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2 justify-end pt-3 border-t border-[#EFEFEA]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setActionTask(null);
+                    }}
+                    className="min-h-[40px] px-4 py-2 text-xs font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="min-h-[40px] px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl hover:bg-[#262626] transition-colors cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Delete Task Confirmation Modal */}
+      {isDeleteConfirmOpen &&
+        actionTask &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#111111]/45 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => {
+              setIsDeleteConfirmOpen(false);
+              setActionTask(null);
+            }}
+          >
+            <div
+              className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E5E5E0] shadow-2xl bg-[#FFFFFF] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div className="p-2.5 rounded-xl bg-[#DC2626]/10 text-[#DC2626] flex-shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="font-sans text-base font-bold text-[#111111] m-0">
+                    Delete Task?
+                  </h3>
+                  <p className="text-xs font-sans text-[#787873] mt-1.5 leading-relaxed">
+                    Remove <strong className="text-[#111111] font-semibold">{actionTask.title}</strong> from this day&apos;s agenda?
+                  </p>
+                  <p className="text-[11px] font-sans text-[#787873] mt-1 leading-relaxed">
+                    Completed study progress in your Curriculum will remain intact.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteConfirmOpen(false);
+                    setActionTask(null);
+                  }}
+                  className="min-h-[40px] px-4 py-2 text-xs font-semibold text-[#525252] hover:text-[#111111] hover:bg-[#F2F2EE] rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-bold bg-[#111111] text-[#FFFFFF] rounded-xl hover:bg-[#262626] transition-colors cursor-pointer"
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="min-h-[40px] bg-[#DC2626] hover:bg-[#B91C1C] text-[#FFFFFF] font-sans font-bold text-xs py-2 px-5 rounded-xl transition-colors cursor-pointer"
                 >
-                  Save Changes
+                  Delete
                 </button>
               </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Delete Task Confirmation Modal */}
-      {isDeleteConfirmOpen && actionTask && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#000000]/60 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => {
-            setIsDeleteConfirmOpen(false);
-            setActionTask(null);
-          }}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl p-6 border border-[#E0E0E0] shadow-2xl bg-[#FFFFFF] animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-3">
-              <div className="p-2.5 rounded-full bg-red-100 text-red-600 flex-shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div>
-                <h3 className="font-sans text-base font-bold text-[#111111] m-0">
-                  Delete Task?
-                </h3>
-                <p className="text-xs font-sans text-[#8A8A8A] mt-1.5 leading-relaxed">
-                  Remove <strong className="text-[#111111] font-semibold">{actionTask.title}</strong> from this day's agenda?
-                </p>
-                <p className="text-[11px] font-sans text-[#8A8A8A] mt-1 leading-relaxed">
-                  Note: Completed study progress in your Curriculum will remain intact.
-                </p>
-              </div>
             </div>
-
-            <div className="flex gap-2 justify-end mt-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDeleteConfirmOpen(false);
-                  setActionTask(null);
-                }}
-                className="px-4 py-2 text-xs font-semibold text-[#111111] hover:bg-[#F0F0F0] rounded-xl cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-sans font-bold text-xs py-2 px-5 rounded-xl shadow-2xs transition-colors cursor-pointer"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

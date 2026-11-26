@@ -8,8 +8,25 @@ import {
   calculateWeeklyTarget,
   calculateSubjectMetrics,
 } from '../utils/subjectMetrics';
-import { Atom, FlaskConical, Calculator, BookOpen, Check, Pencil, RotateCcw, X, Flame, Calendar, Clock } from 'lucide-react';
-import { formatStudiedTime, formatBarStudyTime, calculateWeeklyStudiedMinutes, calculateDailyStudiedMinutes } from '../utils/duration';
+import {
+  Atom,
+  FlaskConical,
+  Calculator,
+  BookOpen,
+  Check,
+  Pencil,
+  RotateCcw,
+  X,
+  Flame,
+  Calendar,
+  Clock,
+} from 'lucide-react';
+import {
+  formatStudiedTime,
+  formatBarStudyTime,
+  calculateWeeklyStudiedMinutes,
+  calculateDailyStudiedMinutes,
+} from '../utils/duration';
 
 const CUSTOM_TARGETS_KEY = 'study_tracker_custom_weekly_targets';
 
@@ -30,15 +47,12 @@ interface SubjectPaceData {
 export const StatsTab: React.FC = () => {
   const { subjects, lessons, dailyEntries, revisits, examDate, updateSubject } = useStore();
 
-  // Custom targets map (subjectId -> overridden number).
-  // Defaults to empty so every subject displays its live auto-calculated target.
   const [customTargets, setCustomTargets] = useState<Record<string, number>>(() => {
     try {
       const saved = localStorage.getItem(CUSTOM_TARGETS_KEY);
       if (!saved) return {};
       const parsed = JSON.parse(saved);
       if (parsed && typeof parsed === 'object') {
-        // Clean out any stale '1' or '50' overrides from the legacy schema bug
         const cleaned: Record<string, number> = {};
         for (const [key, val] of Object.entries(parsed)) {
           if (typeof val === 'number' && val > 0 && val !== 1 && val !== 50) {
@@ -53,11 +67,14 @@ export const StatsTab: React.FC = () => {
     }
   });
 
-  // Target editing modal/popover state
-  const [editingSubject, setEditingSubject] = useState<{ id: string; name: string; currentTarget: number; autoTarget: number } | null>(null);
+  const [editingSubject, setEditingSubject] = useState<{
+    id: string;
+    name: string;
+    currentTarget: number;
+    autoTarget: number;
+  } | null>(null);
   const [targetInputValue, setTargetInputValue] = useState<string>('');
 
-  // Persist custom targets to localStorage
   const saveCustomTargets = (newTargets: Record<string, number>) => {
     setCustomTargets(newTargets);
     try {
@@ -69,25 +86,19 @@ export const StatsTab: React.FC = () => {
 
   const today = todayStr();
   const monday = mondayOf(today);
-  const currentWeekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
+  const currentWeekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(monday, i)),
+    [monday]
+  );
 
-  // Days elapsed in current Mon–Sun week (Monday = 1, Sunday = 7)
   const daysElapsedThisWeek = useMemo(() => {
     const idx = currentWeekDays.indexOf(today);
     return idx >= 0 ? idx + 1 : 1;
   }, [currentWeekDays, today]);
 
-  // Exact days remaining pulled from the single source of truth (examDate in store)
-  const daysRemaining = useMemo(() => {
-    return calculateDaysRemaining(examDate);
-  }, [examDate]);
+  const daysRemaining = useMemo(() => calculateDaysRemaining(examDate), [examDate]);
+  const weeksRemaining = useMemo(() => calculateWeeksRemaining(examDate), [examDate]);
 
-  // Whole weeks remaining until the saved exam date: (days remaining ÷ 7), rounded up, minimum 1
-  const weeksRemaining = useMemo(() => {
-    return calculateWeeksRemaining(examDate);
-  }, [examDate]);
-
-  // Default standard 3 subjects if user hasn't added any yet
   const displaySubjects = useMemo(() => {
     if (subjects && subjects.length > 0) {
       return subjects;
@@ -99,27 +110,19 @@ export const StatsTab: React.FC = () => {
     ];
   }, [subjects]);
 
-  // SECTION 1: Calculate per-subject pace cards
-  // Formula: (that subject's total parts − parts already watched) ÷ weeks remaining, rounded up to a whole number
   const subjectPaces = useMemo<SubjectPaceData[]>(() => {
     return displaySubjects.map((subj) => {
       const accentColor = getSubjectColorById(subj.id, subjects);
-
-      // 1. Live parts calculation from actual lesson parts
       const metrics = calculateSubjectMetrics(subj, lessons);
       const totalParts = metrics.totalPartsAdded;
       const watchedParts = metrics.watchedPartsCount;
-      const remainingParts = metrics.partsRemaining; // totalParts - watchedParts
+      const remainingParts = metrics.partsRemaining;
 
-      // 2. Auto-suggested weekly target: (remaining parts) ÷ (weeks remaining), rounded up to a whole number
       const autoTarget = calculateWeeklyTarget(totalParts, watchedParts, weeksRemaining);
-
-      // Check if user has an explicit manual override in customTargets.
-      // Do NOT treat legacy subj.targetCount as an override — autoTarget displays by default.
-      const isOverridden = typeof customTargets[subj.id] === 'number' && customTargets[subj.id] > 0;
+      const isOverridden =
+        typeof customTargets[subj.id] === 'number' && customTargets[subj.id] > 0;
       const weeklyTarget = isOverridden ? customTargets[subj.id] : autoTarget;
 
-      // 3. This week's actual progress: count of parts marked "Watched" for this subject within Mon–Sun week
       const watchedThisWeek = new Set<string>();
       currentWeekDays.forEach((d) => {
         const entry = dailyEntries[d];
@@ -133,8 +136,6 @@ export const StatsTab: React.FC = () => {
       });
       const actualProgress = watchedThisWeek.size;
 
-      // 4. On-track / behind indicator:
-      // Compare actual progress so far this week against expected pace: target × (days elapsed ÷ 7)
       const expectedPace = weeklyTarget * (daysElapsedThisWeek / 7);
       const isOnTrack = actualProgress >= expectedPace;
 
@@ -152,26 +153,32 @@ export const StatsTab: React.FC = () => {
         totalParts,
       };
     });
-  }, [displaySubjects, subjects, lessons, weeksRemaining, customTargets, currentWeekDays, dailyEntries, daysElapsedThisWeek]);
+  }, [
+    displaySubjects,
+    subjects,
+    lessons,
+    weeksRemaining,
+    customTargets,
+    currentWeekDays,
+    dailyEntries,
+    daysElapsedThisWeek,
+  ]);
 
-  // SECTION 2: Weekly consistency
-  // Total parts completed across all subjects this week
-  const weeklyTotalWatched = useMemo(() => {
-    return subjectPaces.reduce((sum, sp) => sum + sp.actualProgress, 0);
-  }, [subjectPaces]);
+  const weeklyTotalWatched = useMemo(
+    () => subjectPaces.reduce((sum, sp) => sum + sp.actualProgress, 0),
+    [subjectPaces]
+  );
 
-  // Sum of all subjects' weekly targets
-  const totalWeeklyTarget = useMemo(() => {
-    return subjectPaces.reduce((sum, sp) => sum + sp.weeklyTarget, 0);
-  }, [subjectPaces]);
+  const totalWeeklyTarget = useMemo(
+    () => subjectPaces.reduce((sum, sp) => sum + sp.weeklyTarget, 0),
+    [subjectPaces]
+  );
 
-  // That day's share of the weekly target: (weekly target ÷ 7)
-  const dailyTargetShare = useMemo(() => {
-    return totalWeeklyTarget > 0 ? totalWeeklyTarget / 7 : 1;
-  }, [totalWeeklyTarget]);
+  const dailyTargetShare = useMemo(
+    () => (totalWeeklyTarget > 0 ? totalWeeklyTarget / 7 : 1),
+    [totalWeeklyTarget]
+  );
 
-  // Time studied this week: Sum the duration of every task in Calendar/Agenda marked as completed
-  // ("Watched" checked) within current Mon–Sun week across all subjects.
   const timeStudied = useMemo(() => {
     const totalMinutes = calculateWeeklyStudiedMinutes(
       currentWeekDays,
@@ -182,7 +189,6 @@ export const StatsTab: React.FC = () => {
     return formatStudiedTime(totalMinutes);
   }, [currentWeekDays, dailyEntries, lessons, revisits]);
 
-  // Helper to determine if at least one part was marked "Watched" on a given day
   const hasWatchedOnDate = (dateStr: string): boolean => {
     const entry = dailyEntries[dateStr];
     if (entry && Array.isArray(entry.subjects)) {
@@ -191,7 +197,6 @@ export const StatsTab: React.FC = () => {
     return false;
   };
 
-  // Current streak: consecutive days (including today, up to now) with >= 1 part marked "Watched"
   const currentStreak = useMemo(() => {
     let streakCount = 0;
     let checkDate = today;
@@ -204,7 +209,6 @@ export const StatsTab: React.FC = () => {
         checkDate = addDays(checkDate, -1);
       }
     } else {
-      // If user hasn't logged today yet, count streak up to yesterday so active streak doesn't vanish
       checkDate = addDays(checkDate, -1);
       while (hasWatchedOnDate(checkDate)) {
         streakCount++;
@@ -215,11 +219,17 @@ export const StatsTab: React.FC = () => {
     return streakCount;
   }, [dailyEntries, today]);
 
-  // Weekly 7-day ring progress data (Mon–Sun)
-  // Each ring fills proportionally based on: (parts completed that day) ÷ (that day's share of the weekly target, i.e. weekly target ÷ 7)
   const weekRingsData = useMemo(() => {
     const dayInitials = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const fullDayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
 
     return currentWeekDays.map((dateStr, idx) => {
       const entry = dailyEntries[dateStr];
@@ -228,10 +238,8 @@ export const StatsTab: React.FC = () => {
         watchedCount = entry.subjects.filter((s) => s.studied).length;
       }
 
-      // Proportional fill calculation:
       const ratio = dailyTargetShare > 0 ? watchedCount / dailyTargetShare : 0;
       const percentage = Math.min(100, Math.round(ratio * 100));
-      // Ring reached 100% fill (target met or exceeded for that day)
       const isTargetMet = watchedCount > 0 && ratio >= 1.0;
 
       return {
@@ -246,15 +254,22 @@ export const StatsTab: React.FC = () => {
     });
   }, [currentWeekDays, dailyEntries, today, dailyTargetShare]);
 
-  // Days on target this week (count of days where ring hit 100%)
-  const daysOnTarget = useMemo(() => {
-    return weekRingsData.filter((d) => d.isTargetMet).length;
-  }, [weekRingsData]);
+  const daysOnTarget = useMemo(
+    () => weekRingsData.filter((d) => d.isTargetMet).length,
+    [weekRingsData]
+  );
 
-  // Daily studied minutes for each day in Mon–Sun week for the vertical bar chart
   const weekBarData = useMemo(() => {
     const dayInitials = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const fullDayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
 
     const minutesList = currentWeekDays.map((dateStr) =>
       calculateDailyStudiedMinutes(dateStr, dailyEntries, lessons, revisits || [])
@@ -264,7 +279,8 @@ export const StatsTab: React.FC = () => {
 
     return currentWeekDays.map((dateStr, idx) => {
       const minutes = minutesList[idx];
-      const heightPercent = minutes > 0 ? Math.max(16, Math.min(100, Math.round((minutes / maxMinutes) * 100))) : 0;
+      const heightPercent =
+        minutes > 0 ? Math.max(16, Math.min(100, Math.round((minutes / maxMinutes) * 100))) : 0;
 
       return {
         date: dateStr,
@@ -278,22 +294,16 @@ export const StatsTab: React.FC = () => {
     });
   }, [currentWeekDays, dailyEntries, lessons, revisits, today]);
 
-  // Helper icon for subject
   const getSubjectIcon = (name: string) => {
     const lower = name.toLowerCase();
-    if (lower.includes('chem')) {
-      return <FlaskConical size={16} strokeWidth={2.4} />;
-    }
-    if (lower.includes('phys')) {
-      return <Atom size={16} strokeWidth={2.4} />;
-    }
+    if (lower.includes('chem')) return <FlaskConical size={16} strokeWidth={2.2} />;
+    if (lower.includes('phys')) return <Atom size={16} strokeWidth={2.2} />;
     if (lower.includes('math') || lower.includes('comb')) {
-      return <Calculator size={16} strokeWidth={2.4} />;
+      return <Calculator size={16} strokeWidth={2.2} />;
     }
-    return <BookOpen size={16} strokeWidth={2.4} />;
+    return <BookOpen size={16} strokeWidth={2.2} />;
   };
 
-  // Open modal to override weekly target
   const handleOpenEditTarget = (sp: SubjectPaceData) => {
     setEditingSubject({
       id: sp.id,
@@ -304,7 +314,6 @@ export const StatsTab: React.FC = () => {
     setTargetInputValue(String(sp.weeklyTarget));
   };
 
-  // Save manual override
   const handleSaveTarget = () => {
     if (!editingSubject) return;
     const parsed = parseInt(targetInputValue.trim(), 10);
@@ -318,7 +327,6 @@ export const StatsTab: React.FC = () => {
     setEditingSubject(null);
   };
 
-  // Reset override back to auto-suggested
   const handleResetTarget = (subjId: string) => {
     const updated = { ...customTargets };
     delete updated[subjId];
@@ -332,41 +340,38 @@ export const StatsTab: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-28 pt-1">
-      {/* SECTION 1 — Per-subject pace cards (Reference: Image 3's "My Habits" grid cards) */}
-      <section className="overflow-hidden">
-        <div className="flex items-center justify-between mb-3 px-1">
+    <div className="flex flex-col gap-6">
+      {/* SECTION 1 — Per-subject pace cards */}
+      <section>
+        <div className="flex items-end justify-between gap-3 mb-3 px-0.5">
           <div>
-            <h2 className="font-sans text-xs font-bold text-[#8A8A8A] uppercase tracking-wider m-0">
+            <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
               Weekly Pace
             </h2>
-            <div className="text-[11px] font-sans font-medium text-[#737373] mt-0.5 flex items-center gap-1.5">
-              <Calendar size={11} className="text-[#8A8A8A]" />
+            <p className="text-xs font-sans text-[#787873] mt-0.5 flex items-center gap-1.5 m-0 tabular-nums">
+              <Calendar size={12} className="text-[#787873]" />
               <span>
                 {examDate
-                  ? `${weeksRemaining} ${weeksRemaining === 1 ? 'week' : 'weeks'} to exam (${daysRemaining}d)`
+                  ? `${weeksRemaining} ${weeksRemaining === 1 ? 'week' : 'weeks'} to exam · ${daysRemaining}d left`
                   : `${weeksRemaining} weeks baseline`}
               </span>
-            </div>
+            </p>
           </div>
-          <span className="text-[11px] font-sans font-medium text-[#8A8A8A]">
-            Mon – Sun
-          </span>
+          <span className="text-xs font-sans font-medium text-[#787873]">Mon – Sun</span>
         </div>
 
-        {/* 2-column grid wrapping */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
           {subjectPaces.map((sp) => (
             <div
               key={sp.id}
-              className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-4.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:border-[#CCCCCC] transition-all flex flex-col justify-between min-h-[148px] overflow-hidden"
+              className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 shadow-[0_1px_2px_rgba(17,17,17,0.03)] hover:border-[#C8C8C0] transition-colors flex flex-col justify-between min-h-[152px]"
             >
-              {/* Top row: Subject Icon/Badge in top-left + On-track/behind indicator in corner */}
+              {/* Top row: Subject icon + Unboxed Pace Indicator */}
               <div className="flex items-center justify-between gap-2">
                 <div
                   className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{
-                    backgroundColor: `${sp.accentColor}18`,
+                    backgroundColor: `${sp.accentColor}16`,
                     color: sp.accentColor,
                   }}
                   title={sp.name}
@@ -374,62 +379,51 @@ export const StatsTab: React.FC = () => {
                   {getSubjectIcon(sp.name)}
                 </div>
 
-                {/* On-track / behind indicator: factual comparison only */}
-                <div
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] sm:text-[11px] font-sans font-bold flex-shrink-0"
-                  style={{
-                    backgroundColor: sp.isOnTrack ? '#ECFDF5' : '#FFFBEB',
-                    borderColor: sp.isOnTrack ? '#A7F3D0' : '#FDE68A',
-                    color: sp.isOnTrack ? '#059669' : '#D97706',
-                  }}
+                {/* Unboxed status label with explicit icon (zero candy pill) */}
+                <span
+                  className={`inline-flex items-center gap-1 text-[11px] font-sans font-semibold flex-shrink-0 ${
+                    sp.isOnTrack ? 'text-[#16A34A]' : 'text-[#D97706]'
+                  }`}
                   title={
                     sp.isOnTrack
-                      ? `On track (done ${sp.actualProgress} ≥ expected ${sp.expectedPace.toFixed(1)})`
+                      ? `On track (done ${sp.actualProgress} >= expected ${sp.expectedPace.toFixed(1)})`
                       : `Behind pace (done ${sp.actualProgress} < expected ${sp.expectedPace.toFixed(1)})`
                   }
                 >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: sp.isOnTrack ? '#10B981' : '#F59E0B' }}
-                  />
+                  {sp.isOnTrack ? <Check size={12} strokeWidth={2.75} /> : <Clock size={12} />}
                   <span>{sp.isOnTrack ? 'On track' : 'Behind'}</span>
-                </div>
+                </span>
               </div>
 
-              {/* Middle row: Subject name */}
+              {/* Middle: Subject Name + Focal Tabular Metric */}
               <div className="mt-3">
-                <h3 className="font-sans font-bold text-xs sm:text-[13px] text-[#737373] uppercase tracking-wider truncate m-0">
+                <h3 className="font-sans font-semibold text-xs text-[#787873] truncate m-0">
                   {sp.name}
                 </h3>
-
-                {/* Large focal number: "X / target" (matching Image 3 streak-number treatment) */}
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                <div className="flex items-baseline gap-1 mt-1 tabular-nums">
+                  <span className="font-sans text-3xl sm:text-[2.15rem] font-extrabold text-[#111111] tracking-tight leading-none">
                     {sp.actualProgress}
                   </span>
-                  <span className="font-sans text-lg sm:text-xl font-bold text-[#8A8A8A] leading-none">
+                  <span className="font-sans text-base sm:text-lg font-bold text-[#787873] leading-none">
                     / {sp.weeklyTarget}
                   </span>
                 </div>
               </div>
 
-              {/* Bottom row: User-editable target control */}
-              <div className="mt-3 pt-2.5 border-t border-[#F2F2F2] flex items-center justify-between text-[11px] font-sans">
+              {/* Footer: Editable Target */}
+              <div className="mt-3 pt-2.5 border-t border-[#EFEFEA] flex items-center justify-between gap-2 text-xs font-sans">
                 <button
                   type="button"
                   onClick={() => handleOpenEditTarget(sp)}
-                  className="inline-flex items-center gap-1 text-[#8A8A8A] hover:text-[#111111] transition-colors cursor-pointer select-none group"
+                  className="inline-flex items-center gap-1.5 text-[#787873] hover:text-[#111111] transition-colors cursor-pointer select-none group min-h-[28px]"
                   title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
                 >
-                  <span>
-                    Target: <strong className="text-[#111111]">{sp.weeklyTarget}/wk</strong>
+                  <span className="tabular-nums">
+                    Target <strong className="text-[#111111]">{sp.weeklyTarget}/wk</strong>
+                    {sp.isOverridden && <span className="text-[#787873] font-normal"> · Custom</span>}
                   </span>
-                  {sp.isOverridden ? (
-                    <span className="text-[9px] bg-[#F0F0F0] text-[#555555] px-1 py-0.2 rounded font-semibold ml-0.5">
-                      Custom
-                    </span>
-                  ) : (
-                    <Pencil size={10} className="text-[#8A8A8A] opacity-60 group-hover:opacity-100" />
+                  {!sp.isOverridden && (
+                    <Pencil size={11} className="text-[#787873] opacity-60 group-hover:opacity-100" />
                   )}
                 </button>
 
@@ -437,7 +431,7 @@ export const StatsTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleResetTarget(sp.id)}
-                    className="text-[10px] text-[#8A8A8A] hover:text-[#111111] underline cursor-pointer select-none"
+                    className="text-[11px] text-[#787873] hover:text-[#111111] underline underline-offset-2 cursor-pointer select-none min-h-[28px]"
                     title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
                   >
                     Reset
@@ -449,51 +443,46 @@ export const StatsTab: React.FC = () => {
         </div>
       </section>
 
-      {/* SECTION 2 — Weekly consistency: Split into 3 standalone cards matching app style */}
+      {/* SECTION 2 — Weekly consistency & Time Studied */}
       <section>
-        <div className="flex items-center justify-between mb-3 px-1">
-          <h2 className="font-sans text-xs font-bold text-[#8A8A8A] uppercase tracking-wider m-0">
+        <div className="flex items-center justify-between mb-3 px-0.5">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
             Weekly Consistency
           </h2>
-          <span className="text-[11px] font-sans font-medium text-[#8A8A8A]">
-            Current week
-          </span>
+          <span className="text-xs font-sans font-medium text-[#787873]">Current week</span>
         </div>
 
-        <div className="flex flex-col gap-3 sm:gap-3.5">
-          {/* Card 1: Streak and Weekly Total */}
-          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {/* Card 1: Streak and Weekly Total (spans full width on tablet/desktop or paired cleanly) */}
+          <div className="md:col-span-2 bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
             <div className="flex items-center justify-between gap-4">
-              {/* Current Streak (styled like Image 3 "47 days" streak treatment) */}
               <div>
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                  <Flame size={13} className="text-[#111111]" />
-                  <span>Current Streak</span>
+                <div className="flex items-center gap-1.5 text-xs font-sans font-semibold text-[#787873] mb-1.5">
+                  <Flame size={14} className="text-[#111111]" />
+                  <span>Current streak</span>
                 </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                <div className="flex items-baseline gap-1.5 tabular-nums">
+                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none">
                     {currentStreak}
                   </span>
-                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                  <span className="font-sans text-sm sm:text-base font-semibold text-[#787873] leading-none">
                     {currentStreak === 1 ? 'day' : 'days'}
                   </span>
                 </div>
               </div>
 
-              {/* Subtle vertical separator */}
-              <div className="w-[1px] h-10 bg-[#EAEAEA] flex-shrink-0" />
+              <div className="w-[1px] h-11 bg-[#EFEFEA] flex-shrink-0" />
 
-              {/* This week's total (sum of all subjects' actual progress from Section 1) */}
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1.5 text-[11px] sm:text-xs font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1">
-                  <BookOpen size={13} className="text-[#111111]" />
-                  <span>This Week's Total</span>
+                <div className="flex items-center justify-end gap-1.5 text-xs font-sans font-semibold text-[#787873] mb-1.5">
+                  <BookOpen size={14} className="text-[#111111]" />
+                  <span>Watched this week</span>
                 </div>
-                <div className="flex items-baseline justify-end gap-1.5">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+                <div className="flex items-baseline justify-end gap-1.5 tabular-nums">
+                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none">
                     {weeklyTotalWatched}
                   </span>
-                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                  <span className="font-sans text-sm sm:text-base font-semibold text-[#787873] leading-none">
                     {weeklyTotalWatched === 1 ? 'part' : 'parts'}
                   </span>
                 </div>
@@ -501,30 +490,24 @@ export const StatsTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Daily Activity Rings with Proportional Fill & Distinct Today vs Completed */}
-          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-            <div className="flex items-center justify-between mb-3 px-0.5">
-              <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
-                Daily Activity
-              </span>
-              <span className="text-[10px] font-sans text-[#8A8A8A]">
-                Bold = Today
-              </span>
+          {/* Card 2: Daily Activity Rings */}
+          <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)] flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-sans font-semibold text-[#787873]">Daily activity</span>
+              <span className="text-[11px] font-sans text-[#787873]">Bold = Today</span>
             </div>
 
             <div className="flex items-center justify-between gap-3 sm:gap-4">
-              {/* Left headline stat (Reference: "3/7 Achieved" pattern) */}
-              <div className="flex-shrink-0 min-w-[70px]">
-                <div className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+              <div className="flex-shrink-0 min-w-[74px]">
+                <div className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none tabular-nums">
                   {daysOnTarget}/7
                 </div>
-                <div className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-1 leading-tight">
+                <div className="text-xs font-sans font-medium text-[#787873] mt-1.5 leading-tight">
                   Days on target
                 </div>
               </div>
 
-              {/* Right: Horizontal row of concentric progress rings (M T W T F S S) */}
-              <div className="flex-1 max-w-[245px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-center">
+              <div className="flex-1 max-w-[250px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-center">
                 {weekRingsData.map((day) => {
                   const size = 26;
                   const strokeWidth = 2.6;
@@ -535,18 +518,19 @@ export const StatsTab: React.FC = () => {
 
                   return (
                     <div key={day.date} className="flex flex-col items-center gap-1.5 select-none">
-                      {/* Ring container (same style for all days, no outer ring or highlight for today) */}
                       <div
                         className="w-8 h-8 flex items-center justify-center"
-                        title={`${day.fullName}: ${day.watchedCount} / ${typeof dailyTargetShare === 'number' ? dailyTargetShare.toFixed(1) : dailyTargetShare} parts (${day.percentage}%)${day.isToday ? ' · Today' : ''}`}
+                        title={`${day.fullName}: ${day.watchedCount} / ${
+                          typeof dailyTargetShare === 'number'
+                            ? dailyTargetShare.toFixed(1)
+                            : dailyTargetShare
+                        } parts (${day.percentage}%)${day.isToday ? ' · Today' : ''}`}
                       >
                         {day.isTargetMet ? (
-                          /* Completed: The ring itself fully filled with the accent color + checkmark overlay */
-                          <div className="w-[24px] h-[24px] rounded-full bg-[#111111] flex items-center justify-center shadow-2xs">
+                          <div className="w-[24px] h-[24px] rounded-full bg-[#111111] flex items-center justify-center">
                             <Check size={13} strokeWidth={3} className="text-[#FFFFFF]" />
                           </div>
                         ) : (
-                          /* Partial/Zero fill: Circular progress arc using accent color on light track */
                           <div className="relative w-[24px] h-[24px] flex items-center justify-center">
                             <svg
                               width={size}
@@ -554,16 +538,14 @@ export const StatsTab: React.FC = () => {
                               viewBox={`0 0 ${size} ${size}`}
                               className="w-full h-full -rotate-90"
                             >
-                              {/* Background track circle */}
                               <circle
                                 cx={center}
                                 cy={center}
                                 r={radius}
                                 fill="none"
-                                stroke="#EAEAEA"
+                                stroke="#EFEFEA"
                                 strokeWidth={strokeWidth}
                               />
-                              {/* Foreground progress arc */}
                               {day.percentage > 0 && (
                                 <circle
                                   cx={center}
@@ -582,10 +564,9 @@ export const StatsTab: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Day initial beneath ring (Bold for today, normal/regular for others) */}
                       <span
                         className={`text-xs font-sans leading-none ${
-                          day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#8A8A8A]'
+                          day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#787873]'
                         }`}
                       >
                         {day.initial}
@@ -597,110 +578,105 @@ export const StatsTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 3: Time Studied with Headline Stat + Minimal Bar Chart */}
-          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-            <div className="flex items-center justify-between mb-3 px-0.5">
-              <span className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider">
-                Time Studied
-              </span>
-              <span className="text-[10px] font-sans text-[#8A8A8A]">
-                Mon – Sun
-              </span>
+          {/* Card 3: Time Studied Bar Chart */}
+          <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)] flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-sans font-semibold text-[#787873]">Time studied</span>
+              <span className="text-[11px] font-sans text-[#787873]">Mon – Sun</span>
             </div>
 
             <div className="flex items-end justify-between gap-3 sm:gap-4 pt-3.5">
-              {/* Left headline stat (Reference: "Sleep duration" headline pattern) */}
-              <div className="flex-shrink-0 min-w-[70px] pb-1">
-                <div className="flex items-baseline gap-1">
-                  <span className="font-sans text-3xl sm:text-4xl font-black text-[#111111] tracking-tight leading-none">
+              <div className="flex-shrink-0 min-w-[74px] pb-1">
+                <div className="flex items-baseline gap-1 tabular-nums">
+                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none">
                     {timeStudied.value}
                   </span>
-                  <span className="font-sans text-sm sm:text-base font-bold text-[#8A8A8A] leading-none">
+                  <span className="font-sans text-sm sm:text-base font-semibold text-[#787873] leading-none">
                     {timeStudied.unit}
                   </span>
                 </div>
-                <div className="text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mt-1 leading-tight">
+                <div className="text-xs font-sans font-medium text-[#787873] mt-1.5 leading-tight">
                   This week
                 </div>
               </div>
 
-              {/* Right: Vertical bar chart, one bar per day (Mon–Sun) */}
-              <div className="flex-1 max-w-[245px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-end">
-                {weekBarData.map((day) => {
-                  return (
-                    <div key={day.date} className="flex flex-col items-center select-none">
-                      {/* Bar container (44px height) */}
-                      <div className="h-11 w-full flex items-end justify-center pb-1">
-                        {day.minutes > 0 ? (
-                          <div
-                            style={{ height: `${day.heightPercent}%` }}
-                            className="relative w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
-                            title={`${day.fullName}: ${day.minutes} min studied${day.isToday ? ' · Today' : ''}`}
-                          >
-                            {/* Value label directly above bar peak */}
-                            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#8A8A8A] leading-none whitespace-nowrap pointer-events-none">
-                              {day.label}
-                            </span>
-                          </div>
-                        ) : (
-                          /* Stub/baseline mark for 0 min */
-                          <div
-                            className="relative w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D4D4D4]"
-                            title={`${day.fullName}: 0 min studied${day.isToday ? ' · Today' : ''}`}
-                          >
-                            {/* Value label directly above baseline stub */}
-                            <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#8A8A8A] leading-none whitespace-nowrap pointer-events-none">
-                              {day.label}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Day initial beneath bar (Bold for today, normal/regular for others) */}
-                      <span
-                        className={`text-xs font-sans leading-none ${
-                          day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#8A8A8A]'
-                        }`}
-                      >
-                        {day.initial}
-                      </span>
+              <div className="flex-1 max-w-[250px] grid grid-cols-7 gap-1 sm:gap-1.5 text-center items-end">
+                {weekBarData.map((day) => (
+                  <div key={day.date} className="flex flex-col items-center select-none">
+                    <div className="h-11 w-full flex items-end justify-center pb-1">
+                      {day.minutes > 0 ? (
+                        <div
+                          style={{ height: `${day.heightPercent}%` }}
+                          className="relative w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
+                          title={`${day.fullName}: ${day.minutes} min studied${day.isToday ? ' · Today' : ''}`}
+                        >
+                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#787873] leading-none whitespace-nowrap pointer-events-none tabular-nums">
+                            {day.label}
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className="relative w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D6D6D0]"
+                          title={`${day.fullName}: 0 min studied${day.isToday ? ' · Today' : ''}`}
+                        >
+                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#787873] leading-none whitespace-nowrap pointer-events-none tabular-nums">
+                            {day.label}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
+
+                    <span
+                      className={`text-xs font-sans leading-none ${
+                        day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#787873]'
+                      }`}
+                    >
+                      {day.initial}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Target Override Modal / Popover */}
+      {/* Target Override Modal */}
       {editingSubject && (
-        <div className="fixed inset-0 z-50 bg-[#000000]/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl w-full max-w-xs p-5 shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-50 bg-[#000000]/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setEditingSubject(null)}
+        >
+          <div
+            className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xs p-5 sm:p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
-              <h3 className="font-sans font-bold text-sm text-[#111111] m-0">
+              <h3 className="font-sans font-extrabold text-base text-[#111111] m-0">
                 Override Weekly Target
               </h3>
               <button
                 type="button"
                 onClick={() => setEditingSubject(null)}
-                className="text-[#8A8A8A] hover:text-[#111111] p-1 cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] cursor-pointer"
+                aria-label="Close"
               >
                 <X size={16} />
               </button>
             </div>
 
             <div className="space-y-1.5">
-              <div className="text-xs font-sans text-[#737373]">
+              <div className="text-xs font-sans text-[#525252]">
                 Subject: <strong className="text-[#111111]">{editingSubject.name}</strong>
               </div>
-              <div className="text-[11px] font-sans text-[#8A8A8A]">
-                Auto-calculated suggestion: <strong>{editingSubject.autoTarget} parts/week</strong> based on remaining parts until exam ({weeksRemaining}w).
+              <div className="text-xs font-sans text-[#787873] leading-relaxed tabular-nums">
+                Auto-calculated suggestion: <strong>{editingSubject.autoTarget} parts/week</strong>{' '}
+                based on remaining parts ({weeksRemaining}w to exam).
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-sans font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-sans font-semibold text-[#525252] mb-1.5">
                 Target parts per week
               </label>
               <input
@@ -710,7 +686,7 @@ export const StatsTab: React.FC = () => {
                 value={targetInputValue}
                 onChange={(e) => setTargetInputValue(e.target.value)}
                 autoFocus
-                className="w-full font-sans text-base font-bold p-2.5 rounded-xl border border-[#E0E0E0] bg-[#F9F9F9] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] focus:outline-none"
+                className="w-full font-sans text-base font-bold px-3.5 py-2.5 rounded-xl border border-[#E5E5E0] bg-[#F7F7F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] tabular-nums"
               />
             </div>
 
@@ -719,16 +695,16 @@ export const StatsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTarget(editingSubject.id)}
-                  className="flex-1 py-2.5 px-3 rounded-xl border border-[#E0E0E0] text-[#737373] hover:text-[#111111] hover:bg-[#F5F5F5] font-sans font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  className="flex-1 min-h-[40px] py-2 px-3 rounded-xl border border-[#E5E5E0] text-[#525252] hover:text-[#111111] hover:bg-[#F7F7F5] font-sans font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={13} />
                   <span>Reset Auto</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleSaveTarget}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-[#111111] text-[#FFFFFF] font-sans font-bold text-xs hover:bg-[#262626] transition-colors cursor-pointer shadow-xs"
+                className="flex-1 min-h-[40px] py-2 px-3 rounded-xl bg-[#111111] text-[#FFFFFF] font-sans font-bold text-xs hover:bg-[#262626] transition-colors cursor-pointer"
               >
                 Save Target
               </button>
@@ -739,4 +715,3 @@ export const StatsTab: React.FC = () => {
     </div>
   );
 };
-

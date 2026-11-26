@@ -7,62 +7,56 @@ import { getSubjectColorById } from '../utils/colors';
 
 export const RevisitTab = () => {
   const { revisits, subjects, lessons, updateRevisit } = useStore();
-  
+
   const today = todayStr();
-  
+
   const pendingRevisits = revisits
-    .filter(r => !r.done && lessons.some(l => l.id === r.lessonId))
+    .filter((r) => !r.done && lessons.some((l) => l.id === r.lessonId))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const completedRevisits = revisits
-    .filter(r => r.done && lessons.some(l => l.id === r.lessonId))
+    .filter((r) => r.done && lessons.some((l) => l.id === r.lessonId))
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const dueToday = pendingRevisits.filter(r => r.date === today);
-  const overdue = pendingRevisits.filter(r => r.date < today);
+  const dueToday = pendingRevisits.filter((r) => r.date === today);
+  const overdue = pendingRevisits.filter((r) => r.date < today);
 
   const [activeView, setActiveView] = useState<'pending' | 'completed'>('pending');
 
   return (
-    <div className="flex flex-col gap-4 pb-6">
-      <div className="pt-2 pb-1">
-        <h1 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight m-0">
-          Revisit List
-        </h1>
+    <div className="flex flex-col gap-5">
+      {/* KPI Summary Strip */}
+      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+        <StatTile icon={AlertCircle} value={overdue.length} label="Overdue" />
+        <StatTile icon={Calendar} value={dueToday.length} label="Due today" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatTile 
-          icon={AlertCircle} 
-          value={overdue.length} 
-          label="Overdue" 
-        />
-        <StatTile 
-          icon={Calendar} 
-          value={dueToday.length} 
-          label="Due Today" 
-        />
-      </div>
+      {/* Main Hairline-Divided Reviews Container */}
+      <section className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFEFEA] flex flex-wrap justify-between items-center gap-3">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+            Topics to Review
+          </h2>
 
-      <div className="bg-[#FFFFFF] border border-[#E0E0E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="font-sans text-base font-bold text-[#111111] m-0">Topics to Review</h2>
-          <div className="flex bg-[#F0F0F0] p-1 rounded-xl border border-[#E0E0E0]">
-            <button 
-              className={`py-1.5 px-3 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
+          {/* Interactive Segmented Filter Control */}
+          <div className="inline-flex bg-[#F2F2EE] p-1 rounded-xl border border-[#E5E5E0]">
+            <button
+              type="button"
+              className={`min-h-[32px] py-1 px-3 rounded-lg font-sans font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap tabular-nums ${
                 activeView === 'pending'
-                  ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs'
-                  : 'text-[#8A8A8A] hover:text-[#111111]'
+                  ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
+                  : 'text-[#787873] hover:text-[#111111]'
               }`}
               onClick={() => setActiveView('pending')}
             >
               Pending ({pendingRevisits.length})
             </button>
-            <button 
-              className={`py-1.5 px-3 rounded-lg font-sans font-bold text-xs transition-all cursor-pointer ${
+            <button
+              type="button"
+              className={`min-h-[32px] py-1 px-3 rounded-lg font-sans font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap tabular-nums ${
                 activeView === 'completed'
-                  ? 'bg-[#111111] text-[#FFFFFF] shadow-2xs'
-                  : 'text-[#8A8A8A] hover:text-[#111111]'
+                  ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
+                  : 'text-[#787873] hover:text-[#111111]'
               }`}
               onClick={() => setActiveView('completed')}
             >
@@ -72,112 +66,127 @@ export const RevisitTab = () => {
         </div>
 
         {activeView === 'pending' ? (
-          <div>
-            {pendingRevisits.length === 0 ? (
-              <div className="text-center py-8 text-xs font-sans text-[#8A8A8A]">
-                All caught up! No pending revisits due.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {pendingRevisits.map(r => {
-                  const isOverdue = r.date < today;
-                  const isDateToday = r.date === today;
-                  const subject = subjects.find(s => s.id === r.subjectId);
-                  const lesson = lessons.find(l => l.id === r.lessonId);
-                  const accentColor = getSubjectColorById(r.subjectId, subjects);
+          pendingRevisits.length === 0 ? (
+            <div className="text-center py-12 px-4 text-xs sm:text-sm font-sans text-[#787873]">
+              All caught up. No pending revisits due.
+            </div>
+          ) : (
+            <div className="divide-y divide-[#EFEFEA]">
+              {pendingRevisits.map((r) => {
+                const isOverdue = r.date < today;
+                const isDateToday = r.date === today;
+                const subject = subjects.find((s) => s.id === r.subjectId);
+                const lesson = lessons.find((l) => l.id === r.lessonId);
+                const accentColor = getSubjectColorById(r.subjectId, subjects);
 
-                  return (
-                    <div 
-                      key={r.id} 
-                      className="border border-[#E0E0E0] hover:border-[#D4D4D4] rounded-2xl p-3.5 bg-[#FFFFFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex items-center gap-3 transition-all relative overflow-hidden"
+                return (
+                  <div
+                    key={r.id}
+                    className="px-4 sm:px-5 py-3.5 hover:bg-[#FAFAF8] transition-colors flex items-center gap-3"
+                  >
+                    {/* 44px touch target circular completion button */}
+                    <button
+                      type="button"
+                      onClick={() => updateRevisit(r.id, { done: true })}
+                      aria-label={`Mark ${lesson?.name || 'revisit'} complete`}
+                      className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0 group"
                     >
-                      {/* Left accent bar */}
-                      <div
-                        className="w-1 self-stretch rounded-full flex-shrink-0 my-0.5"
-                        style={{ backgroundColor: accentColor }}
-                      />
+                      <span className="w-5 h-5 rounded-full border-[1.5px] border-[#C8C8C0] group-hover:border-[#16A34A] bg-[#FFFFFF] block transition-colors" />
+                    </button>
 
-                      {/* Checkbox button */}
-                      <button
-                        type="button"
-                        onClick={() => updateRevisit(r.id, { done: true })}
-                        className="w-5 h-5 rounded-full border-[1.5px] border-[#D4D4D4] hover:border-[#16A34A] bg-[#FFFFFF] flex items-center justify-center cursor-pointer transition-colors flex-shrink-0"
-                      />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-sans font-semibold text-sm text-[#111111] leading-snug break-words">
+                        {lesson?.name || 'Lesson Revisit'}
+                      </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="font-sans font-bold text-sm text-[#111111] truncate">
-                          {subject?.name} — {lesson?.name}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[0.72rem] text-[#8A8A8A] font-sans font-medium">
-                            {r.date}
-                          </span>
-                          <span className="bg-[#F5F5F5] text-[#8A8A8A] border border-[#E0E0E0] font-sans font-semibold text-[0.7rem] px-2 py-0.5 rounded-full">
-                            {r.type}
-                          </span>
-                          {isOverdue && (
-                            <span className="text-[0.68rem] text-[#DC2626] bg-[#FEE2E2] px-2 py-0.5 rounded-full border border-[#FECACA] font-sans font-bold uppercase tracking-wider">
-                              Overdue
+                      {/* Unboxed Metadata Line (zero pill capsules) */}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs font-sans text-[#787873] tabular-nums">
+                        <span className="inline-flex items-center gap-1.5 text-[#525252] font-medium">
+                          <span
+                            className="w-2 h-2 rounded-[3px] flex-shrink-0"
+                            style={{ backgroundColor: accentColor }}
+                            aria-hidden="true"
+                          />
+                          <span>{subject?.name || 'Subject'}</span>
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>{r.type}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{r.date}</span>
+                        {isOverdue && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="inline-flex items-center gap-1 text-[#DC2626] font-semibold">
+                              <AlertCircle size={12} />
+                              <span>Overdue</span>
                             </span>
-                          )}
-                          {isDateToday && (
-                            <span className="text-[0.68rem] text-[#111111] bg-[#F0F0F0] px-2 py-0.5 rounded-full border border-[#E0E0E0] font-sans font-bold uppercase tracking-wider">
-                              Today
-                            </span>
-                          )}
-                        </div>
+                          </>
+                        )}
+                        {isDateToday && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="text-[#111111] font-semibold">Due today</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : completedRevisits.length === 0 ? (
+          <div className="text-center py-12 px-4 text-xs sm:text-sm font-sans text-[#787873]">
+            No completed revisits yet.
           </div>
         ) : (
-          <div>
-            {completedRevisits.length === 0 ? (
-              <div className="text-center py-8 text-xs font-sans text-[#8A8A8A]">
-                No completed revisits yet.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {completedRevisits.map(r => {
-                  const subject = subjects.find(s => s.id === r.subjectId);
-                  const lesson = lessons.find(l => l.id === r.lessonId);
-                  return (
-                    <div 
-                      key={r.id} 
-                      className="border border-[#E0E0E0] rounded-2xl p-3.5 bg-[#F5F5F5] flex items-center gap-3 opacity-60"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => updateRevisit(r.id, { done: false })}
-                        className="w-5 h-5 rounded-full bg-[#16A34A] border border-[#16A34A] text-[#FFFFFF] flex items-center justify-center cursor-pointer flex-shrink-0 shadow-2xs"
-                      >
-                        <Check size={11} strokeWidth={3} />
-                      </button>
+          <div className="divide-y divide-[#EFEFEA]">
+            {completedRevisits.map((r) => {
+              const subject = subjects.find((s) => s.id === r.subjectId);
+              const lesson = lessons.find((l) => l.id === r.lessonId);
+              const accentColor = getSubjectColorById(r.subjectId, subjects);
 
-                      <div className="flex-1 min-w-0 line-through">
-                        <div className="font-sans font-bold text-sm text-[#111111] truncate">
-                          {subject?.name} — {lesson?.name}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[0.72rem] text-[#8A8A8A] font-sans">
-                            {r.date}
-                          </span>
-                          <span className="bg-[#FFFFFF] text-[#8A8A8A] font-sans font-semibold text-[0.7rem] px-2 py-0.5 rounded-full border border-[#E0E0E0]">
-                            {r.type}
-                          </span>
-                        </div>
-                      </div>
+              return (
+                <div
+                  key={r.id}
+                  className="px-4 sm:px-5 py-3.5 bg-[#FAFAF8]/60 flex items-center gap-3 opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <button
+                    type="button"
+                    onClick={() => updateRevisit(r.id, { done: false })}
+                    aria-label={`Mark ${lesson?.name || 'revisit'} pending`}
+                    className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-[#16A34A] border border-[#16A34A] text-[#FFFFFF] flex items-center justify-center">
+                      <Check size={11} strokeWidth={3} />
+                    </span>
+                  </button>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-sans font-semibold text-sm text-[#787873] line-through leading-snug break-words">
+                      {lesson?.name || 'Lesson Revisit'}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs font-sans text-[#787873] tabular-nums">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-[3px] flex-shrink-0 opacity-60"
+                          style={{ backgroundColor: accentColor }}
+                          aria-hidden="true"
+                        />
+                        <span>{subject?.name || 'Subject'}</span>
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>{r.type}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{r.date}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };
