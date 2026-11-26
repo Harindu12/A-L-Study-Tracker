@@ -18,7 +18,7 @@ export interface Lesson {
   subjectId: string;
   name: string;
   done: boolean;
-  confidence: 'L' | 'M' | 'H' | null;
+  confidence?: 'L' | 'M' | 'H' | null;
   completedDate: string | null;
   parts?: LessonPart[];
 }
@@ -34,7 +34,8 @@ export interface Revisit {
 
 export interface HourBlock {
   id: string;
-  time: string;
+  time?: string;
+  duration?: string;
   task: string;
   done: boolean;
 }
@@ -46,22 +47,16 @@ export interface DailySubjectLog {
   partId?: string;
   studied: boolean;
   pastPaper: boolean;
-  confidence: 'L' | 'M' | 'H' | null;
+  confidence?: 'L' | 'M' | 'H' | null;
+  duration?: string;
 }
 
 export interface DailyEntry {
   date: string;
-  wakeTime: string;
-  sleepTime: string;
+  wakeTime?: string;
+  sleepTime?: string;
   hours: HourBlock[];
   subjects: DailySubjectLog[];
   teachback: string;
   notes: string;
-}
-
-export interface WeeklyTest {
-  id: string;
-  weekStartDate: string;
-  subjectId: string;
-  score: string;
 }

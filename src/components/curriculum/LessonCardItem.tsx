@@ -18,8 +18,6 @@ import {
   Circle, 
   Plus, 
   Video, 
-  Sparkles, 
-  ListPlus, 
   X, 
   Pencil, 
   AlertTriangle, 
@@ -187,12 +185,6 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     onToggleExpand();
   };
 
-  // Bulk add parts state
-  const [showBulkAdd, setShowBulkAdd] = useState(false);
-  const [bulkFrom, setBulkFrom] = useState('1');
-  const [bulkTo, setBulkTo] = useState('12');
-  const [bulkPattern, setBulkPattern] = useState('Day {n}');
-
   const parts = lesson.parts || [];
   const watchedPartsCount = parts.filter((p) => p.watched).length;
   const completedPartsCount = parts.filter((p) => p.watched && p.pastPaper).length;
@@ -203,7 +195,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   const handleToggleDone = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!lesson.done) {
-      markLessonDone(lesson.id, lesson.confidence || 'M', todayStr());
+      markLessonDone(lesson.id, todayStr());
     } else {
       updateLesson(lesson.id, { done: false, completedDate: null });
     }
@@ -237,70 +229,6 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     };
     updateLessonParts(lesson.id, [...parts, newPart]);
     setNewPartName('');
-  };
-
-  // Helper formatting for part numbers and patterns
-  const formatPartNumber = (n: number, min: number, max: number): string => {
-    const hasUnder10 = min < 10;
-    const has10OrMore = max >= 10;
-    const shouldZeroPad = hasUnder10 && has10OrMore;
-    return shouldZeroPad && n < 10 ? `0${n}` : `${n}`;
-  };
-
-  const formatPartName = (pattern: string, numStr: string): string => {
-    if (pattern.includes('{n}')) {
-      return pattern.replace(/\{n\}/g, numStr);
-    }
-    const trimmed = pattern.trim();
-    if (trimmed) {
-      return `${trimmed} ${numStr}`;
-    }
-    return `Part ${numStr}`;
-  };
-
-  // Bulk add computation
-  const fromNum = parseInt(bulkFrom, 10);
-  const toNum = parseInt(bulkTo, 10);
-  const isValidRange = !isNaN(fromNum) && !isNaN(toNum) && fromNum >= 1 && toNum >= 1;
-  const startNum = isValidRange ? Math.min(fromNum, toNum) : 0;
-  const endNum = isValidRange ? Math.max(fromNum, toNum) : 0;
-  const bulkCount = isValidRange ? endNum - startNum + 1 : 0;
-
-  // Generate preview text
-  let previewText = 'No preview';
-  if (isValidRange && bulkCount > 0) {
-    const p1 = formatPartName(bulkPattern || 'Day {n}', formatPartNumber(startNum, startNum, endNum));
-    if (bulkCount === 1) {
-      previewText = p1;
-    } else if (bulkCount === 2) {
-      const p2 = formatPartName(bulkPattern || 'Day {n}', formatPartNumber(endNum, startNum, endNum));
-      previewText = `${p1}, ${p2}`;
-    } else {
-      const p2 = formatPartName(bulkPattern || 'Day {n}', formatPartNumber(startNum + 1, startNum, endNum));
-      const pEnd = formatPartName(bulkPattern || 'Day {n}', formatPartNumber(endNum, startNum, endNum));
-      previewText = `${p1}, ${p2}, … ${pEnd}`;
-    }
-  }
-
-  const handleBulkGenerate = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isValidRange || bulkCount <= 0) return;
-
-    const pattern = bulkPattern.trim() || 'Day {n}';
-    const newGeneratedParts: LessonPart[] = [];
-    for (let i = startNum; i <= endNum; i++) {
-      const numStr = formatPartNumber(i, startNum, endNum);
-      newGeneratedParts.push({
-        id: Math.random().toString(36).slice(2, 10),
-        name: formatPartName(pattern, numStr),
-        watched: false,
-        pastPaper: false,
-      });
-    }
-
-    updateLessonParts(lesson.id, [...parts, ...newGeneratedParts]);
-    setShowBulkAdd(false);
   };
 
   // Telegram import live parsing & preview state
@@ -457,8 +385,6 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       subjects: [],
       teachback: '',
       notes: '',
-      wakeTime: '',
-      sleepTime: '',
     };
     let updatedSubjects = [...(currentEntry.subjects || [])];
     const existingIdx = updatedSubjects.findIndex((s) => s.lessonId === lesson.id && s.partId === partId);
@@ -475,7 +401,6 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         partId,
         studied: true,
         pastPaper: false,
-        confidence: null,
       });
     }
     if (typeof saveDailyEntry === 'function') {
@@ -495,8 +420,6 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       subjects: [],
       teachback: '',
       notes: '',
-      wakeTime: '',
-      sleepTime: '',
     };
     let updatedSubjects = [...(currentEntry.subjects || [])];
     const existingIdx = updatedSubjects.findIndex((s) => s.lessonId === lesson.id && s.partId === partId);
@@ -513,7 +436,6 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
         partId,
         studied: false,
         pastPaper: true,
-        confidence: null,
       });
     }
     if (typeof saveDailyEntry === 'function') {
@@ -855,125 +777,19 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                 </button>
               </form>
 
-              <div className="grid grid-cols-2 gap-2">
-                {/* Add multiple toggle button */}
-                <button
-                  type="button"
-                  onClick={() => setShowBulkAdd((prev) => !prev)}
-                  className={`min-h-[40px] px-3 py-2 text-xs font-sans font-semibold rounded-xl border transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 ${
-                    showBulkAdd
-                      ? 'bg-[#181715] text-[#FFFDF9] border-[#181715] shadow-2xs'
-                      : 'bg-[#FFFDF9] text-[#181715] border-[#E4E0D8] hover:bg-[#EDEAE2] shadow-2xs'
-                  }`}
-                  title="Generate multiple numbered parts at once"
-                >
-                  <ListPlus size={14} />
-                  <span>{showBulkAdd ? 'Hide multiple' : 'Add multiple'}</span>
-                </button>
-
-                {/* Import from Telegram modal trigger */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImportFeedback(null);
-                    openOverlay('curriculum-telegram-import', { lessonId: lesson.id });
-                  }}
-                  className="min-h-[40px] px-3 py-2 text-xs font-sans font-semibold rounded-xl border bg-[#FFFDF9] text-[#181715] border-[#E4E0D8] hover:bg-[#EDEAE2] shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
-                  title="Paste a Telegram post to create parts at once"
-                >
-                  <Send size={13} />
-                  <span>Import from Telegram</span>
-                </button>
-              </div>
-
-              {/* Bulk Add Generator Form Panel */}
-              {showBulkAdd && (
-                <div className="p-3.5 bg-[#FFFDF9] rounded-xl border border-[#E4E0D8] flex flex-col gap-2.5 shadow-2xs animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-sans font-bold text-[#181715] flex items-center gap-1.5 uppercase tracking-wider">
-                      <ListPlus size={13} />
-                      <span>Bulk Generate Parts</span>
-                    </span>
-                    <span className="text-[10px] font-sans text-[#78716C] font-medium">
-                      {isValidRange && bulkCount > 0
-                        ? `${bulkCount} ${bulkCount === 1 ? 'part' : 'parts'} will be created`
-                        : 'Please specify a valid range'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                        From
-                      </label>
-                      <input
-                        type="number"
-                        value={bulkFrom}
-                        onChange={(e) => setBulkFrom(e.target.value)}
-                        min="1"
-                        placeholder="1"
-                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:outline-none focus:border-[#181715]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                        To
-                      </label>
-                      <input
-                        type="number"
-                        value={bulkTo}
-                        onChange={(e) => setBulkTo(e.target.value)}
-                        min="1"
-                        placeholder="12"
-                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:outline-none focus:border-[#181715]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                        Pattern <span className="font-normal text-[9px] text-[#78716C]">({'{n}'} = number)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={bulkPattern}
-                        onChange={(e) => setBulkPattern(e.target.value)}
-                        placeholder="Day {n}"
-                        className="w-full font-sans text-xs px-2.5 py-1.5 rounded-lg border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:outline-none focus:border-[#181715]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Live Preview + Generate Button Row */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#EFECE6]">
-                    <div className="text-[10px] font-sans text-[#181715] flex items-center gap-1.5 min-w-0">
-                      <span className="font-bold text-[#78716C] flex-shrink-0">Preview:</span>
-                      <span className="font-medium bg-[#F6F4EF] px-2 py-0.5 rounded border border-[#E4E0D8] text-[#181715] truncate">
-                        {previewText}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                      <button
-                        type="button"
-                        onClick={() => setShowBulkAdd(false)}
-                        className="text-xs font-sans font-medium text-[#78716C] hover:text-[#181715] px-2.5 py-1 transition-colors cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleBulkGenerate}
-                        disabled={!isValidRange || bulkCount <= 0}
-                        className="px-3.5 py-1.5 rounded-xl bg-[#181715] text-[#FFFDF9] hover:bg-[#2E2C28] text-xs font-sans font-semibold shadow-2xs flex items-center gap-1 disabled:opacity-40 cursor-pointer active:scale-95 transition-all"
-                      >
-                        <Sparkles size={12} />
-                        <span>Generate {bulkCount > 0 ? `${bulkCount} Parts` : ''}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Import from Telegram full-width trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  setImportFeedback(null);
+                  openOverlay('curriculum-telegram-import', { lessonId: lesson.id });
+                }}
+                className="w-full min-h-[40px] px-3 py-2 text-xs font-sans font-semibold rounded-xl border bg-[#FFFDF9] text-[#181715] border-[#E4E0D8] hover:bg-[#EDEAE2] shadow-2xs transition-all inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-[0.99]"
+                title="Paste a Telegram post to create parts at once"
+              >
+                <Send size={13} />
+                <span>Import from Telegram</span>
+              </button>
             </div>
           </div>
         )}
@@ -1072,7 +888,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     {lesson.done ? 'Mark Incomplete' : 'Mark Done'}
                   </div>
                   <div className="text-xs font-sans text-[#78716C]">
-                    {lesson.done ? 'Reset completion status' : 'Complete lesson & trigger confidence and reminders'}
+                    {lesson.done ? 'Reset completion status' : 'Complete lesson & schedule review reminders'}
                   </div>
                 </div>
               </button>

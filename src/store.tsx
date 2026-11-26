@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Subject, Lesson, LessonPart, Revisit, DailyEntry, WeeklyTest } from './types';
+import { Subject, Lesson, LessonPart, Revisit, DailyEntry } from './types';
 import { addDays, todayStr } from './utils';
 
 interface AppState {
@@ -7,7 +7,6 @@ interface AppState {
   lessons: Lesson[];
   revisits: Revisit[];
   dailyEntries: Record<string, DailyEntry>;
-  weeklyTests: WeeklyTest[];
   examDate?: string;
 }
 
@@ -19,11 +18,10 @@ interface AppContextType extends AppState {
   updateLesson: (id: string, updates: Partial<Lesson>) => void;
   updateLessonParts: (id: string, parts: LessonPart[]) => void;
   deleteLesson: (id: string) => void;
-  markLessonDone: (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => void;
+  markLessonDone: (id: string, date: string) => void;
   updateRevisit: (id: string, updates: Partial<Revisit>) => void;
   saveDailyEntry: (date: string, entry: DailyEntry) => void;
   updateDailyEntry: (date: string, entry: DailyEntry) => void;
-  saveWeeklyTest: (test: Omit<WeeklyTest, 'id'>) => void;
   setExamDate: (date: string) => void;
 }
 
@@ -34,7 +32,6 @@ const defaultState: AppState = {
   lessons: [],
   revisits: [],
   dailyEntries: {},
-  weeklyTests: [],
   examDate: undefined,
 };
 
@@ -165,7 +162,6 @@ const cleanState = (raw: any): AppState => {
     lessons,
     revisits: dedupedRevisits,
     dailyEntries: raw.dailyEntries && typeof raw.dailyEntries === 'object' ? raw.dailyEntries : {},
-    weeklyTests: Array.isArray(raw.weeklyTests) ? raw.weeklyTests : [],
     examDate: typeof raw.examDate === 'string' ? raw.examDate : undefined,
   };
 };
@@ -236,7 +232,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           name: lesson.name.trim(),
           id: Math.random().toString(36).slice(2, 10),
           done: false,
-          confidence: null,
           completedDate: null,
           parts: Array.isArray(lesson.parts) && lesson.parts.length > 0
             ? lesson.parts
@@ -333,7 +328,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
                   ...l,
                   parts,
                   done: true,
-                  confidence: l.confidence || 'M',
                   completedDate: l.completedDate || date,
                 }
               : l
@@ -349,7 +343,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const markLessonDone = (id: string, confidence: 'L' | 'M' | 'H' | null, date: string) => {
+  const markLessonDone = (id: string, date: string) => {
     setState((prev) => {
       const lesson = prev.lessons.find((l) => l.id === id);
       if (!lesson) return prev;
@@ -400,7 +394,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       return {
         ...prev,
         lessons: prev.lessons.map((l) =>
-          l.id === id ? { ...l, done: true, confidence, completedDate: date, parts: updatedParts } : l
+          l.id === id ? { ...l, done: true, completedDate: date, parts: updatedParts } : l
         ),
         revisits: [...cleanRevisits, ...newRevisits],
       };
@@ -416,31 +410,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   const saveDailyEntry = (date: string, entry: DailyEntry) => {
     setState((prev) => {
-      // Also mark any revisits done globally if they are newly checked today
-      // Actually, we'll handle revisit syncing within the daily tab component itself
       return {
         ...prev,
         dailyEntries: {
           ...prev.dailyEntries,
           [date]: entry,
         },
-      };
-    });
-  };
-
-  const saveWeeklyTest = (test: Omit<WeeklyTest, 'id'>) => {
-    setState((prev) => {
-      const existingIdx = prev.weeklyTests.findIndex(
-        (t) => t.weekStartDate === test.weekStartDate && t.subjectId === test.subjectId
-      );
-      if (existingIdx >= 0) {
-        const newTests = [...prev.weeklyTests];
-        newTests[existingIdx] = { ...newTests[existingIdx], score: test.score };
-        return { ...prev, weeklyTests: newTests };
-      }
-      return {
-        ...prev,
-        weeklyTests: [...prev.weeklyTests, { ...test, id: Math.random().toString(36).slice(2, 10) }],
       };
     });
   };
@@ -462,7 +437,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         updateRevisit,
         saveDailyEntry,
         updateDailyEntry: saveDailyEntry,
-        saveWeeklyTest,
         setExamDate,
       }}
     >

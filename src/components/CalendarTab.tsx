@@ -16,15 +16,11 @@ import {
   Sparkles,
   Search,
   PenTool,
-  Clock,
   AlertCircle,
   Pencil,
   Trash2,
   AlertTriangle,
   BookOpen,
-  Sun,
-  CloudSun,
-  Moon,
   MoreHorizontal,
   ArrowRight,
   RotateCcw,
@@ -41,10 +37,8 @@ interface AgendaTask {
   date: string;
   title: string;
   detail?: string;
-  timeDisplay: string;
   subjectLabel: string;
   duration?: string;
-  period?: 'morning' | 'afternoon' | 'evening';
   done: boolean;
   accentColor: string;
   subjectId?: string;
@@ -52,21 +46,6 @@ interface AgendaTask {
   partId?: string;
   pastPaperDone?: boolean;
 }
-
-const MONTH_ACCENT_COLORS = [
-  '#EF4444',
-  '#3B82F6',
-  '#10B981',
-  '#F59E0B',
-  '#8B5CF6',
-  '#06B6D4',
-  '#F97316',
-  '#6366F1',
-  '#EC4899',
-  '#14B8A6',
-  '#84CC16',
-  '#64748B',
-];
 
 interface AgendaTaskRowProps {
   task: AgendaTask;
@@ -251,11 +230,6 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
                 <span>{task.duration}</span>
               </>
             )}
-            <span aria-hidden="true">·</span>
-            <span className="inline-flex items-center gap-1 text-[#57534E] font-medium">
-              <Clock size={11} className="text-[#78716C]" />
-              {task.timeDisplay}
-            </span>
           </div>
 
           {isSubjectWithPart && (
@@ -337,17 +311,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
   const isToolsMenuOpen = activeOverlay === 'calendar-tools';
   const isNotesModalOpen = activeOverlay === 'calendar-notes';
   const isAddModalOpen = activeOverlay === 'calendar-add-task';
-  const isMonthModalOpen = activeOverlay === 'calendar-month';
-  const [modalYear, setModalYear] = useState<number>(() => new Date().getFullYear());
-
-  useEffect(() => {
-    if (isMonthModalOpen) {
-      const d = new Date(selectedDate.replace(/-/g, '/'));
-      if (!isNaN(d.getFullYear())) {
-        setModalYear(d.getFullYear());
-      }
-    }
-  }, [isMonthModalOpen, selectedDate]);
 
   useEffect(() => {
     if (!isMonthGridExpanded) {
@@ -523,16 +486,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
   const [addMode, setAddMode] = useState<'task' | 'subject'>('task');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDetail, setNewTaskDetail] = useState('');
-  const [newTaskPeriod, setNewTaskPeriod] = useState<'morning' | 'afternoon' | 'evening'>('morning');
   const [newTaskDuration, setNewTaskDuration] = useState('50 min');
 
   const [newSubjId, setNewSubjId] = useState('');
   const [newLessonId, setNewLessonId] = useState('');
   const [newPartId, setNewPartId] = useState('');
-  const [newSubjPeriod, setNewSubjPeriod] = useState<'morning' | 'afternoon' | 'evening'>('afternoon');
   const [newSubjStudied, setNewSubjStudied] = useState(true);
   const [newSubjPastPaper, setNewSubjPastPaper] = useState(false);
-  const [newSubjConfidence, setNewSubjConfidence] = useState<'L' | 'M' | 'H'>('M');
 
   // Action Sheet & Edit/Delete Modals
   const [actionTask, setActionTask] = useState<AgendaTask | null>(null);
@@ -542,16 +502,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskDetail, setEditTaskDetail] = useState('');
-  const [editTaskPeriod, setEditTaskPeriod] = useState<'morning' | 'afternoon' | 'evening'>('morning');
   const [editTaskDuration, setEditTaskDuration] = useState('50 min');
 
   const [editSubjId, setEditSubjId] = useState('');
   const [editLessonId, setEditLessonId] = useState('');
   const [editPartId, setEditPartId] = useState('');
-  const [editSubjPeriod, setEditSubjPeriod] = useState<'morning' | 'afternoon' | 'evening'>('afternoon');
   const [editSubjStudied, setEditSubjStudied] = useState(false);
   const [editSubjPastPaper, setEditSubjPastPaper] = useState(false);
-  const [editSubjConfidence, setEditSubjConfidence] = useState<'L' | 'M' | 'H'>('M');
 
   const activeTargetDate = filterMode === 'tomorrow' ? addDays(today, 1) : selectedDate;
   const currentTargetEntry: DailyEntry = dailyEntries[activeTargetDate] || {
@@ -560,8 +517,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     subjects: [],
     teachback: '',
     notes: '',
-    wakeTime: '',
-    sleepTime: '',
   };
 
   const updateEntryForDate = (targetDate: string, updates: Partial<DailyEntry>) => {
@@ -571,8 +526,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       subjects: [],
       teachback: '',
       notes: '',
-      wakeTime: '',
-      sleepTime: '',
     };
     const saveFn = saveDailyEntry || updateDailyEntry;
     if (typeof saveFn === 'function') {
@@ -595,16 +548,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       setEditSubjId(actionTask.subjectId || log?.subjectId || '');
       setEditLessonId(actionTask.lessonId || log?.lessonId || '');
       setEditPartId(actionTask.partId || log?.partId || '');
-      setEditSubjPeriod((log as any)?.period || actionTask.period || 'afternoon');
       setEditSubjStudied(actionTask.done);
       setEditSubjPastPaper(actionTask.pastPaperDone || false);
-      setEditSubjConfidence(log?.confidence || 'M');
     } else if (actionTask.source === 'hour') {
       const entry = dailyEntries[actionTask.date];
       const hourBlock = (entry?.hours || []).find((h) => h.id === actionTask.originalId);
       setEditTaskTitle(actionTask.title);
       setEditTaskDetail(actionTask.detail || '');
-      setEditTaskPeriod((hourBlock as any)?.period || actionTask.period || 'morning');
       setEditTaskDuration(actionTask.duration || (hourBlock as any)?.duration || '50 min');
     }
 
@@ -621,8 +571,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       subjects: [],
       teachback: '',
       notes: '',
-      wakeTime: '',
-      sleepTime: '',
     };
 
     if (actionTask.source === 'subject') {
@@ -636,8 +584,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             partId: editPartId || undefined,
             studied: editSubjStudied,
             pastPaper: editSubjPastPaper,
-            confidence: editSubjConfidence,
-            period: editSubjPeriod,
           };
         }
         return s;
@@ -663,9 +609,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           return {
             ...h,
             task: fullTaskStr,
-            time: editTaskPeriod === 'morning' ? '8:00 AM' : editTaskPeriod === 'afternoon' ? '2:00 PM' : '7:00 PM',
             duration: editTaskDuration,
-            period: editTaskPeriod,
           };
         }
         return h;
@@ -703,53 +647,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     setActionTask(null);
   };
 
-  const parseTimeToHour = (timeStr: string) => {
-    const m = timeStr.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i);
-    if (!m) return 9;
-    let h = parseInt(m[1], 10);
-    const pm = m[3] ? m[3].toLowerCase() === 'pm' : false;
-    if (h === 12 && !pm) h = 0;
-    if (h < 12 && pm) h += 12;
-    return h;
-  };
-
-  const formatTime12h = (timeStr?: string, defaultHour = 9): string => {
-    if (!timeStr || !timeStr.trim()) {
-      const h12 = defaultHour % 12 === 0 ? 12 : defaultHour % 12;
-      const ampm = defaultHour >= 12 ? 'PM' : 'AM';
-      return `${h12}:00 ${ampm}`;
-    }
-
-    const trimmed = timeStr.trim();
-    const m = trimmed.match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i);
-    if (!m) return trimmed;
-
-    let h = parseInt(m[1], 10);
-    const min = m[2] ? m[2] : '00';
-    const ampmSpec = m[3] ? m[3].toUpperCase() : null;
-
-    if (ampmSpec) {
-      if (ampmSpec === 'PM' && h < 12) h += 12;
-      if (ampmSpec === 'AM' && h === 12) h = 0;
-    }
-
-    const finalAmpm = h >= 12 ? 'PM' : 'AM';
-    const finalH12 = h % 12 === 0 ? 12 : h % 12;
-    return `${finalH12}:${min} ${finalAmpm}`;
-  };
-
   const getTasksForDate = (dateStr: string): AgendaTask[] => {
     const dayEntry = dailyEntries[dateStr];
     const result: AgendaTask[] = [];
 
     if (dayEntry && dayEntry.hours) {
       dayEntry.hours.forEach((h, hIdx) => {
-        let period: 'morning' | 'afternoon' | 'evening' = 'morning';
-        const hour = parseTimeToHour(h.time || '');
-        if (hour >= 5 && hour < 12) period = 'morning';
-        else if (hour >= 12 && hour < 17) period = 'afternoon';
-        else period = 'evening';
-
         let title = h.task;
         let detail: string | undefined = undefined;
         const colonIdx = h.task.indexOf(':');
@@ -768,7 +671,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           ? getSubjectColorById(matchingSubj.id, subjects)
           : SUBJECT_ACCENT_COLORS[hIdx % SUBJECT_ACCENT_COLORS.length];
 
-        const timeDisplay = formatTime12h(h.time, hour);
         const subjectLabel = matchingSubj ? matchingSubj.name : 'Study Block';
 
         result.push({
@@ -778,10 +680,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           date: dateStr,
           title,
           detail,
-          timeDisplay,
           subjectLabel,
           duration: (h as any).duration || '50 min',
-          period: (h as any).period || period,
           done: !!h.done,
           accentColor,
         });
@@ -789,7 +689,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     }
 
     if (dayEntry && dayEntry.subjects) {
-      dayEntry.subjects.forEach((s, idx) => {
+      dayEntry.subjects.forEach((s) => {
         const subj = subjects.find((sub) => sub.id === s.subjectId);
         const lesson = lessons.find((l) => l.id === s.lessonId);
         const subjName = subj ? subj.name : 'Subject';
@@ -801,11 +701,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         const isPastPaper = part ? !!part.pastPaper : !!s.pastPaper;
 
         const title = partName ? `${subjName} — ${lessonName}: ${partName}` : `${subjName} — ${lessonName}`;
-
-        const defaultPeriod = idx % 3 === 0 ? 'morning' : idx % 3 === 1 ? 'afternoon' : 'evening';
-        const period = (s as any).period || defaultPeriod;
-        const defaultHour = period === 'morning' ? 8 : period === 'afternoon' ? 14 : 19;
-        const timeDisplay = formatTime12h(undefined, defaultHour + (idx % 3));
         const accentColor = getSubjectColorById(s.subjectId, subjects);
 
         result.push({
@@ -814,14 +709,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           originalId: s.id,
           date: dateStr,
           title,
-          timeDisplay,
           subjectLabel: partName
             ? `${subjName} · Part`
             : s.pastPaper
             ? `${subjName} · Past Paper`
             : `${subjName} · Lesson`,
           duration: (s as any).duration || (isPastPaper ? '60 min' : '45 min'),
-          period,
           done: isWatched,
           accentColor,
           subjectId: s.subjectId,
@@ -849,10 +742,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           originalId: r.id,
           date: dateStr,
           title: `${subjName} — ${lessonName}`,
-          timeDisplay: '9:00 AM',
           subjectLabel: `${subjName} · ${r.type}`,
           duration: '30 min',
-          period: 'morning',
           done: !!r.done,
           accentColor,
         });
@@ -876,8 +767,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       subjects: [],
       teachback: '',
       notes: '',
-      wakeTime: '',
-      sleepTime: '',
     };
 
     const saveFn = saveDailyEntry || updateDailyEntry;
@@ -928,8 +817,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       subjects: [],
       teachback: '',
       notes: '',
-      wakeTime: '',
-      sleepTime: '',
     };
     const saveFn = saveDailyEntry || updateDailyEntry;
     if (typeof saveFn === 'function') {
@@ -1027,51 +914,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         t.title.toLowerCase().includes(q) ||
         (t.detail && t.detail.toLowerCase().includes(q)) ||
         t.subjectLabel.toLowerCase().includes(q) ||
-        t.timeDisplay.includes(q)
+        (t.duration && t.duration.toLowerCase().includes(q))
     );
   }, [displayedTasks, searchQuery]);
 
   const tasksCompletedCount = tasksToRender.filter((t) => t.done).length;
-
-  const getTimeOfDayPeriod = (timeStr?: string): 'morning' | 'afternoon' | 'evening' => {
-    if (!timeStr) return 'morning';
-    const hour = parseTimeToHour(timeStr);
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    return 'evening';
-  };
-
-  const groupedSections = useMemo(() => {
-    const morningTasks: AgendaTask[] = [];
-    const afternoonTasks: AgendaTask[] = [];
-    const eveningTasks: AgendaTask[] = [];
-
-    tasksToRender.forEach((task) => {
-      const period = getTimeOfDayPeriod(task.timeDisplay);
-      if (period === 'morning') morningTasks.push(task);
-      else if (period === 'afternoon') afternoonTasks.push(task);
-      else eveningTasks.push(task);
-    });
-
-    const sections: Array<{
-      key: 'morning' | 'afternoon' | 'evening';
-      title: string;
-      icon: typeof Sun;
-      tasks: AgendaTask[];
-    }> = [];
-
-    if (morningTasks.length > 0) {
-      sections.push({ key: 'morning', title: 'Morning', icon: Sun, tasks: morningTasks });
-    }
-    if (afternoonTasks.length > 0) {
-      sections.push({ key: 'afternoon', title: 'Afternoon', icon: CloudSun, tasks: afternoonTasks });
-    }
-    if (eveningTasks.length > 0) {
-      sections.push({ key: 'evening', title: 'Evening', icon: Moon, tasks: eveningTasks });
-    }
-
-    return sections;
-  }, [tasksToRender]);
 
   const activeDisplayDate =
     filterMode === 'tomorrow' ? addDays(today, 1) : filterMode === 'all' ? today : selectedDate;
@@ -1124,13 +971,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         ? `${newTaskTitle.trim()}: ${newTaskDetail.trim()}`
         : newTaskTitle.trim();
 
-      const newHour: HourBlock & { duration?: string; period?: string } = {
+      const newHour: HourBlock = {
         id: uid(),
-        time: newTaskPeriod === 'morning' ? '8:00 AM' : newTaskPeriod === 'afternoon' ? '2:00 PM' : '7:00 PM',
         task: fullTaskStr,
         done: false,
         duration: newTaskDuration,
-        period: newTaskPeriod,
       };
 
       const baseEntry = dailyEntries[targetDate] || {
@@ -1139,8 +984,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         subjects: [],
         teachback: '',
         notes: '',
-        wakeTime: '',
-        sleepTime: '',
       };
 
       updateEntryForDate(targetDate, { hours: [...(baseEntry.hours || []), newHour] });
@@ -1149,16 +992,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       closeOverlay();
     } else {
       if (!newSubjId || !newLessonId) return;
-      const newLog: DailySubjectLog & { duration?: string; period?: string } = {
+      const newLog: DailySubjectLog = {
         id: uid(),
         subjectId: newSubjId,
         lessonId: newLessonId,
         partId: newPartId || undefined,
         studied: newSubjStudied,
         pastPaper: newSubjPastPaper,
-        confidence: newSubjConfidence,
         duration: newSubjPastPaper ? '60 min' : '45 min',
-        period: newSubjPeriod,
       };
 
       const baseEntry = dailyEntries[targetDate] || {
@@ -1167,8 +1008,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         subjects: [],
         teachback: '',
         notes: '',
-        wakeTime: '',
-        sleepTime: '',
       };
 
       updateEntryForDate(targetDate, { subjects: [...(baseEntry.subjects || []), newLog] });
@@ -1188,99 +1027,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       setNewPartId('');
       closeOverlay();
     }
-  };
-
-  const renderMultiMonthGrid = () => {
-    const months = Array.from({ length: 12 }, (_, i) => i);
-    const toDateString = (year: number, month: number, day: number) =>
-      `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto max-h-[62dvh] p-0.5 scrollbar-hide">
-        {months.map((monthIndex) => {
-          const monthColor = MONTH_ACCENT_COLORS[monthIndex % MONTH_ACCENT_COLORS.length];
-          const firstDayOfWeek = new Date(modalYear, monthIndex, 1).getDay();
-          const daysInCurrentMonth = new Date(modalYear, monthIndex + 1, 0).getDate();
-          const monthName = new Date(modalYear, monthIndex, 1).toLocaleDateString('en-US', { month: 'long' });
-
-          const cells: (number | null)[] = [];
-          for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
-          for (let d = 1; d <= daysInCurrentMonth; d++) cells.push(d);
-
-          return (
-            <div
-              key={monthIndex}
-              className="rounded-2xl p-2.5 sm:p-3 border border-[#E4E0D8] bg-[#F6F4EF] flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-2 px-0.5">
-                <span className="inline-flex items-center gap-1.5 font-sans font-bold text-xs sm:text-sm text-[#181715]">
-                  <span
-                    className="w-2 h-2 rounded-[3px] flex-shrink-0"
-                    style={{ backgroundColor: monthColor }}
-                    aria-hidden="true"
-                  />
-                  {monthName}
-                </span>
-                <span className="text-[10px] font-sans font-medium text-[#78716C] tabular-nums">
-                  {modalYear}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((wd, i) => (
-                  <span key={i} className="text-[9px] font-sans font-semibold text-[#78716C]">
-                    {wd}
-                  </span>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-7 gap-0.5 text-center tabular-nums">
-                {cells.map((dayNum, i) => {
-                  if (dayNum === null) {
-                    return <div key={`empty-${i}`} className="h-6 w-6 mx-auto" />;
-                  }
-
-                  const dateStr = toDateString(modalYear, monthIndex, dayNum);
-                  const isSelected = dateStr === selectedDate;
-                  const isTodayDate = dateStr === today;
-                  const dayEntry = dailyEntries[dateStr];
-                  const hasActivity =
-                    dayEntry &&
-                    ((dayEntry.hours && dayEntry.hours.length > 0) ||
-                      (dayEntry.subjects && dayEntry.subjects.length > 0));
-
-                  return (
-                    <button
-                      key={dateStr}
-                      type="button"
-                      onClick={() => {
-                        setSelectedDate(dateStr);
-                        if (dateStr === today) setFilterMode('today');
-                        else if (dateStr === addDays(today, 1)) setFilterMode('tomorrow');
-                        else setFilterMode('custom');
-                        closeOverlay();
-                      }}
-                      className={`h-6 w-6 mx-auto rounded-full flex flex-col items-center justify-center text-[10px] sm:text-[11px] font-sans transition-colors cursor-pointer select-none ${
-                        isSelected
-                          ? 'bg-[#181715] text-[#FFFDF9] font-bold'
-                          : isTodayDate
-                          ? 'ring-1 ring-[#181715] font-bold text-[#181715] hover:bg-[#EDEAE2]'
-                          : 'text-[#181715] hover:bg-[#EDEAE2]'
-                      }`}
-                    >
-                      <span>{dayNum}</span>
-                      {hasActivity && !isSelected && (
-                        <span className="w-0.5 h-0.5 rounded-full bg-[#181715] -mt-0.5" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   const monthCalendarCard = (
@@ -1511,16 +1257,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               >
                 <PenTool size={16} />
               </button>
-
-              <button
-                type="button"
-                onClick={() => openOverlay('calendar-month')}
-                className="w-9 h-9 rounded-xl border bg-[#FFFDF9] text-[#57534E] border-[#E4E0D8] hover:text-[#181715] hover:bg-[#EDEAE2] flex items-center justify-center transition-colors cursor-pointer"
-                title="Year at a glance"
-                aria-label="Year at a glance"
-              >
-                <CalendarIcon size={16} />
-              </button>
             </div>
 
             {/* Mobile / Tablet Overflow Tools Button */}
@@ -1696,17 +1432,10 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                 Summarize what you learned today or log mistakes to revisit.
               </p>
             )}
-
-            {(currentTargetEntry.wakeTime || currentTargetEntry.sleepTime) && (
-              <div className="pt-2 border-t border-[#EFECE6] flex items-center gap-3 text-[11px] font-sans text-[#78716C] tabular-nums">
-                {currentTargetEntry.wakeTime && <span>Wake {currentTargetEntry.wakeTime}</span>}
-                {currentTargetEntry.sleepTime && <span>Sleep {currentTargetEntry.sleepTime}</span>}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Right / Main Column: Unified Due for Review + Timeline */}
+        {/* Right / Main Column: Unified Due for Review + Agenda */}
         <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-4 sm:gap-5 min-w-0">
           {dueRevisitsCard}
 
@@ -1746,36 +1475,28 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
               )}
             </div>
           ) : (
-            groupedSections.map((sec) => {
-              const IconComp = sec.icon;
-              return (
-                <section key={sec.key} className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between px-1 select-none">
-                    <div className="flex items-center gap-2 text-[#57534E]">
-                      <IconComp size={14} strokeWidth={2.2} className="text-[#78716C]" />
-                      <h2 className="font-sans font-bold text-xs uppercase tracking-wider text-[#78716C] m-0">
-                        {sec.title}
-                      </h2>
-                    </div>
-                    <span className="text-xs font-sans font-semibold text-[#78716C] tabular-nums">
-                      {sec.tasks.length}
-                    </span>
-                  </div>
+            <section className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-1 select-none">
+                <h2 className="font-sans font-bold text-xs uppercase tracking-wider text-[#78716C] m-0">
+                  Agenda
+                </h2>
+                <span className="text-xs font-sans font-semibold text-[#78716C] tabular-nums">
+                  {tasksCompletedCount}/{tasksToRender.length}
+                </span>
+              </div>
 
-                  <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden divide-y divide-[#EFECE6] shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
-                    {sec.tasks.map((task) => (
-                      <AgendaTaskRow
-                        key={task.id}
-                        task={task}
-                        onToggle={handleToggleTask}
-                        onTogglePastPaper={handleToggleTaskPastPaper}
-                        onLongPress={handleTaskLongPress}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })
+              <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden divide-y divide-[#EFECE6] shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+                {tasksToRender.map((task) => (
+                  <AgendaTaskRow
+                    key={task.id}
+                    task={task}
+                    onToggle={handleToggleTask}
+                    onTogglePastPaper={handleToggleTaskPastPaper}
+                    onLongPress={handleTaskLongPress}
+                  />
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </div>
@@ -1843,7 +1564,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     <div className="text-xs font-sans text-[#78716C] truncate">
                       {currentTargetEntry.teachback || currentTargetEntry.notes
                         ? currentTargetEntry.teachback || currentTargetEntry.notes
-                        : 'Teach-back notes, mistakes & sleep log'}
+                        : 'Teach-back summary & mistake log'}
                     </div>
                   </div>
                 </button>
@@ -1868,24 +1589,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     </div>
                     <div className="text-xs font-sans text-[#78716C]">
                       Jump to any day in {viewingMonthName} {viewingYear}
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openOverlay('calendar-month')}
-                  className="w-full min-h-[52px] flex items-center gap-3 p-3 rounded-xl border border-[#E4E0D8] bg-[#FFFDF9] hover:bg-[#F6F4EF] hover:border-[#181715] text-left transition-colors cursor-pointer"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#F6F4EF] border border-[#E4E0D8] text-[#181715] flex items-center justify-center flex-shrink-0">
-                    <CalendarIcon size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-sans font-bold text-sm text-[#181715]">
-                      Year at a Glance
-                    </div>
-                    <div className="text-xs font-sans text-[#78716C]">
-                      View full 12-month calendar overview
                     </div>
                   </div>
                 </button>
@@ -1949,31 +1652,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     rows={3}
                     className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl p-3 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none resize-none text-[#181715]"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                      Wake Time
-                    </label>
-                    <input
-                      type="time"
-                      value={currentTargetEntry.wakeTime || ''}
-                      onChange={(e) => updateEntryForDate(activeTargetDate, { wakeTime: e.target.value })}
-                      className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                      Sleep Time
-                    </label>
-                    <input
-                      type="time"
-                      value={currentTargetEntry.sleepTime || ''}
-                      onChange={(e) => updateEntryForDate(activeTargetDate, { sleepTime: e.target.value })}
-                      className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -2071,39 +1749,22 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                          Time of Day
-                        </label>
-                        <select
-                          value={newTaskPeriod}
-                          onChange={(e) => setNewTaskPeriod(e.target.value as any)}
-                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                        >
-                          <option value="morning">Morning (8 AM)</option>
-                          <option value="afternoon">Afternoon (2 PM)</option>
-                          <option value="evening">Evening (7 PM)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                          Duration
-                        </label>
-                        <select
-                          value={newTaskDuration}
-                          onChange={(e) => setNewTaskDuration(e.target.value)}
-                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                        >
-                          <option value="30 min">30 min</option>
-                          <option value="45 min">45 min</option>
-                          <option value="50 min">50 min</option>
-                          <option value="1 hr">1 hr</option>
-                          <option value="1.5 hr">1.5 hr</option>
-                          <option value="2 hr">2 hr</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                        Duration
+                      </label>
+                      <select
+                        value={newTaskDuration}
+                        onChange={(e) => setNewTaskDuration(e.target.value)}
+                        className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                      >
+                        <option value="30 min">30 min</option>
+                        <option value="45 min">45 min</option>
+                        <option value="50 min">50 min</option>
+                        <option value="1 hr">1 hr</option>
+                        <option value="1.5 hr">1.5 hr</option>
+                        <option value="2 hr">2 hr</option>
+                      </select>
                     </div>
                   </>
                 ) : (
@@ -2265,45 +1926,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         );
                       })()}
 
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                          Time of Day
-                        </label>
-                        <select
-                          value={newSubjPeriod}
-                          onChange={(e) => setNewSubjPeriod(e.target.value as any)}
-                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                        >
-                          <option value="morning">Morning (8 AM)</option>
-                          <option value="afternoon">Afternoon (2 PM)</option>
-                          <option value="evening">Evening (7 PM)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                          Confidence
-                        </label>
-                        <div className="flex gap-1.5 pt-0.5">
-                          {(['L', 'M', 'H'] as const).map((lvl) => (
-                            <button
-                              key={lvl}
-                              type="button"
-                              onClick={() => setNewSubjConfidence(lvl)}
-                              className={`flex-1 min-h-[38px] rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
-                                newSubjConfidence === lvl
-                                  ? 'bg-[#181715] text-[#FFFDF9] border-[#181715]'
-                                  : 'bg-[#F6F4EF] text-[#78716C] border-[#E4E0D8] hover:text-[#181715]'
-                              }`}
-                            >
-                              {lvl}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="flex items-center gap-5 pt-2 border-t border-[#EFECE6]">
                       <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#181715]">
                         <input
@@ -2350,90 +1972,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           document.body
         )}
 
-      {/* Year at a Glance Modal */}
-      {isMonthModalOpen &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-[#181715]/45 backdrop-blur-xs z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
-            onClick={closeOverlay}
-          >
-            <div
-              className="bg-[#FFFDF9] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#E4E0D8] w-full sm:max-w-2xl p-5 sm:p-6 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center pb-3 mb-3 border-b border-[#EFECE6]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#F6F4EF] border border-[#E4E0D8] flex items-center justify-center flex-shrink-0">
-                    <CalendarIcon size={16} className="text-[#181715]" />
-                  </div>
-                  <div>
-                    <h2 className="font-sans text-base sm:text-lg font-extrabold text-[#181715] m-0 leading-tight">
-                      Year at a Glance
-                    </h2>
-                    <p className="text-xs font-sans text-[#78716C] m-0">
-                      Tap any date to view agenda
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-[#EDEAE2] rounded-xl p-1 border border-[#E4E0D8]">
-                    <button
-                      type="button"
-                      onClick={() => setModalYear((y) => y - 1)}
-                      className="p-1.5 text-[#78716C] hover:text-[#181715] hover:bg-[#FFFDF9] rounded-lg transition-colors cursor-pointer"
-                      title="Previous year"
-                    >
-                      <ChevronLeft size={15} />
-                    </button>
-                    <span className="font-sans font-bold text-xs sm:text-sm px-2 text-[#181715] tabular-nums">
-                      {modalYear}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setModalYear((y) => y + 1)}
-                      className="p-1.5 text-[#78716C] hover:text-[#181715] hover:bg-[#FFFDF9] rounded-lg transition-colors cursor-pointer"
-                      title="Next year"
-                    >
-                      <ChevronRight size={15} />
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={closeOverlay}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer"
-                    aria-label="Close"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {renderMultiMonthGrid()}
-
-              <div className="mt-3 pt-3 border-t border-[#EFECE6] flex items-center justify-between">
-                <button
-                  type="button"
-                  className="text-xs font-sans font-bold text-[#181715] bg-[#F6F4EF] hover:bg-[#EDEAE2] border border-[#E4E0D8] px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
-                  onClick={() => {
-                    setSelectedDate(today);
-                    setFilterMode('today');
-                    closeOverlay();
-                  }}
-                >
-                  Jump to Today
-                </button>
-                <span className="text-xs font-sans text-[#78716C] tabular-nums">
-                  Selected: <strong className="text-[#181715]">{selectedDate}</strong>
-                </span>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-
       {/* Task Action Sheet Modal */}
       {isActionMenuOpen &&
         actionTask &&
@@ -2467,7 +2005,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       {actionTask.title}
                     </h3>
                     <p className="text-xs font-sans text-[#78716C] m-0 truncate tabular-nums">
-                      {actionTask.subjectLabel} · {actionTask.timeDisplay}
+                      {actionTask.subjectLabel}
+                      {actionTask.duration ? ` · ${actionTask.duration}` : ''}
                     </p>
                   </div>
                 </div>
@@ -2497,7 +2036,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     <div className="flex-1 min-w-0">
                       <div className="font-sans font-bold text-sm text-[#181715]">Edit</div>
                       <div className="text-xs font-sans text-[#78716C]">
-                        Modify subject, lesson, part, or time block
+                        Modify subject, lesson, part, or details
                       </div>
                     </div>
                   </button>
@@ -2690,21 +2229,6 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         );
                       })()}
 
-                    <div>
-                      <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                        Time Block
-                      </label>
-                      <select
-                        value={editSubjPeriod}
-                        onChange={(e) => setEditSubjPeriod(e.target.value as any)}
-                        className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                      >
-                        <option value="morning">Morning (8 AM)</option>
-                        <option value="afternoon">Afternoon (2 PM)</option>
-                        <option value="evening">Evening (7 PM)</option>
-                      </select>
-                    </div>
-
                     <div className="flex items-center gap-5 pt-2 border-t border-[#EFECE6]">
                       <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#181715]">
                         <input
@@ -2757,39 +2281,22 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                          Time Block
-                        </label>
-                        <select
-                          value={editTaskPeriod}
-                          onChange={(e) => setEditTaskPeriod(e.target.value as any)}
-                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                        >
-                          <option value="morning">Morning (8 AM)</option>
-                          <option value="afternoon">Afternoon (2 PM)</option>
-                          <option value="evening">Evening (7 PM)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                          Duration
-                        </label>
-                        <select
-                          value={editTaskDuration}
-                          onChange={(e) => setEditTaskDuration(e.target.value)}
-                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                        >
-                          <option value="30 min">30 min</option>
-                          <option value="45 min">45 min</option>
-                          <option value="50 min">50 min</option>
-                          <option value="1 hr">1 hr</option>
-                          <option value="1.5 hr">1.5 hr</option>
-                          <option value="2 hr">2 hr</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                        Duration
+                      </label>
+                      <select
+                        value={editTaskDuration}
+                        onChange={(e) => setEditTaskDuration(e.target.value)}
+                        className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                      >
+                        <option value="30 min">30 min</option>
+                        <option value="45 min">45 min</option>
+                        <option value="50 min">50 min</option>
+                        <option value="1 hr">1 hr</option>
+                        <option value="1.5 hr">1.5 hr</option>
+                        <option value="2 hr">2 hr</option>
+                      </select>
                     </div>
                   </>
                 )}

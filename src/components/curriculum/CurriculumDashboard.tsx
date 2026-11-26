@@ -22,7 +22,6 @@ import {
   Calendar,
   Clock,
   Pencil,
-  ChevronRight,
   Check,
   Video,
   MoreHorizontal,
@@ -50,8 +49,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   const pendingRevisitsCount = revisits.filter(
     (r) => subjLessonIds.has(r.lessonId) && !r.done
   ).length;
-  const lowConfCount = subjLessons.filter((l) => l.done && l.confidence === 'L').length;
-  const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0 && lowConfCount === 0;
+  const isClean = subjLessons.length > 0 && pendingRevisitsCount === 0;
 
   const accentColor = getSubjectColorById(subj.id, [subj]);
 
@@ -360,97 +358,6 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({
                 onLongPressSubject={(s) => openOverlay('curriculum-subject-menu', s)}
               />
             ))}
-          </div>
-        )}
-      </section>
-
-      {/* Confidence Overview (Single Hairline-Divided Sheet) */}
-      <section className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
-        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFECE6]">
-          <h2 className="font-sans text-sm sm:text-base font-bold text-[#181715] m-0">
-            Confidence Breakdown
-          </h2>
-        </div>
-
-        {subjects.length === 0 ? (
-          <div className="text-xs font-sans text-[#78716C] text-center py-8">
-            No subjects added yet.
-          </div>
-        ) : (
-          <div className="divide-y divide-[#EFECE6]">
-            {subjects.map((subj) => {
-              const subjDone = lessons.filter((l) => l.subjectId === subj.id && l.done);
-              const lowCount = subjDone.filter((l) => l.confidence === 'L').length;
-              const medCount = subjDone.filter((l) => l.confidence === 'M').length;
-              const highCount = subjDone.filter((l) => l.confidence === 'H').length;
-              const hasCompleted = subjDone.length > 0;
-              const totalRated = lowCount + medCount + highCount;
-              const accentColor = getSubjectColorById(subj.id, subjects);
-
-              return (
-                <button
-                  key={subj.id}
-                  type="button"
-                  onClick={() => onSelectSubject(subj.id)}
-                  className="w-full px-4 sm:px-5 py-3.5 text-left hover:bg-[#F9F7F2] transition-colors cursor-pointer group block"
-                >
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="inline-flex items-center gap-2 font-sans font-bold text-sm text-[#181715]">
-                      <span
-                        className="w-2.5 h-2.5 rounded-[3px] flex-shrink-0"
-                        style={{ backgroundColor: accentColor }}
-                        aria-hidden="true"
-                      />
-                      <span>{subj.name}</span>
-                    </span>
-                    <ChevronRight
-                      size={16}
-                      className="text-[#78716C] group-hover:text-[#181715] group-hover:translate-x-0.5 transition-all"
-                    />
-                  </div>
-
-                  {!hasCompleted ? (
-                    <div className="text-xs font-sans text-[#78716C]">No lessons completed yet</div>
-                  ) : (
-                    <div>
-                      <div className="text-xs font-sans flex flex-wrap items-center gap-1.5 tabular-nums">
-                        <span className="text-[#DC2626] font-semibold">{lowCount} Low</span>
-                        <span className="text-[#D6D1C7]" aria-hidden="true">·</span>
-                        <span className="text-[#7C3AED] font-semibold">{medCount} Medium</span>
-                        <span className="text-[#D6D1C7]" aria-hidden="true">·</span>
-                        <span className="text-[#16A34A] font-semibold">{highCount} High</span>
-                      </div>
-
-                      {totalRated > 0 && (
-                        <div className="w-full h-1.5 rounded-full bg-[#EFECE6] mt-2.5 overflow-hidden flex">
-                          {lowCount > 0 && (
-                            <div
-                              style={{ width: `${(lowCount / totalRated) * 100}%` }}
-                              className="bg-[#DC2626] h-full"
-                              title={`${lowCount} Low`}
-                            />
-                          )}
-                          {medCount > 0 && (
-                            <div
-                              style={{ width: `${(medCount / totalRated) * 100}%` }}
-                              className="bg-[#7C3AED] h-full"
-                              title={`${medCount} Medium`}
-                            />
-                          )}
-                          {highCount > 0 && (
-                            <div
-                              style={{ width: `${(highCount / totalRated) * 100}%` }}
-                              className="bg-[#16A34A] h-full"
-                              title={`${highCount} High`}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
           </div>
         )}
       </section>
