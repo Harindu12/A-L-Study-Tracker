@@ -1,17 +1,16 @@
-// Subject-coded functional accent colors for left-edge card stripes
-// Matching the red, blue, amber, emerald, violet, cyan category tags in the reference UI
-// Chemistry: Red (#EF4444)
-// Physics: Blue (#3B82F6)
-// Combined Maths / Mathematics: Emerald/Green (#10B981)
+// Subject-coded functional accent colors tuned for Warm Editorial Paper contrast
+// Chemistry: Editorial Crimson (#DC2626)
+// Physics: Cobalt Blue (#2563EB)
+// Combined Maths / Mathematics: Deep Emerald (#059669)
 export const SUBJECT_ACCENT_COLORS = [
-  '#EF4444', // 0: Red / Rose (Chemistry)
-  '#3B82F6', // 1: Blue (Physics)
-  '#10B981', // 2: Emerald / Green (Combined Maths / Biology)
-  '#F59E0B', // 3: Amber
-  '#8B5CF6', // 4: Purple / Violet
-  '#06B6D4', // 5: Cyan
-  '#F97316', // 6: Orange
-  '#6366F1', // 7: Indigo
+  '#DC2626', // 0: Crimson (Chemistry)
+  '#2563EB', // 1: Cobalt Blue (Physics)
+  '#059669', // 2: Deep Emerald (Combined Maths / Biology)
+  '#D97706', // 3: Warm Amber
+  '#7C3AED', // 4: Violet
+  '#0891B2', // 5: Teal Cyan
+  '#EA580C', // 6: Deep Orange
+  '#4F46E5', // 7: Indigo
 ];
 
 export function getSubjectAccentColor(index: number): string {
@@ -21,9 +20,9 @@ export function getSubjectAccentColor(index: number): string {
 /**
  * Returns a consistent accent color for a subject by its name or ID.
  * Standardizes:
- * - Chemistry -> Red (#EF4444)
- * - Physics -> Blue (#3B82F6)
- * - Combined Maths / Mathematics / Maths -> Emerald/Green (#10B981)
+ * - Chemistry -> Crimson (#DC2626)
+ * - Physics -> Cobalt Blue (#2563EB)
+ * - Combined Maths / Mathematics / Maths -> Deep Emerald (#059669)
  * - Other subjects map deterministically to the color palette based on their order
  */
 export function getSubjectColorById(
@@ -34,13 +33,13 @@ export function getSubjectColorById(
   if (subj && subj.name) {
     const lower = subj.name.toLowerCase().trim();
     if (lower.includes('chem')) {
-      return '#EF4444'; // Red
+      return '#DC2626';
     }
     if (lower.includes('phys')) {
-      return '#3B82F6'; // Blue
+      return '#2563EB';
     }
     if (lower.includes('math') || lower.includes('combined')) {
-      return '#10B981'; // Emerald
+      return '#059669';
     }
   }
 

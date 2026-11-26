@@ -161,14 +161,14 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
         }
       }}
       title={`Tap to view ${subj.name} lessons`}
-      className="w-full bg-[#FFFFFF] hover:bg-[#FAFAF8] border border-[#E5E5E0] hover:border-[#C8C8C0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)] transition-colors cursor-pointer group flex items-start gap-3.5 text-left select-none"
+      className="w-full bg-[#FFFDF9] hover:bg-[#FAF7F0] border border-[#E4E0D8] hover:border-[#CBC5B9] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(24,23,21,0.03)] transition-colors cursor-pointer group flex items-start gap-3.5 text-left select-none"
     >
-      {/* Clean Subject Monogram Tile (no thick left stripe) */}
+      {/* Clean Subject Monogram Tile */}
       <div
         className="w-11 h-11 rounded-xl flex-shrink-0 flex flex-col items-center justify-center border"
         style={{
-          backgroundColor: `${accentColor}14`,
-          borderColor: `${accentColor}26`,
+          backgroundColor: `${accentColor}1A`,
+          borderColor: `${accentColor}38`,
           color: accentColor,
         }}
       >
@@ -182,10 +182,10 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="font-sans font-bold text-base text-[#111111] truncate m-0 leading-snug">
+            <h3 className="font-sans font-bold text-base text-[#181715] truncate m-0 leading-snug">
               {subj.name}
             </h3>
-            <p className="text-xs font-sans text-[#787873] font-medium mt-0.5 m-0 tabular-nums">
+            <p className="text-xs font-sans text-[#78716C] font-medium mt-0.5 m-0 tabular-nums">
               {metrics.totalPartsAdded} {metrics.totalPartsAdded === 1 ? 'part' : 'parts'} ·{' '}
               {metrics.totalLessons} {metrics.totalLessons === 1 ? 'lesson' : 'lessons'}
             </p>
@@ -195,7 +195,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
             {isClean && (
               <span
                 title="All caught up"
-                className="w-6 h-6 rounded-full bg-[#16A34A]/12 text-[#16A34A] flex items-center justify-center"
+                className="w-6 h-6 rounded-full bg-[#16A34A]/14 text-[#16A34A] flex items-center justify-center"
               >
                 <Check size={13} strokeWidth={2.75} />
               </span>
@@ -208,26 +208,26 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
               }}
               aria-label={`Options for ${subj.name}`}
               title="Edit or delete subject"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer"
             >
               <MoreHorizontal size={16} />
             </button>
           </div>
         </div>
 
-        {/* Progress Bar & Tabular Ratio */}
+        {/* Subject-Colored Progress Bar & Tabular Ratio */}
         <div className="mt-3.5">
           <div className="flex justify-between items-baseline mb-1.5 text-xs font-sans tabular-nums">
-            <span className="text-[#787873] font-medium">
+            <span className="text-[#78716C] font-medium">
               {metrics.watchedPartsCount} / {metrics.totalPartsAdded} watched
             </span>
-            <span className="font-bold text-[#111111]">{metrics.percentage}%</span>
+            <span className="font-bold text-[#181715]">{metrics.percentage}%</span>
           </div>
 
-          <div className="w-full h-1.5 rounded-full bg-[#EFEFEA] overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-[#EFECE6] overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-300 bg-[#111111]"
-              style={{ width: `${metrics.percentage}%` }}
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${metrics.percentage}%`, backgroundColor: accentColor }}
             />
           </div>
         </div>
@@ -302,26 +302,26 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({
               openOverlay('curriculum-exam-date');
             }
           }}
-          className="bg-[#FFFFFF] border border-[#E5E5E0] hover:border-[#C8C8C0] rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(17,17,17,0.03)] cursor-pointer transition-colors group"
+          className="bg-[#FFFDF9] border border-[#E4E0D8] hover:border-[#CBC5B9] rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(24,23,21,0.03)] cursor-pointer transition-colors group"
         >
-          <div className="flex justify-between items-center text-[#787873] mb-2.5">
+          <div className="flex justify-between items-center text-[#78716C] mb-2.5">
             <Calendar size={17} strokeWidth={2} />
             <Pencil
               size={13}
-              className="opacity-60 group-hover:opacity-100 transition-opacity text-[#787873]"
+              className="opacity-60 group-hover:opacity-100 transition-opacity text-[#78716C]"
             />
           </div>
           <div>
             {examDate ? (
-              <div className="text-2xl sm:text-[1.65rem] font-extrabold font-sans text-[#111111] tracking-tight leading-none tabular-nums">
+              <div className="text-2xl sm:text-[1.65rem] font-extrabold font-sans text-[#181715] tracking-tight leading-none tabular-nums">
                 {daysRemainingText}
               </div>
             ) : (
-              <div className="text-sm font-bold font-sans text-[#111111] underline underline-offset-2 leading-tight py-1">
+              <div className="text-sm font-bold font-sans text-[#181715] underline underline-offset-2 leading-tight py-1">
                 Set exam date
               </div>
             )}
-            <div className="text-xs text-[#787873] font-sans font-medium mt-1.5 leading-snug">
+            <div className="text-xs text-[#78716C] font-sans font-medium mt-1.5 leading-snug">
               Days remaining
             </div>
           </div>
@@ -337,15 +337,15 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({
       {/* Subjects Progress Grid */}
       <section className="flex flex-col gap-3">
         <div className="flex justify-between items-center px-0.5">
-          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#181715] m-0">
             Subjects
           </h2>
-          <span className="text-xs font-sans text-[#787873]">Tap a subject to view lessons</span>
+          <span className="text-xs font-sans text-[#78716C]">Tap a subject to view lessons</span>
         </div>
 
         {subjects.length === 0 ? (
-          <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-8 text-center text-sm font-sans text-[#787873]">
-            No subjects yet. Tap <strong className="text-[#111111]">Add Subject</strong> to start
+          <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl p-8 text-center text-sm font-sans text-[#78716C]">
+            No subjects yet. Tap <strong className="text-[#181715]">Add Subject</strong> to start
             tracking your curriculum.
           </div>
         ) : (
@@ -365,19 +365,19 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({
       </section>
 
       {/* Confidence Overview (Single Hairline-Divided Sheet) */}
-      <section className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
-        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFEFEA]">
-          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+      <section className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFECE6]">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#181715] m-0">
             Confidence Breakdown
           </h2>
         </div>
 
         {subjects.length === 0 ? (
-          <div className="text-xs font-sans text-[#787873] text-center py-8">
+          <div className="text-xs font-sans text-[#78716C] text-center py-8">
             No subjects added yet.
           </div>
         ) : (
-          <div className="divide-y divide-[#EFEFEA]">
+          <div className="divide-y divide-[#EFECE6]">
             {subjects.map((subj) => {
               const subjDone = lessons.filter((l) => l.subjectId === subj.id && l.done);
               const lowCount = subjDone.filter((l) => l.confidence === 'L').length;
@@ -385,38 +385,44 @@ export const CurriculumDashboard: React.FC<CurriculumDashboardProps> = ({
               const highCount = subjDone.filter((l) => l.confidence === 'H').length;
               const hasCompleted = subjDone.length > 0;
               const totalRated = lowCount + medCount + highCount;
+              const accentColor = getSubjectColorById(subj.id, subjects);
 
               return (
                 <button
                   key={subj.id}
                   type="button"
                   onClick={() => onSelectSubject(subj.id)}
-                  className="w-full px-4 sm:px-5 py-3.5 text-left hover:bg-[#FAFAF8] transition-colors cursor-pointer group block"
+                  className="w-full px-4 sm:px-5 py-3.5 text-left hover:bg-[#F9F7F2] transition-colors cursor-pointer group block"
                 >
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="font-sans font-bold text-sm text-[#111111]">
-                      {subj.name}
+                    <span className="inline-flex items-center gap-2 font-sans font-bold text-sm text-[#181715]">
+                      <span
+                        className="w-2.5 h-2.5 rounded-[3px] flex-shrink-0"
+                        style={{ backgroundColor: accentColor }}
+                        aria-hidden="true"
+                      />
+                      <span>{subj.name}</span>
                     </span>
                     <ChevronRight
                       size={16}
-                      className="text-[#787873] group-hover:text-[#111111] group-hover:translate-x-0.5 transition-all"
+                      className="text-[#78716C] group-hover:text-[#181715] group-hover:translate-x-0.5 transition-all"
                     />
                   </div>
 
                   {!hasCompleted ? (
-                    <div className="text-xs font-sans text-[#787873]">No lessons completed yet</div>
+                    <div className="text-xs font-sans text-[#78716C]">No lessons completed yet</div>
                   ) : (
                     <div>
                       <div className="text-xs font-sans flex flex-wrap items-center gap-1.5 tabular-nums">
                         <span className="text-[#DC2626] font-semibold">{lowCount} Low</span>
-                        <span className="text-[#D6D6D0]" aria-hidden="true">·</span>
+                        <span className="text-[#D6D1C7]" aria-hidden="true">·</span>
                         <span className="text-[#7C3AED] font-semibold">{medCount} Medium</span>
-                        <span className="text-[#D6D6D0]" aria-hidden="true">·</span>
+                        <span className="text-[#D6D1C7]" aria-hidden="true">·</span>
                         <span className="text-[#16A34A] font-semibold">{highCount} High</span>
                       </div>
 
                       {totalRated > 0 && (
-                        <div className="w-full h-1.5 rounded-full bg-[#EFEFEA] mt-2.5 overflow-hidden flex">
+                        <div className="w-full h-1.5 rounded-full bg-[#EFECE6] mt-2.5 overflow-hidden flex">
                           {lowCount > 0 && (
                             <div
                               style={{ width: `${(lowCount / totalRated) * 100}%` }}

@@ -340,16 +340,16 @@ export const StatsTab: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 sm:gap-6">
       {/* SECTION 1 — Per-subject pace cards */}
       <section>
         <div className="flex items-end justify-between gap-3 mb-3 px-0.5">
           <div>
-            <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+            <h2 className="font-sans text-sm sm:text-base font-bold text-[#181715] m-0">
               Weekly Pace
             </h2>
-            <p className="text-xs font-sans text-[#787873] mt-0.5 flex items-center gap-1.5 m-0 tabular-nums">
-              <Calendar size={12} className="text-[#787873]" />
+            <p className="text-xs font-sans text-[#78716C] mt-0.5 flex items-center gap-1.5 m-0 tabular-nums">
+              <Calendar size={12} className="text-[#78716C]" />
               <span>
                 {examDate
                   ? `${weeksRemaining} ${weeksRemaining === 1 ? 'week' : 'weeks'} to exam · ${daysRemaining}d left`
@@ -357,132 +357,148 @@ export const StatsTab: React.FC = () => {
               </span>
             </p>
           </div>
-          <span className="text-xs font-sans font-medium text-[#787873]">Mon – Sun</span>
+          <span className="text-xs font-sans font-medium text-[#78716C]">Mon – Sun</span>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
-          {subjectPaces.map((sp) => (
-            <div
-              key={sp.id}
-              className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 shadow-[0_1px_2px_rgba(17,17,17,0.03)] hover:border-[#C8C8C0] transition-colors flex flex-col justify-between min-h-[152px]"
-            >
-              {/* Top row: Subject icon + Unboxed Pace Indicator */}
-              <div className="flex items-center justify-between gap-2">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{
-                    backgroundColor: `${sp.accentColor}16`,
-                    color: sp.accentColor,
-                  }}
-                  title={sp.name}
-                >
-                  {getSubjectIcon(sp.name)}
-                </div>
+          {subjectPaces.map((sp) => {
+            const pacePct = Math.min(
+              100,
+              Math.round((sp.actualProgress / Math.max(1, sp.weeklyTarget)) * 100)
+            );
+            return (
+              <div
+                key={sp.id}
+                className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl p-4 shadow-[0_1px_2px_rgba(24,23,21,0.03)] hover:border-[#CBC5B9] transition-colors flex flex-col justify-between min-h-[164px]"
+              >
+                {/* Top row: Subject icon + Unboxed Pace Indicator */}
+                <div className="flex items-center justify-between gap-2">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border"
+                    style={{
+                      backgroundColor: `${sp.accentColor}16`,
+                      borderColor: `${sp.accentColor}30`,
+                      color: sp.accentColor,
+                    }}
+                    title={sp.name}
+                  >
+                    {getSubjectIcon(sp.name)}
+                  </div>
 
-                {/* Unboxed status label with explicit icon (zero candy pill) */}
-                <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-sans font-semibold flex-shrink-0 ${
-                    sp.isOnTrack ? 'text-[#16A34A]' : 'text-[#D97706]'
-                  }`}
-                  title={
-                    sp.isOnTrack
-                      ? `On track (done ${sp.actualProgress} >= expected ${sp.expectedPace.toFixed(1)})`
-                      : `Behind pace (done ${sp.actualProgress} < expected ${sp.expectedPace.toFixed(1)})`
-                  }
-                >
-                  {sp.isOnTrack ? <Check size={12} strokeWidth={2.75} /> : <Clock size={12} />}
-                  <span>{sp.isOnTrack ? 'On track' : 'Behind'}</span>
-                </span>
-              </div>
-
-              {/* Middle: Subject Name + Focal Tabular Metric */}
-              <div className="mt-3">
-                <h3 className="font-sans font-semibold text-xs text-[#787873] truncate m-0">
-                  {sp.name}
-                </h3>
-                <div className="flex items-baseline gap-1 mt-1 tabular-nums">
-                  <span className="font-sans text-3xl sm:text-[2.15rem] font-extrabold text-[#111111] tracking-tight leading-none">
-                    {sp.actualProgress}
-                  </span>
-                  <span className="font-sans text-base sm:text-lg font-bold text-[#787873] leading-none">
-                    / {sp.weeklyTarget}
+                  {/* Unboxed status label with explicit icon */}
+                  <span
+                    className={`inline-flex items-center gap-1 text-[11px] font-sans font-semibold flex-shrink-0 ${
+                      sp.isOnTrack ? 'text-[#16A34A]' : 'text-[#D97706]'
+                    }`}
+                    title={
+                      sp.isOnTrack
+                        ? `On track (done ${sp.actualProgress} >= expected ${sp.expectedPace.toFixed(1)})`
+                        : `Behind pace (done ${sp.actualProgress} < expected ${sp.expectedPace.toFixed(1)})`
+                    }
+                  >
+                    {sp.isOnTrack ? <Check size={12} strokeWidth={2.75} /> : <Clock size={12} />}
+                    <span>{sp.isOnTrack ? 'On track' : 'Behind'}</span>
                   </span>
                 </div>
-              </div>
 
-              {/* Footer: Editable Target */}
-              <div className="mt-3 pt-2.5 border-t border-[#EFEFEA] flex items-center justify-between gap-2 text-xs font-sans">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditTarget(sp)}
-                  className="inline-flex items-center gap-1.5 text-[#787873] hover:text-[#111111] transition-colors cursor-pointer select-none group min-h-[28px]"
-                  title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
-                >
-                  <span className="tabular-nums">
-                    Target <strong className="text-[#111111]">{sp.weeklyTarget}/wk</strong>
-                    {sp.isOverridden && <span className="text-[#787873] font-normal"> · Custom</span>}
-                  </span>
-                  {!sp.isOverridden && (
-                    <Pencil size={11} className="text-[#787873] opacity-60 group-hover:opacity-100" />
-                  )}
-                </button>
+                {/* Middle: Subject Name + Focal Tabular Metric + Color Track */}
+                <div className="mt-3">
+                  <h3 className="font-sans font-semibold text-xs text-[#57534E] truncate m-0">
+                    {sp.name}
+                  </h3>
+                  <div className="flex items-baseline gap-1 mt-1 tabular-nums">
+                    <span className="font-sans text-3xl sm:text-[2.1rem] font-extrabold text-[#181715] tracking-tight leading-none">
+                      {sp.actualProgress}
+                    </span>
+                    <span className="font-sans text-base sm:text-lg font-bold text-[#78716C] leading-none">
+                      / {sp.weeklyTarget}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-[#EFECE6] mt-2.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${pacePct}%`,
+                        backgroundColor: sp.accentColor,
+                      }}
+                    />
+                  </div>
+                </div>
 
-                {sp.isOverridden && (
+                {/* Footer: Editable Target */}
+                <div className="mt-3 pt-2.5 border-t border-[#EFECE6] flex items-center justify-between gap-2 text-xs font-sans">
                   <button
                     type="button"
-                    onClick={() => handleResetTarget(sp.id)}
-                    className="text-[11px] text-[#787873] hover:text-[#111111] underline underline-offset-2 cursor-pointer select-none min-h-[28px]"
-                    title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
+                    onClick={() => handleOpenEditTarget(sp)}
+                    className="inline-flex items-center gap-1.5 text-[#78716C] hover:text-[#181715] transition-colors cursor-pointer select-none group min-h-[28px]"
+                    title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
                   >
-                    Reset
+                    <span className="tabular-nums">
+                      Target <strong className="text-[#181715]">{sp.weeklyTarget}/wk</strong>
+                      {sp.isOverridden && <span className="text-[#78716C] font-normal"> · Custom</span>}
+                    </span>
+                    {!sp.isOverridden && (
+                      <Pencil size={11} className="text-[#78716C] opacity-60 group-hover:opacity-100" />
+                    )}
                   </button>
-                )}
+
+                  {sp.isOverridden && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetTarget(sp.id)}
+                      className="text-[11px] text-[#78716C] hover:text-[#181715] underline underline-offset-2 cursor-pointer select-none min-h-[28px]"
+                      title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       {/* SECTION 2 — Weekly consistency & Time Studied */}
       <section>
         <div className="flex items-center justify-between mb-3 px-0.5">
-          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#181715] m-0">
             Weekly Consistency
           </h2>
-          <span className="text-xs font-sans font-medium text-[#787873]">Current week</span>
+          <span className="text-xs font-sans font-medium text-[#78716C]">Current week</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {/* Card 1: Streak and Weekly Total (spans full width on tablet/desktop or paired cleanly) */}
-          <div className="md:col-span-2 bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
+          {/* Card 1: Streak and Weekly Total */}
+          <div className="md:col-span-2 bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-1.5 text-xs font-sans font-semibold text-[#787873] mb-1.5">
-                  <Flame size={14} className="text-[#111111]" />
+                <div className="flex items-center gap-1.5 text-xs font-sans font-semibold text-[#78716C] mb-1.5">
+                  <Flame size={14} className="text-[#D97706]" />
                   <span>Current streak</span>
                 </div>
                 <div className="flex items-baseline gap-1.5 tabular-nums">
-                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none">
+                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#181715] tracking-tight leading-none">
                     {currentStreak}
                   </span>
-                  <span className="font-sans text-sm sm:text-base font-semibold text-[#787873] leading-none">
+                  <span className="font-sans text-sm sm:text-base font-semibold text-[#78716C] leading-none">
                     {currentStreak === 1 ? 'day' : 'days'}
                   </span>
                 </div>
               </div>
 
-              <div className="w-[1px] h-11 bg-[#EFEFEA] flex-shrink-0" />
+              <div className="w-[1px] h-11 bg-[#EFECE6] flex-shrink-0" />
 
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1.5 text-xs font-sans font-semibold text-[#787873] mb-1.5">
-                  <BookOpen size={14} className="text-[#111111]" />
+                <div className="flex items-center justify-end gap-1.5 text-xs font-sans font-semibold text-[#78716C] mb-1.5">
+                  <BookOpen size={14} className="text-[#181715]" />
                   <span>Watched this week</span>
                 </div>
                 <div className="flex items-baseline justify-end gap-1.5 tabular-nums">
-                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none">
+                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#181715] tracking-tight leading-none">
                     {weeklyTotalWatched}
                   </span>
-                  <span className="font-sans text-sm sm:text-base font-semibold text-[#787873] leading-none">
+                  <span className="font-sans text-sm sm:text-base font-semibold text-[#78716C] leading-none">
                     {weeklyTotalWatched === 1 ? 'part' : 'parts'}
                   </span>
                 </div>
@@ -491,18 +507,18 @@ export const StatsTab: React.FC = () => {
           </div>
 
           {/* Card 2: Daily Activity Rings */}
-          <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)] flex flex-col justify-between">
+          <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(24,23,21,0.03)] flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-sans font-semibold text-[#787873]">Daily activity</span>
-              <span className="text-[11px] font-sans text-[#787873]">Bold = Today</span>
+              <span className="text-xs font-sans font-semibold text-[#78716C]">Daily activity</span>
+              <span className="text-[11px] font-sans text-[#78716C]">Bold = Today</span>
             </div>
 
             <div className="flex items-center justify-between gap-3 sm:gap-4">
               <div className="flex-shrink-0 min-w-[74px]">
-                <div className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none tabular-nums">
+                <div className="font-sans text-3xl sm:text-4xl font-extrabold text-[#181715] tracking-tight leading-none tabular-nums">
                   {daysOnTarget}/7
                 </div>
-                <div className="text-xs font-sans font-medium text-[#787873] mt-1.5 leading-tight">
+                <div className="text-xs font-sans font-medium text-[#78716C] mt-1.5 leading-tight">
                   Days on target
                 </div>
               </div>
@@ -527,7 +543,7 @@ export const StatsTab: React.FC = () => {
                         } parts (${day.percentage}%)${day.isToday ? ' · Today' : ''}`}
                       >
                         {day.isTargetMet ? (
-                          <div className="w-[24px] h-[24px] rounded-full bg-[#111111] flex items-center justify-center">
+                          <div className="w-[24px] h-[24px] rounded-full bg-[#16A34A] flex items-center justify-center">
                             <Check size={13} strokeWidth={3} className="text-[#FFFFFF]" />
                           </div>
                         ) : (
@@ -543,7 +559,7 @@ export const StatsTab: React.FC = () => {
                                 cy={center}
                                 r={radius}
                                 fill="none"
-                                stroke="#EFEFEA"
+                                stroke="#EFECE6"
                                 strokeWidth={strokeWidth}
                               />
                               {day.percentage > 0 && (
@@ -552,7 +568,7 @@ export const StatsTab: React.FC = () => {
                                   cy={center}
                                   r={radius}
                                   fill="none"
-                                  stroke="#111111"
+                                  stroke="#181715"
                                   strokeWidth={strokeWidth}
                                   strokeDasharray={circumference}
                                   strokeDashoffset={offset}
@@ -566,7 +582,7 @@ export const StatsTab: React.FC = () => {
 
                       <span
                         className={`text-xs font-sans leading-none ${
-                          day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#787873]'
+                          day.isToday ? 'font-bold text-[#181715]' : 'font-normal text-[#78716C]'
                         }`}
                       >
                         {day.initial}
@@ -579,23 +595,23 @@ export const StatsTab: React.FC = () => {
           </div>
 
           {/* Card 3: Time Studied Bar Chart */}
-          <div className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(17,17,17,0.03)] flex flex-col justify-between">
+          <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(24,23,21,0.03)] flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-sans font-semibold text-[#787873]">Time studied</span>
-              <span className="text-[11px] font-sans text-[#787873]">Mon – Sun</span>
+              <span className="text-xs font-sans font-semibold text-[#78716C]">Time studied</span>
+              <span className="text-[11px] font-sans text-[#78716C]">Mon – Sun</span>
             </div>
 
             <div className="flex items-end justify-between gap-3 sm:gap-4 pt-3.5">
               <div className="flex-shrink-0 min-w-[74px] pb-1">
                 <div className="flex items-baseline gap-1 tabular-nums">
-                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight leading-none">
+                  <span className="font-sans text-3xl sm:text-4xl font-extrabold text-[#181715] tracking-tight leading-none">
                     {timeStudied.value}
                   </span>
-                  <span className="font-sans text-sm sm:text-base font-semibold text-[#787873] leading-none">
+                  <span className="font-sans text-sm sm:text-base font-semibold text-[#78716C] leading-none">
                     {timeStudied.unit}
                   </span>
                 </div>
-                <div className="text-xs font-sans font-medium text-[#787873] mt-1.5 leading-tight">
+                <div className="text-xs font-sans font-medium text-[#78716C] mt-1.5 leading-tight">
                   This week
                 </div>
               </div>
@@ -607,19 +623,21 @@ export const StatsTab: React.FC = () => {
                       {day.minutes > 0 ? (
                         <div
                           style={{ height: `${day.heightPercent}%` }}
-                          className="relative w-2.5 sm:w-3 rounded-full bg-[#111111] transition-all duration-300"
+                          className={`relative w-2.5 sm:w-3 rounded-full transition-all duration-300 ${
+                            day.isToday ? 'bg-[#181715]' : 'bg-[#57534E]'
+                          }`}
                           title={`${day.fullName}: ${day.minutes} min studied${day.isToday ? ' · Today' : ''}`}
                         >
-                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#787873] leading-none whitespace-nowrap pointer-events-none tabular-nums">
+                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#78716C] leading-none whitespace-nowrap pointer-events-none tabular-nums">
                             {day.label}
                           </span>
                         </div>
                       ) : (
                         <div
-                          className="relative w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D6D6D0]"
+                          className="relative w-2.5 sm:w-3 h-[3px] rounded-full bg-[#D6D1C7]"
                           title={`${day.fullName}: 0 min studied${day.isToday ? ' · Today' : ''}`}
                         >
-                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#787873] leading-none whitespace-nowrap pointer-events-none tabular-nums">
+                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-sans font-medium text-[#78716C] leading-none whitespace-nowrap pointer-events-none tabular-nums">
                             {day.label}
                           </span>
                         </div>
@@ -628,7 +646,7 @@ export const StatsTab: React.FC = () => {
 
                     <span
                       className={`text-xs font-sans leading-none ${
-                        day.isToday ? 'font-bold text-[#111111]' : 'font-normal text-[#787873]'
+                        day.isToday ? 'font-bold text-[#181715]' : 'font-normal text-[#78716C]'
                       }`}
                     >
                       {day.initial}
@@ -644,21 +662,21 @@ export const StatsTab: React.FC = () => {
       {/* Target Override Modal */}
       {editingSubject && (
         <div
-          className="fixed inset-0 z-50 bg-[#000000]/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-[#181715]/45 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
           onClick={() => setEditingSubject(null)}
         >
           <div
-            className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xs p-5 sm:p-6 shadow-2xl space-y-4"
+            className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xs p-5 sm:p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="font-sans font-extrabold text-base text-[#111111] m-0">
+              <h3 className="font-sans font-extrabold text-base text-[#181715] m-0">
                 Override Weekly Target
               </h3>
               <button
                 type="button"
                 onClick={() => setEditingSubject(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#787873] hover:text-[#111111] hover:bg-[#F2F2EE] cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] cursor-pointer"
                 aria-label="Close"
               >
                 <X size={16} />
@@ -666,17 +684,17 @@ export const StatsTab: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <div className="text-xs font-sans text-[#525252]">
-                Subject: <strong className="text-[#111111]">{editingSubject.name}</strong>
+              <div className="text-xs font-sans text-[#57534E]">
+                Subject: <strong className="text-[#181715]">{editingSubject.name}</strong>
               </div>
-              <div className="text-xs font-sans text-[#787873] leading-relaxed tabular-nums">
+              <div className="text-xs font-sans text-[#78716C] leading-relaxed tabular-nums">
                 Auto-calculated suggestion: <strong>{editingSubject.autoTarget} parts/week</strong>{' '}
                 based on remaining parts ({weeksRemaining}w to exam).
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-sans font-semibold text-[#525252] mb-1.5">
+              <label className="block text-xs font-sans font-semibold text-[#57534E] mb-1.5">
                 Target parts per week
               </label>
               <input
@@ -686,7 +704,7 @@ export const StatsTab: React.FC = () => {
                 value={targetInputValue}
                 onChange={(e) => setTargetInputValue(e.target.value)}
                 autoFocus
-                className="w-full font-sans text-base font-bold px-3.5 py-2.5 rounded-xl border border-[#E5E5E0] bg-[#F7F7F5] text-[#111111] focus:border-[#111111] focus:bg-[#FFFFFF] tabular-nums"
+                className="w-full font-sans text-base font-bold px-3.5 py-2.5 rounded-xl border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:border-[#181715] focus:bg-[#FFFDF9] tabular-nums"
               />
             </div>
 
@@ -695,7 +713,7 @@ export const StatsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTarget(editingSubject.id)}
-                  className="flex-1 min-h-[40px] py-2 px-3 rounded-xl border border-[#E5E5E0] text-[#525252] hover:text-[#111111] hover:bg-[#F7F7F5] font-sans font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 min-h-[40px] py-2 px-3 rounded-xl border border-[#E4E0D8] text-[#57534E] hover:text-[#181715] hover:bg-[#F6F4EF] font-sans font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw size={13} />
                   <span>Reset Auto</span>
@@ -704,7 +722,7 @@ export const StatsTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveTarget}
-                className="flex-1 min-h-[40px] py-2 px-3 rounded-xl bg-[#111111] text-[#FFFFFF] font-sans font-bold text-xs hover:bg-[#262626] transition-colors cursor-pointer"
+                className="flex-1 min-h-[40px] py-2 px-3 rounded-xl bg-[#181715] text-[#FFFDF9] font-sans font-bold text-xs hover:bg-[#2E2C28] transition-colors cursor-pointer"
               >
                 Save Target
               </button>

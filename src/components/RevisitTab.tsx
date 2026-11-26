@@ -32,20 +32,20 @@ export const RevisitTab = () => {
       </div>
 
       {/* Main Hairline-Divided Reviews Container */}
-      <section className="bg-[#FFFFFF] border border-[#E5E5E0] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(17,17,17,0.03)]">
-        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFEFEA] flex flex-wrap justify-between items-center gap-3">
-          <h2 className="font-sans text-sm sm:text-base font-bold text-[#111111] m-0">
+      <section className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-[#EFECE6] flex flex-wrap justify-between items-center gap-3">
+          <h2 className="font-sans text-sm sm:text-base font-bold text-[#181715] m-0">
             Topics to Review
           </h2>
 
           {/* Interactive Segmented Filter Control */}
-          <div className="inline-flex bg-[#F2F2EE] p-1 rounded-xl border border-[#E5E5E0]">
+          <div className="inline-flex bg-[#EDEAE2] p-1 rounded-xl border border-[#E4E0D8]">
             <button
               type="button"
               className={`min-h-[32px] py-1 px-3 rounded-lg font-sans font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap tabular-nums ${
                 activeView === 'pending'
-                  ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
-                  : 'text-[#787873] hover:text-[#111111]'
+                  ? 'bg-[#FFFDF9] text-[#181715] shadow-[0_1px_2px_rgba(24,23,21,0.06)]'
+                  : 'text-[#78716C] hover:text-[#181715]'
               }`}
               onClick={() => setActiveView('pending')}
             >
@@ -55,8 +55,8 @@ export const RevisitTab = () => {
               type="button"
               className={`min-h-[32px] py-1 px-3 rounded-lg font-sans font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap tabular-nums ${
                 activeView === 'completed'
-                  ? 'bg-[#FFFFFF] text-[#111111] shadow-[0_1px_2px_rgba(17,17,17,0.06)]'
-                  : 'text-[#787873] hover:text-[#111111]'
+                  ? 'bg-[#FFFDF9] text-[#181715] shadow-[0_1px_2px_rgba(24,23,21,0.06)]'
+                  : 'text-[#78716C] hover:text-[#181715]'
               }`}
               onClick={() => setActiveView('completed')}
             >
@@ -67,11 +67,11 @@ export const RevisitTab = () => {
 
         {activeView === 'pending' ? (
           pendingRevisits.length === 0 ? (
-            <div className="text-center py-12 px-4 text-xs sm:text-sm font-sans text-[#787873]">
+            <div className="text-center py-12 px-4 text-xs sm:text-sm font-sans text-[#78716C]">
               All caught up. No pending revisits due.
             </div>
           ) : (
-            <div className="divide-y divide-[#EFEFEA]">
+            <div className="divide-y divide-[#EFECE6]">
               {pendingRevisits.map((r) => {
                 const isOverdue = r.date < today;
                 const isDateToday = r.date === today;
@@ -82,26 +82,32 @@ export const RevisitTab = () => {
                 return (
                   <div
                     key={r.id}
-                    className="px-4 sm:px-5 py-3.5 hover:bg-[#FAFAF8] transition-colors flex items-center gap-3"
+                    className="px-4 sm:px-5 py-3.5 hover:bg-[#F9F7F2] transition-colors flex items-center gap-3"
                   >
                     {/* 44px touch target circular completion button */}
                     <button
                       type="button"
                       onClick={() => updateRevisit(r.id, { done: true })}
                       aria-label={`Mark ${lesson?.name || 'revisit'} complete`}
-                      className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0 group"
+                      className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0 group"
                     >
-                      <span className="w-5 h-5 rounded-full border-[1.5px] border-[#C8C8C0] group-hover:border-[#16A34A] bg-[#FFFFFF] block transition-colors" />
+                      <span
+                        className="w-5 h-5 rounded-full border-[1.75px] bg-[#FFFDF9] block transition-colors"
+                        style={{ borderColor: `${accentColor}75` }}
+                      />
                     </button>
 
                     <div className="flex-1 min-w-0">
-                      <div className="font-sans font-semibold text-sm text-[#111111] leading-snug break-words">
+                      <div className="font-sans font-semibold text-sm text-[#181715] leading-snug break-words">
                         {lesson?.name || 'Lesson Revisit'}
                       </div>
 
                       {/* Unboxed Metadata Line (zero pill capsules) */}
-                      <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs font-sans text-[#787873] tabular-nums">
-                        <span className="inline-flex items-center gap-1.5 text-[#525252] font-medium">
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs font-sans text-[#78716C] tabular-nums">
+                        <span
+                          className="inline-flex items-center gap-1.5 font-semibold"
+                          style={{ color: accentColor }}
+                        >
                           <span
                             className="w-2 h-2 rounded-[3px] flex-shrink-0"
                             style={{ backgroundColor: accentColor }}
@@ -125,7 +131,7 @@ export const RevisitTab = () => {
                         {isDateToday && (
                           <>
                             <span aria-hidden="true">·</span>
-                            <span className="text-[#111111] font-semibold">Due today</span>
+                            <span className="text-[#181715] font-semibold">Due today</span>
                           </>
                         )}
                       </div>
@@ -136,11 +142,11 @@ export const RevisitTab = () => {
             </div>
           )
         ) : completedRevisits.length === 0 ? (
-          <div className="text-center py-12 px-4 text-xs sm:text-sm font-sans text-[#787873]">
+          <div className="text-center py-12 px-4 text-xs sm:text-sm font-sans text-[#78716C]">
             No completed revisits yet.
           </div>
         ) : (
-          <div className="divide-y divide-[#EFEFEA]">
+          <div className="divide-y divide-[#EFECE6]">
             {completedRevisits.map((r) => {
               const subject = subjects.find((s) => s.id === r.subjectId);
               const lesson = lessons.find((l) => l.id === r.lessonId);
@@ -149,13 +155,13 @@ export const RevisitTab = () => {
               return (
                 <div
                   key={r.id}
-                  className="px-4 sm:px-5 py-3.5 bg-[#FAFAF8]/60 flex items-center gap-3 opacity-70 hover:opacity-100 transition-opacity"
+                  className="px-4 sm:px-5 py-3.5 bg-[#F9F7F2]/60 flex items-center gap-3 opacity-75 hover:opacity-100 transition-opacity"
                 >
                   <button
                     type="button"
                     onClick={() => updateRevisit(r.id, { done: false })}
                     aria-label={`Mark ${lesson?.name || 'revisit'} pending`}
-                    className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#F2F2EE] transition-colors cursor-pointer flex-shrink-0"
+                    className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
                   >
                     <span className="w-5 h-5 rounded-full bg-[#16A34A] border border-[#16A34A] text-[#FFFFFF] flex items-center justify-center">
                       <Check size={11} strokeWidth={3} />
@@ -163,13 +169,13 @@ export const RevisitTab = () => {
                   </button>
 
                   <div className="flex-1 min-w-0">
-                    <div className="font-sans font-semibold text-sm text-[#787873] line-through leading-snug break-words">
+                    <div className="font-sans font-semibold text-sm text-[#78716C] line-through leading-snug break-words">
                       {lesson?.name || 'Lesson Revisit'}
                     </div>
-                    <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs font-sans text-[#787873] tabular-nums">
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs font-sans text-[#78716C] tabular-nums">
                       <span className="inline-flex items-center gap-1.5">
                         <span
-                          className="w-2 h-2 rounded-[3px] flex-shrink-0 opacity-60"
+                          className="w-2 h-2 rounded-[3px] flex-shrink-0 opacity-65"
                           style={{ backgroundColor: accentColor }}
                           aria-hidden="true"
                         />
