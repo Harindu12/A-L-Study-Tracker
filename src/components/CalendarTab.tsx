@@ -387,33 +387,19 @@ interface TimelineTaskCardProps {
   task: AgendaTask;
   topPx: number;
   heightPx: number;
-  colIndex: number;
-  colCount: number;
   onToggle: (task: AgendaTask) => void;
-  onTogglePastPaper: (task: AgendaTask) => void;
-  onLongPress: (task: AgendaTask) => void;
+  onOpenMenu: (task: AgendaTask) => void;
 }
 
 const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
   task,
   topPx,
   heightPx,
-  colIndex,
-  colCount,
   onToggle,
-  onTogglePastPaper,
-  onLongPress,
+  onOpenMenu,
 }) => {
-  const interactionProps = useLongPressTask(task, onToggle, onLongPress);
-  const isSubjectWithPart = task.source === 'subject' && !!task.partId;
   const isWatched = task.done;
-  const isPastPaper = !!task.pastPaperDone;
-  const isSplitColumn = colCount > 1;
-  const showDetail = !!task.detail && heightPx >= 94;
-
-  const widthPct = 100 / colCount;
-  const leftPct = colIndex * widthPct;
-  const gapPx = isSplitColumn ? 3 : 0;
+  const showDetail = task.source === 'hour' && !!task.detail && heightPx >= 90;
 
   const cardSurfaceStyle: React.CSSProperties = isWatched
     ? {
@@ -429,146 +415,85 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
 
   return (
     <div
-      {...interactionProps}
-      title="Tap to toggle · Hold or use menu to edit or delete"
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenMenu(task)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onOpenMenu(task);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpenMenu(task);
+        }
+      }}
+      title="Tap card for options · Tap circle to mark done"
       style={{
         top: `${topPx}px`,
         height: `${heightPx}px`,
-        left: isSplitColumn ? `calc(${leftPct}% + ${colIndex > 0 ? gapPx : 0}px)` : '0%',
-        width: isSplitColumn
-          ? `calc(${widthPct}% - ${colIndex > 0 && colIndex < colCount - 1 ? gapPx * 2 : gapPx}px)`
-          : '100%',
+        left: '0%',
+        width: '100%',
         ...cardSurfaceStyle,
       }}
-      className="absolute rounded-xl border px-2.5 sm:px-3 py-1.5 flex flex-col justify-between gap-1 transition-all duration-150 cursor-pointer select-none overflow-hidden hover:shadow-[0_1px_6px_rgba(24,23,21,0.05)]"
+      className="absolute rounded-xl border px-3 py-2 flex items-start gap-2.5 transition-all duration-150 cursor-pointer select-none overflow-hidden hover:shadow-[0_1px_6px_rgba(24,23,21,0.05)]"
     >
-      {/* Top Row: Completion Circle + Title + Time Range + Menu */}
-      <div className="flex items-start gap-2 min-w-0">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(task);
+      {/* Left Check Circle (>= 40px invisible tap target) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(task);
+        }}
+        className="w-10 h-10 -ml-3 -my-2 flex items-center justify-center rounded-lg hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
+        aria-label={isWatched ? 'Mark incomplete' : 'Mark done'}
+        title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
+      >
+        <span
+          className="w-4 h-4 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
+          style={{
+            borderColor: isWatched ? task.softPalette.accent : `${task.softPalette.accent}90`,
+            backgroundColor: isWatched ? task.softPalette.accent : '#FFFDF9',
+            color: '#FFFDF9',
           }}
-          className="w-9 h-9 -ml-2.5 -my-2 flex items-center justify-center rounded-lg hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
-          aria-label={isWatched ? 'Mark incomplete' : 'Mark watched'}
-          title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
         >
-          <span
-            className="w-4 h-4 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
-            style={{
-              borderColor: isWatched ? task.softPalette.accent : `${task.softPalette.accent}90`,
-              backgroundColor: isWatched ? task.softPalette.accent : '#FFFDF9',
-              color: '#FFFDF9',
-            }}
+          {isWatched && <Check size={9} strokeWidth={3} />}
+        </span>
+      </button>
+
+      {/* Strictly Minimal Typography: Title + Time Range + Quiet Subject Kicker */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3
+            className={`font-sans font-semibold text-[13px] leading-tight tracking-tight m-0 min-w-0 ${
+              heightPx < 76 ? 'truncate' : 'line-clamp-2 break-words'
+            } ${isWatched ? 'line-through text-[#78716C]' : 'text-[#181715]'}`}
           >
-            {isWatched && <Check size={9} strokeWidth={3} />}
-          </span>
-        </button>
+            {task.title}
+          </h3>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-1.5">
-            <h3
-              className={`font-sans font-semibold text-[13px] leading-tight tracking-tight m-0 min-w-0 ${
-                heightPx < 76 ? 'truncate' : 'line-clamp-2 break-words'
-              } ${isWatched ? 'line-through text-[#78716C]' : 'text-[#181715]'}`}
-            >
-              {task.title}
-            </h3>
-
-            <div className="flex items-center gap-0.5 flex-shrink-0">
-              {!isSplitColumn && task.timeRangeLabel && (
-                <span
-                  className={`text-[11px] font-sans font-medium tabular-nums whitespace-nowrap ${
-                    isWatched ? 'text-[#8C857D]' : 'text-[#6D675E]'
-                  }`}
-                >
-                  {task.timeRangeLabel}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onLongPress(task);
-                }}
-                aria-label={`Task options for ${task.title}`}
-                title="Edit or delete"
-                className="w-7 h-7 -mr-1.5 -my-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#181715]/8 transition-colors cursor-pointer flex-shrink-0"
-              >
-                <MoreHorizontal size={14} />
-              </button>
-            </div>
-          </div>
-
-          {showDetail && (
-            <p className="text-[11px] font-sans text-[#6D675E] leading-snug line-clamp-1 mt-0.5 m-0">
-              {task.detail}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Row: Subject/Category Label + Duration + Inline Past Paper Toggle */}
-      <div className="flex items-center justify-between gap-2 pl-6 min-w-0">
-        <div className="flex items-center gap-1.5 text-[11px] font-sans text-[#6D675E] tabular-nums min-w-0 truncate">
-          <span
-            className="inline-flex items-center gap-1.5 font-semibold truncate"
-            style={{ color: isWatched ? '#78716C' : task.softPalette.accent }}
-          >
+          {task.timeRangeLabel && (
             <span
-              className="w-1.5 h-1.5 rounded-[2px] flex-shrink-0"
-              style={{ backgroundColor: isWatched ? '#A8A29E' : task.softPalette.accent }}
-              aria-hidden="true"
-            />
-            <span className="truncate">{task.subjectLabel}</span>
-          </span>
-          {task.duration && (
-            <span className="text-[#78716C] flex-shrink-0">· {task.duration}</span>
-          )}
-          {isSplitColumn && task.timeRangeLabel && (
-            <span className="text-[#78716C] truncate">· {task.timeRangeLabel}</span>
-          )}
-        </div>
-
-        {isSubjectWithPart && (
-          <button
-            type="button"
-            disabled={!isWatched}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isWatched) {
-                onTogglePastPaper(task);
-              }
-            }}
-            className={`min-h-[24px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-sans font-semibold border transition-colors flex-shrink-0 ${
-              !isWatched
-                ? 'bg-[#FFFDF9]/75 text-[#A8A29E] border-[#E4E0D8]/80 cursor-not-allowed'
-                : isPastPaper
-                ? 'bg-[#EEF6F2] text-[#3D7F63] border-[#CFE3D8] hover:bg-[#E4F0EA] cursor-pointer'
-                : 'bg-[#FFFDF9] text-[#57534E] border-[#E4E0D8] hover:border-[#181715] hover:text-[#181715] cursor-pointer'
-            }`}
-            title={
-              !isWatched
-                ? 'Mark "Watched" first to unlock Past Paper'
-                : isPastPaper
-                ? 'Past Paper done (click to toggle)'
-                : 'Mark Past Paper done'
-            }
-          >
-            <span
-              className={`w-3 h-3 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                !isWatched
-                  ? 'border-[#D6D1C7] bg-[#FFFDF9]'
-                  : isPastPaper
-                  ? 'bg-[#3D7F63] border-[#3D7F63] text-[#FFFDF9]'
-                  : 'border-[#C8C3B8] bg-[#FFFDF9]'
+              className={`text-[11px] font-sans font-medium tabular-nums whitespace-nowrap flex-shrink-0 ${
+                isWatched ? 'text-[#8C857D]' : 'text-[#6D675E]'
               }`}
             >
-              {isWatched && isPastPaper && <Check size={8} strokeWidth={3.5} />}
+              {task.timeRangeLabel}
             </span>
-            <span>Past paper</span>
-          </button>
+          )}
+        </div>
+
+        <div
+          className="text-[11px] font-sans font-medium leading-tight truncate mt-0.5"
+          style={{ color: isWatched ? '#78716C' : task.softPalette.accent }}
+        >
+          {task.subjectLabel}
+        </div>
+
+        {showDetail && (
+          <p className="text-[11px] font-sans text-[#6D675E] leading-snug truncate mt-1 m-0">
+            {task.detail}
+          </p>
         )}
       </div>
     </div>
@@ -580,8 +505,7 @@ interface DayTimelineViewProps {
   isViewingToday: boolean;
   nowMinutes: number;
   onToggle: (task: AgendaTask) => void;
-  onTogglePastPaper: (task: AgendaTask) => void;
-  onLongPress: (task: AgendaTask) => void;
+  onOpenMenu: (task: AgendaTask) => void;
 }
 
 const DayTimelineView: React.FC<DayTimelineViewProps> = ({
@@ -589,14 +513,12 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
   isViewingToday,
   nowMinutes,
   onToggle,
-  onTogglePastPaper,
-  onLongPress,
+  onOpenMenu,
 }) => {
-  const PX_PER_HOUR = 68;
+  const PX_PER_HOUR = 64;
   const PX_PER_MIN = PX_PER_HOUR / 60;
-  const MIN_CARD_HEIGHT = 56;
-  const VISUAL_GAP_PX = 4;
-  const MIN_VISUAL_MINUTES = Math.ceil((MIN_CARD_HEIGHT + VISUAL_GAP_PX) / PX_PER_MIN);
+  const MIN_CARD_HEIGHT = 54;
+  const GAP_PX = 4;
   const TOP_PAD = 10;
 
   const layout = useMemo(() => {
@@ -612,25 +534,20 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
       return {
         startHour: 8,
         endHour: 18,
+        totalHeightPx: 10 * PX_PER_HOUR + TOP_PAD * 2,
         placed: [] as {
           task: AgendaTask;
           topPx: number;
           heightPx: number;
-          colIndex: number;
-          colCount: number;
         }[],
       };
     }
 
     const earliestMin = Math.min(...timed.map((t) => t.startMinutes!));
-    const latestVisualEnd = Math.max(
-      ...timed.map((t) =>
-        Math.max(t.startMinutes! + t.durationMinutes, t.startMinutes! + MIN_VISUAL_MINUTES)
-      )
-    );
+    const latestEnd = Math.max(...timed.map((t) => t.startMinutes! + t.durationMinutes));
 
     let minHour = Math.floor(earliestMin / 60);
-    let maxHour = Math.ceil(latestVisualEnd / 60);
+    let maxHour = Math.ceil(latestEnd / 60);
 
     if (isViewingToday) {
       const currentHour = Math.floor(nowMinutes / 60);
@@ -652,75 +569,35 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
     }
 
     const startHour = Math.max(0, minHour);
-    const endHour = Math.min(24, Math.max(startHour + 1, maxHour));
+    const baseEndHour = Math.min(24, Math.max(startHour + 1, maxHour));
 
-    // Greedy connected-cluster overlap solver using effective visual bounds
-    type ClusterItem = {
-      task: AgendaTask;
-      start: number;
-      visualEnd: number;
-      colIndex: number;
-    };
-
+    // Always keep cards full width in one clean sequential stack
+    let prevBottomPx = -Infinity;
     const placed: {
       task: AgendaTask;
       topPx: number;
       heightPx: number;
-      colIndex: number;
-      colCount: number;
     }[] = [];
 
-    let cluster: ClusterItem[] = [];
-    let clusterEnd = -1;
-
-    const flushCluster = () => {
-      if (cluster.length === 0) return;
-      const colEnds: number[] = [];
-      for (const item of cluster) {
-        let assigned = -1;
-        for (let c = 0; c < colEnds.length; c++) {
-          if (colEnds[c] <= item.start) {
-            assigned = c;
-            colEnds[c] = item.visualEnd;
-            break;
-          }
-        }
-        if (assigned === -1) {
-          assigned = colEnds.length;
-          colEnds.push(item.visualEnd);
-        }
-        item.colIndex = assigned;
-      }
-
-      const colCount = Math.max(1, colEnds.length);
-      for (const item of cluster) {
-        const topPx = TOP_PAD + ((item.start - startHour * 60) / 60) * PX_PER_HOUR + 2;
-        const heightPx = Math.max(MIN_CARD_HEIGHT, item.task.durationMinutes * PX_PER_MIN - 4);
-        placed.push({
-          task: item.task,
-          topPx,
-          heightPx,
-          colIndex: item.colIndex,
-          colCount,
-        });
-      }
-      cluster = [];
-      clusterEnd = -1;
-    };
-
     for (const task of timed) {
-      const start = task.startMinutes!;
-      const visualEnd = Math.max(start + task.durationMinutes, start + MIN_VISUAL_MINUTES);
-      if (cluster.length > 0 && start >= clusterEnd) {
-        flushCluster();
-      }
-      cluster.push({ task, start, visualEnd, colIndex: 0 });
-      clusterEnd = Math.max(clusterEnd, visualEnd);
+      const idealTop = TOP_PAD + ((task.startMinutes! - startHour * 60) / 60) * PX_PER_HOUR + 2;
+      const topPx =
+        prevBottomPx === -Infinity ? idealTop : Math.max(idealTop, prevBottomPx + GAP_PX);
+      const heightPx = Math.max(MIN_CARD_HEIGHT, task.durationMinutes * PX_PER_MIN - 4);
+      prevBottomPx = topPx + heightPx;
+      placed.push({ task, topPx, heightPx });
     }
-    flushCluster();
 
-    return { startHour, endHour, placed };
-  }, [tasks, isViewingToday, nowMinutes, MIN_VISUAL_MINUTES, PX_PER_MIN]);
+    const maxBottomPx = placed.reduce((max, item) => Math.max(max, item.topPx + item.heightPx), 0);
+    const neededEndHour = Math.ceil((maxBottomPx - TOP_PAD) / PX_PER_HOUR) + startHour;
+    const endHour = Math.min(24, Math.max(baseEndHour, neededEndHour));
+    const totalHeightPx = Math.max(
+      (endHour - startHour) * PX_PER_HOUR + TOP_PAD * 2,
+      maxBottomPx + TOP_PAD
+    );
+
+    return { startHour, endHour, totalHeightPx, placed };
+  }, [tasks, isViewingToday, nowMinutes, PX_PER_MIN]);
 
   const hoursList = useMemo(() => {
     const arr: number[] = [];
@@ -730,7 +607,6 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
     return arr;
   }, [layout.startHour, layout.endHour]);
 
-  const totalHeightPx = (layout.endHour - layout.startHour) * PX_PER_HOUR + TOP_PAD * 2;
   const showLiveLine =
     isViewingToday &&
     nowMinutes >= layout.startHour * 60 &&
@@ -740,7 +616,7 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
 
   return (
     <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl px-3 sm:px-4 py-2.5 shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
-      <div className="relative" style={{ height: `${totalHeightPx}px` }}>
+      <div className="relative" style={{ height: `${layout.totalHeightPx}px` }}>
         {/* Hour Rail Labels & Horizontal Hairlines */}
         {hoursList.map((h) => {
           const topPx = TOP_PAD + (h - layout.startHour) * PX_PER_HOUR;
@@ -793,7 +669,7 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
           </>
         )}
 
-        {/* Scheduled Duration-Scaled Cards */}
+        {/* Single-Column Full-Width Timeline Cards */}
         <div className="absolute inset-y-0 left-[52px] sm:left-[62px] right-0 z-10">
           {layout.placed.map((item) => (
             <TimelineTaskCard
@@ -801,11 +677,8 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
               task={item.task}
               topPx={item.topPx}
               heightPx={item.heightPx}
-              colIndex={item.colIndex}
-              colCount={item.colCount}
               onToggle={onToggle}
-              onTogglePastPaper={onTogglePastPaper}
-              onLongPress={onLongPress}
+              onOpenMenu={onOpenMenu}
             />
           ))}
         </div>
@@ -1274,7 +1147,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         const subjectLabel = resolvedSubj
           ? category !== 'Study Block'
             ? `${resolvedSubj.name} · ${category}`
-            : `${resolvedSubj.name} · Task`
+            : resolvedSubj.name
           : category === 'Study Block'
           ? 'General'
           : category;
@@ -1320,7 +1193,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         const isWatched = part ? !!part.watched : !!s.studied;
         const isPastPaper = part ? !!part.pastPaper : !!s.pastPaper;
 
-        const title = partName ? `${subjName} — ${lessonName}: ${partName}` : `${subjName} — ${lessonName}`;
+        const title = partName ? `${lessonName} · ${partName}` : lessonName;
         const softPalette = getSoftSubjectPaletteById(s.subjectId, subjects);
         const durationStr = s.duration || (isPastPaper ? '60 min' : '45 min');
         const durationMinutes = Math.max(
@@ -1338,11 +1211,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           originalId: s.id,
           date: dateStr,
           title,
-          subjectLabel: partName
-            ? `${subjName} · Part`
-            : s.pastPaper
-            ? `${subjName} · Past Paper`
-            : `${subjName} · Lesson`,
+          subjectLabel: s.pastPaper && !partName ? `${subjName} · Past Paper` : subjName,
           duration: durationStr,
           startTime,
           startMinutes,
@@ -1375,7 +1244,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           source: 'revisit',
           originalId: r.id,
           date: dateStr,
-          title: `${subjName} — ${lessonName}`,
+          title: lessonName,
           subjectLabel: `${subjName} · ${r.type}`,
           duration: '30 min',
           startMinutes: null,
@@ -2172,8 +2041,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       isViewingToday={isViewingToday}
                       nowMinutes={nowMinutes}
                       onToggle={handleToggleTask}
-                      onTogglePastPaper={handleToggleTaskPastPaper}
-                      onLongPress={handleTaskLongPress}
+                      onOpenMenu={handleTaskLongPress}
                     />
                   )}
                 </section>
@@ -2770,109 +2638,192 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       {isActionMenuOpen &&
         actionTask &&
         typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#181715]/45 backdrop-blur-xs animate-in fade-in duration-150"
-            onClick={() => {
-              setIsActionMenuOpen(false);
-              setActionTask(null);
-            }}
-          >
-            <div
-              className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E4E0D8] shadow-2xl bg-[#FFFDF9] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#EFECE6]">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border"
-                    style={{
-                      backgroundColor: actionTask.softPalette.bg,
-                      borderColor: actionTask.softPalette.border,
-                      color: actionTask.softPalette.accent,
-                    }}
-                  >
-                    <BookOpen size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-sans text-sm sm:text-base font-bold text-[#181715] truncate m-0">
-                      {actionTask.title}
-                    </h3>
-                    <p className="text-xs font-sans text-[#78716C] m-0 truncate tabular-nums">
-                      {actionTask.subjectLabel}
-                      {actionTask.timeRangeLabel ? ` · ${actionTask.timeRangeLabel}` : ''}
-                      {actionTask.duration ? ` · ${actionTask.duration}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsActionMenuOpen(false);
-                    setActionTask(null);
-                  }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer"
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+        (() => {
+          const liveActionTask = displayedTasks.find((t) => t.id === actionTask.id) || actionTask;
+          const isSubjectWithPart = liveActionTask.source === 'subject' && !!liveActionTask.partId;
+          const isWatched = liveActionTask.done;
+          const isPastPaper = !!liveActionTask.pastPaperDone;
 
-              <div className="flex flex-col gap-2">
-                {actionTask.source !== 'revisit' && (
+          return createPortal(
+            <div
+              className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#181715]/45 backdrop-blur-xs animate-in fade-in duration-150"
+              onClick={() => {
+                setIsActionMenuOpen(false);
+                setActionTask(null);
+              }}
+            >
+              <div
+                className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-[#E4E0D8] shadow-2xl bg-[#FFFDF9] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center pb-3 mb-4 border-b border-[#EFECE6]">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border"
+                      style={{
+                        backgroundColor: liveActionTask.softPalette.bg,
+                        borderColor: liveActionTask.softPalette.border,
+                        color: liveActionTask.softPalette.accent,
+                      }}
+                    >
+                      <BookOpen size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-sans text-sm sm:text-base font-bold text-[#181715] truncate m-0">
+                        {liveActionTask.title}
+                      </h3>
+                      <p className="text-xs font-sans text-[#78716C] m-0 truncate tabular-nums">
+                        {liveActionTask.subjectLabel}
+                        {liveActionTask.timeRangeLabel ? ` · ${liveActionTask.timeRangeLabel}` : ''}
+                        {liveActionTask.duration ? ` · ${liveActionTask.duration}` : ''}
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleOpenEditModal}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E4E0D8] bg-[#FFFDF9] hover:bg-[#F6F4EF] hover:border-[#181715] text-left transition-colors cursor-pointer group"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      setActionTask(null);
+                    }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer"
+                    aria-label="Close"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-[#F6F4EF] border border-[#E4E0D8] text-[#181715] flex items-center justify-center flex-shrink-0 group-hover:bg-[#181715] group-hover:text-[#FFFDF9] transition-colors">
-                      <Pencil size={16} />
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {/* Quick Toggle: Watched / Done */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTask(liveActionTask)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E4E0D8] bg-[#FFFDF9] hover:bg-[#F6F4EF] hover:border-[#181715] text-left transition-colors cursor-pointer"
+                  >
+                    <div
+                      className="w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors"
+                      style={{
+                        backgroundColor: isWatched ? liveActionTask.softPalette.accent : '#F6F4EF',
+                        borderColor: isWatched ? liveActionTask.softPalette.accent : '#E4E0D8',
+                        color: isWatched ? '#FFFDF9' : '#78716C',
+                      }}
+                    >
+                      <Check size={16} strokeWidth={2.5} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-sans font-bold text-sm text-[#181715]">Edit</div>
+                      <div className="font-sans font-bold text-sm text-[#181715]">
+                        {liveActionTask.source === 'subject'
+                          ? isWatched
+                            ? 'Watched'
+                            : 'Mark as Watched'
+                          : isWatched
+                          ? 'Completed'
+                          : 'Mark as Done'}
+                      </div>
                       <div className="text-xs font-sans text-[#78716C]">
-                        Modify subject, lesson, part, or details
+                        {isWatched ? 'Tap to mark incomplete' : 'Tap to complete this task'}
                       </div>
                     </div>
                   </button>
-                )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsActionMenuOpen(false);
-                    setIsDeleteConfirmOpen(true);
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#DC2626]/25 bg-[#FFFDF9] hover:bg-[#DC2626]/5 hover:border-[#DC2626]/50 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#DC2626]/10 text-[#DC2626] flex items-center justify-center flex-shrink-0 group-hover:bg-[#DC2626] group-hover:text-[#FFFDF9] transition-colors">
-                    <Trash2 size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-sans font-bold text-sm text-[#DC2626]">Delete</div>
-                    <div className="text-xs font-sans text-[#DC2626]/80">
-                      Remove from agenda
+                  {/* Quick Toggle: Past Paper Done (for subject lesson parts) */}
+                  {isSubjectWithPart && (
+                    <button
+                      type="button"
+                      disabled={!isWatched}
+                      onClick={() => {
+                        if (isWatched) {
+                          handleToggleTaskPastPaper(liveActionTask);
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                        !isWatched
+                          ? 'border-[#EFECE6] bg-[#FAF8F4] opacity-60 cursor-not-allowed'
+                          : isPastPaper
+                          ? 'border-[#CFE3D8] bg-[#EEF6F2]/70 hover:bg-[#EEF6F2] cursor-pointer'
+                          : 'border-[#E4E0D8] bg-[#FFFDF9] hover:bg-[#F6F4EF] hover:border-[#181715] cursor-pointer'
+                      }`}
+                    >
+                      <div
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 transition-colors ${
+                          !isWatched
+                            ? 'bg-[#F6F4EF] border-[#E4E0D8] text-[#A8A29E]'
+                            : isPastPaper
+                            ? 'bg-[#3D7F63] border-[#3D7F63] text-[#FFFDF9]'
+                            : 'bg-[#F6F4EF] border-[#E4E0D8] text-[#78716C]'
+                        }`}
+                      >
+                        <Check size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-sans font-bold text-sm text-[#181715]">
+                          {isPastPaper ? 'Past Paper Done' : 'Mark Past Paper Done'}
+                        </div>
+                        <div className="text-xs font-sans text-[#78716C]">
+                          {!isWatched
+                            ? 'Mark "Watched" first to unlock'
+                            : isPastPaper
+                            ? 'Tap to unmark past paper'
+                            : 'Track past paper practice'}
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {liveActionTask.source !== 'revisit' && (
+                    <button
+                      type="button"
+                      onClick={handleOpenEditModal}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#E4E0D8] bg-[#FFFDF9] hover:bg-[#F6F4EF] hover:border-[#181715] text-left transition-colors cursor-pointer group"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-[#F6F4EF] border border-[#E4E0D8] text-[#181715] flex items-center justify-center flex-shrink-0 group-hover:bg-[#181715] group-hover:text-[#FFFDF9] transition-colors">
+                        <Pencil size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-sans font-bold text-sm text-[#181715]">Edit</div>
+                        <div className="text-xs font-sans text-[#78716C]">
+                          Modify time, duration, or details
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      setIsDeleteConfirmOpen(true);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-[#DC2626]/25 bg-[#FFFDF9] hover:bg-[#DC2626]/5 hover:border-[#DC2626]/50 text-left transition-colors cursor-pointer group"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-[#DC2626]/10 text-[#DC2626] flex items-center justify-center flex-shrink-0 group-hover:bg-[#DC2626] group-hover:text-[#FFFDF9] transition-colors">
+                      <Trash2 size={16} />
                     </div>
-                  </div>
-                </button>
-              </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-sans font-bold text-sm text-[#DC2626]">Delete</div>
+                      <div className="text-xs font-sans text-[#DC2626]/80">
+                        Remove from agenda
+                      </div>
+                    </div>
+                  </button>
+                </div>
 
-              <div className="mt-4 pt-2 border-t border-[#EFECE6]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsActionMenuOpen(false);
-                    setActionTask(null);
-                  }}
-                  className="w-full min-h-[40px] py-2 text-center text-xs font-sans font-semibold text-[#78716C] hover:text-[#181715] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
+                <div className="mt-4 pt-2 border-t border-[#EFECE6]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      setActionTask(null);
+                    }}
+                    className="w-full min-h-[40px] py-2 text-center text-xs font-sans font-semibold text-[#78716C] hover:text-[#181715] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>,
-          document.body
-        )}
+            </div>,
+            document.body
+          );
+        })()}
 
       {/* Edit Task Modal */}
       {isEditModalOpen &&
