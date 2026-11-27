@@ -35,6 +35,7 @@ export interface Revisit {
 export interface HourBlock {
   id: string;
   time?: string;
+  startTime?: string;
   duration?: string;
   task: string;
   done: boolean;
@@ -48,6 +49,7 @@ export interface DailySubjectLog {
   studied: boolean;
   pastPaper: boolean;
   confidence?: 'L' | 'M' | 'H' | null;
+  startTime?: string;
   duration?: string;
 }
 

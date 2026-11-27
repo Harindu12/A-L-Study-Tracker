@@ -360,7 +360,118 @@ export const StatsTab: React.FC = () => {
           <span className="text-xs font-sans font-medium text-[#78716C]">Mon – Sun</span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
+        {/* Mobile & Tablet (< 1024px): Unified Hairline-Divided Sheet (eliminates 2+1 orphan card gap) */}
+        <div className="lg:hidden bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden divide-y divide-[#EFECE6] shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+          {subjectPaces.map((sp) => {
+            const pacePct = Math.min(
+              100,
+              Math.round((sp.actualProgress / Math.max(1, sp.weeklyTarget)) * 100)
+            );
+            return (
+              <div key={sp.id} className="px-4 py-3.5 sm:px-5 sm:py-4 flex flex-col gap-2.5">
+                {/* Row Top: Icon + Subject & Status on left, Tabular Ratio on right */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border"
+                      style={{
+                        backgroundColor: `${sp.accentColor}16`,
+                        borderColor: `${sp.accentColor}30`,
+                        color: sp.accentColor,
+                      }}
+                      title={sp.name}
+                    >
+                      {getSubjectIcon(sp.name)}
+                    </div>
+
+                    <div className="min-w-0">
+                      <h3 className="font-sans font-bold text-sm text-[#181715] truncate m-0 leading-snug">
+                        {sp.name}
+                      </h3>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] font-sans font-semibold mt-0.5 ${
+                          sp.isOnTrack ? 'text-[#16A34A]' : 'text-[#D97706]'
+                        }`}
+                        title={
+                          sp.isOnTrack
+                            ? `On track (done ${sp.actualProgress} >= expected ${sp.expectedPace.toFixed(1)})`
+                            : `Behind pace (done ${sp.actualProgress} < expected ${sp.expectedPace.toFixed(1)})`
+                        }
+                      >
+                        {sp.isOnTrack ? <Check size={11} strokeWidth={2.75} /> : <Clock size={11} />}
+                        <span>{sp.isOnTrack ? 'On track' : 'Behind'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-baseline gap-1 flex-shrink-0 tabular-nums">
+                    <span className="font-sans text-2xl font-extrabold text-[#181715] tracking-tight leading-none">
+                      {sp.actualProgress}
+                    </span>
+                    <span className="font-sans text-sm font-bold text-[#78716C] leading-none">
+                      / {sp.weeklyTarget}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full h-1.5 rounded-full bg-[#EFECE6] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${pacePct}%`,
+                      backgroundColor: sp.accentColor,
+                    }}
+                  />
+                </div>
+
+                {/* Row Footer: Target Edit & Reset / Remaining */}
+                <div className="flex items-center justify-between gap-2 text-xs font-sans">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditTarget(sp)}
+                    className="min-h-[36px] -my-1.5 inline-flex items-center gap-1.5 text-[#78716C] hover:text-[#181715] transition-colors cursor-pointer select-none group"
+                    title={`Tap to override weekly target (${sp.totalRemainingParts} parts left ÷ ${weeksRemaining}w)`}
+                  >
+                    <span className="tabular-nums">
+                      Target <strong className="text-[#181715]">{sp.weeklyTarget}/wk</strong>
+                      {sp.isOverridden && <span className="text-[#78716C] font-normal"> · Custom</span>}
+                    </span>
+                    {!sp.isOverridden && (
+                      <Pencil size={11} className="text-[#78716C] opacity-60 group-hover:opacity-100" />
+                    )}
+                  </button>
+
+                  {sp.isOverridden ? (
+                    <button
+                      type="button"
+                      onClick={() => handleResetTarget(sp.id)}
+                      className="min-h-[36px] px-2 -mr-2 -my-1.5 text-[11px] text-[#78716C] hover:text-[#181715] underline underline-offset-2 cursor-pointer select-none"
+                      title={`Reset to auto-calculated pace (${sp.autoTarget}/wk)`}
+                    >
+                      Reset
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-[#78716C] tabular-nums">
+                      {sp.totalRemainingParts} left
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop (>= 1024px): Equal-Width Side-by-Side Cards */}
+        <div
+          className={`hidden lg:grid gap-3.5 ${
+            subjectPaces.length === 1
+              ? 'lg:grid-cols-1'
+              : subjectPaces.length === 2
+              ? 'lg:grid-cols-2'
+              : 'lg:grid-cols-3'
+          }`}
+        >
           {subjectPaces.map((sp) => {
             const pacePct = Math.min(
               100,

@@ -5,6 +5,7 @@ import { useNavigation } from '../navigation';
 import { DailyEntry, DailySubjectLog, HourBlock } from '../types';
 import { todayStr, uid, addDays } from '../utils';
 import { SUBJECT_ACCENT_COLORS, getSubjectColorById } from '../utils/colors';
+import { parseDurationToMinutes } from '../utils/duration';
 import {
   Plus,
   Check,
@@ -24,10 +25,80 @@ import {
   MoreHorizontal,
   ArrowRight,
   RotateCcw,
+  Clock,
 } from 'lucide-react';
 
 interface CalendarTabProps {
   onNavigateToRevisit?: () => void;
+}
+
+const DURATION_OPTIONS = ['30 min', '45 min', '50 min', '1 hr', '1.5 hr', '2 hr'] as const;
+
+function parseStartTimeToMinutes(startTime?: string, legacyTime?: string): number | null {
+  const raw = (startTime || legacyTime || '').trim();
+  if (!raw) return null;
+
+  // Match 24-hour "HH:MM"
+  const match24 = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) {
+    const h = parseInt(match24[1], 10);
+    const m = parseInt(match24[2], 10);
+    if (!isNaN(h) && !isNaN(m) && h >= 0 && h < 24 && m >= 0 && m < 60) {
+      return h * 60 + m;
+    }
+  }
+
+  // Match 12-hour "H:MM AM/PM" or "H AM/PM"
+  const match12 = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (match12) {
+    let h = parseInt(match12[1], 10);
+    const m = match12[2] ? parseInt(match12[2], 10) : 0;
+    const period = match12[3].toUpperCase();
+    if (!isNaN(h) && !isNaN(m) && h >= 1 && h <= 12 && m >= 0 && m < 60) {
+      if (period === 'AM' && h === 12) h = 0;
+      else if (period === 'PM' && h !== 12) h += 12;
+      return h * 60 + m;
+    }
+  }
+
+  return null;
+}
+
+function minutesToHHMM(totalMins: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.round(totalMins)));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function formatClockTime12h(totalMins: number): { clock: string; period: 'AM' | 'PM' } {
+  const normalized = ((Math.round(totalMins) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(normalized / 60);
+  const m = normalized % 60;
+  const period: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return {
+    clock: `${h12}:${String(m).padStart(2, '0')}`,
+    period,
+  };
+}
+
+function formatTimeRange12h(startMin: number, durationMins: number): string {
+  const start = formatClockTime12h(startMin);
+  const end = formatClockTime12h(startMin + durationMins);
+  if (start.period === end.period) {
+    return `${start.clock} – ${end.clock} ${end.period}`;
+  }
+  return `${start.clock} ${start.period} – ${end.clock} ${end.period}`;
+}
+
+function getDefaultStartTimeForDate(targetDate: string, todayDate: string): string {
+  if (targetDate === todayDate) {
+    const now = new Date();
+    const nextHour = Math.min(22, Math.max(8, now.getHours() + 1));
+    return `${String(nextHour).padStart(2, '0')}:00`;
+  }
+  return '09:00';
 }
 
 interface AgendaTask {
@@ -39,6 +110,10 @@ interface AgendaTask {
   detail?: string;
   subjectLabel: string;
   duration?: string;
+  startTime?: string;
+  startMinutes: number | null;
+  durationMinutes: number;
+  timeRangeLabel?: string;
   done: boolean;
   accentColor: string;
   subjectId?: string;
@@ -47,19 +122,11 @@ interface AgendaTask {
   pastPaperDone?: boolean;
 }
 
-interface AgendaTaskRowProps {
-  task: AgendaTask;
-  onToggle: (task: AgendaTask) => void;
-  onTogglePastPaper: (task: AgendaTask) => void;
-  onLongPress: (task: AgendaTask) => void;
-}
-
-const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
-  task,
-  onToggle,
-  onTogglePastPaper,
-  onLongPress,
-}) => {
+function useLongPressTask(
+  task: AgendaTask,
+  onToggle: (task: AgendaTask) => void,
+  onLongPress: (task: AgendaTask) => void
+) {
   const timerRef = React.useRef<number | null>(null);
   const isLongPressTriggered = React.useRef(false);
   const touchStartPos = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -137,26 +204,45 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
     onToggle(task);
   };
 
+  return {
+    onClick: handleClick,
+    onTouchStart: handleTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
+    onTouchCancel: clearTimer,
+    onMouseDown: handleMouseDown,
+    onMouseMove: handleMouseMove,
+    onMouseUp: handleMouseUp,
+    onMouseLeave: handleMouseLeave,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      clearTimer();
+      onLongPress(task);
+    },
+  };
+}
+
+interface AgendaTaskRowProps {
+  task: AgendaTask;
+  onToggle: (task: AgendaTask) => void;
+  onTogglePastPaper: (task: AgendaTask) => void;
+  onLongPress: (task: AgendaTask) => void;
+}
+
+const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
+  task,
+  onToggle,
+  onTogglePastPaper,
+  onLongPress,
+}) => {
+  const interactionProps = useLongPressTask(task, onToggle, onLongPress);
   const isSubjectWithPart = task.source === 'subject' && !!task.partId;
   const isWatched = task.done;
   const isPastPaper = !!task.pastPaperDone;
 
   return (
     <div
-      onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={clearTimer}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        clearTimer();
-        onLongPress(task);
-      }}
+      {...interactionProps}
       title="Tap to toggle · Hold or use menu to edit or delete"
       className={`group px-4 sm:px-5 py-3.5 transition-colors cursor-pointer flex items-start gap-3 select-none ${
         isWatched ? 'bg-[#F6F4EF]/70 hover:bg-[#F6F4EF]' : 'bg-[#FFFDF9] hover:bg-[#F6F4EF]/55'
@@ -196,18 +282,25 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
             {task.title}
           </h3>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onLongPress(task);
-            }}
-            aria-label={`Task options for ${task.title}`}
-            title="Edit or delete"
-            className="w-8 h-8 -mr-1.5 -mt-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
-          >
-            <MoreHorizontal size={16} />
-          </button>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {task.timeRangeLabel && (
+              <span className="text-[11px] font-sans font-medium text-[#78716C] tabular-nums whitespace-nowrap hidden sm:inline">
+                {task.timeRangeLabel}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLongPress(task);
+              }}
+              aria-label={`Task options for ${task.title}`}
+              title="Edit or delete"
+              className="w-8 h-8 -mr-1.5 -mt-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Unboxed Metadata + Interactive Step 2 Past Paper Toggle */}
@@ -224,6 +317,12 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
               />
               <span>{task.subjectLabel}</span>
             </span>
+            {task.timeRangeLabel && (
+              <span className="sm:hidden inline-flex items-center gap-1.5">
+                <span aria-hidden="true">·</span>
+                <span>{task.timeRangeLabel}</span>
+              </span>
+            )}
             {task.duration && (
               <>
                 <span aria-hidden="true">·</span>
@@ -271,6 +370,447 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
               <span>Past paper</span>
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface TimelineTaskCardProps {
+  task: AgendaTask;
+  topPx: number;
+  heightPx: number;
+  colIndex: number;
+  colCount: number;
+  onToggle: (task: AgendaTask) => void;
+  onTogglePastPaper: (task: AgendaTask) => void;
+  onLongPress: (task: AgendaTask) => void;
+}
+
+const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
+  task,
+  topPx,
+  heightPx,
+  colIndex,
+  colCount,
+  onToggle,
+  onTogglePastPaper,
+  onLongPress,
+}) => {
+  const interactionProps = useLongPressTask(task, onToggle, onLongPress);
+  const isSubjectWithPart = task.source === 'subject' && !!task.partId;
+  const isWatched = task.done;
+  const isPastPaper = !!task.pastPaperDone;
+  const isSplitColumn = colCount > 1;
+  const showDetail = !!task.detail && heightPx >= 106;
+
+  const widthPct = 100 / colCount;
+  const leftPct = colIndex * widthPct;
+  const gapPx = isSplitColumn ? 3 : 0;
+
+  const cardSurfaceStyle: React.CSSProperties = isWatched
+    ? {
+        backgroundColor: '#FAF8F4',
+        backgroundImage:
+          'repeating-linear-gradient(-45deg, #F6F4EF, #F6F4EF 6px, #EDE9DF 6px, #EDE9DF 12px)',
+        borderColor: '#E4E0D8',
+      }
+    : {
+        background: `linear-gradient(0deg, ${task.accentColor}16, ${task.accentColor}16), #FFFDF9`,
+        borderColor: `${task.accentColor}38`,
+      };
+
+  return (
+    <div
+      {...interactionProps}
+      title="Tap to toggle · Hold or use menu to edit or delete"
+      style={{
+        top: `${topPx}px`,
+        height: `${heightPx}px`,
+        left: isSplitColumn ? `calc(${leftPct}% + ${colIndex > 0 ? gapPx : 0}px)` : '0%',
+        width: isSplitColumn
+          ? `calc(${widthPct}% - ${colIndex > 0 && colIndex < colCount - 1 ? gapPx * 2 : gapPx}px)`
+          : '100%',
+        ...cardSurfaceStyle,
+      }}
+      className="absolute rounded-2xl border px-3 sm:px-3.5 py-2.5 flex flex-col justify-between gap-1.5 transition-all duration-150 cursor-pointer select-none overflow-hidden hover:shadow-[0_2px_8px_rgba(24,23,21,0.06)]"
+    >
+      {/* Top Row: Completion Circle + Title + Time Range + Menu */}
+      <div className="flex items-start gap-2 min-w-0">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(task);
+          }}
+          className="w-10 h-10 -ml-2.5 -my-2 flex items-center justify-center rounded-xl hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
+          aria-label={isWatched ? 'Mark incomplete' : 'Mark watched'}
+          title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
+        >
+          <span
+            className="w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
+            style={{
+              borderColor: isWatched ? task.accentColor : `${task.accentColor}85`,
+              backgroundColor: isWatched ? task.accentColor : '#FFFDF9',
+              color: '#FFFDF9',
+            }}
+          >
+            {isWatched && <Check size={11} strokeWidth={3} />}
+          </span>
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h3
+              className={`font-sans font-semibold text-[13px] sm:text-sm leading-snug tracking-tight break-words m-0 ${
+                heightPx < 104 ? 'line-clamp-2' : 'line-clamp-3'
+              } ${isWatched ? 'line-through text-[#78716C]' : 'text-[#181715]'}`}
+            >
+              {task.title}
+            </h3>
+
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {!isSplitColumn && task.timeRangeLabel && (
+                <span
+                  className={`text-[11px] font-sans font-medium tabular-nums whitespace-nowrap pt-0.5 ${
+                    isWatched ? 'text-[#78716C]' : 'text-[#57534E]'
+                  }`}
+                >
+                  {task.timeRangeLabel}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLongPress(task);
+                }}
+                aria-label={`Task options for ${task.title}`}
+                title="Edit or delete"
+                className="w-7 h-7 -mr-1.5 -mt-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#181715]/8 transition-colors cursor-pointer flex-shrink-0"
+              >
+                <MoreHorizontal size={15} />
+              </button>
+            </div>
+          </div>
+
+          {showDetail && (
+            <p className="text-xs font-sans text-[#57534E] leading-snug line-clamp-2 mt-0.5 m-0">
+              {task.detail}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Row: Subject Label + Duration + Inline Past Paper Toggle */}
+      <div className="flex items-center justify-between gap-2 flex-wrap pl-7">
+        <div className="flex items-center gap-1.5 flex-wrap text-[11px] sm:text-xs font-sans text-[#57534E] tabular-nums min-w-0">
+          <span
+            className="inline-flex items-center gap-1.5 font-semibold truncate"
+            style={{ color: isWatched ? '#78716C' : task.accentColor }}
+          >
+            <span
+              className="w-2 h-2 rounded-[3px] flex-shrink-0"
+              style={{ backgroundColor: isWatched ? '#A8A29E' : task.accentColor }}
+              aria-hidden="true"
+            />
+            <span className="truncate">{task.subjectLabel}</span>
+          </span>
+          {task.duration && (
+            <>
+              <span aria-hidden="true" className="text-[#78716C]">
+                ·
+              </span>
+              <span className="text-[#78716C]">{task.duration}</span>
+            </>
+          )}
+          {isSplitColumn && task.timeRangeLabel && (
+            <>
+              <span aria-hidden="true" className="text-[#78716C]">
+                ·
+              </span>
+              <span className="text-[#78716C]">{task.timeRangeLabel}</span>
+            </>
+          )}
+        </div>
+
+        {isSubjectWithPart && (
+          <button
+            type="button"
+            disabled={!isWatched}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isWatched) {
+                onTogglePastPaper(task);
+              }
+            }}
+            className={`min-h-[26px] inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-sans font-semibold border transition-colors flex-shrink-0 ${
+              !isWatched
+                ? 'bg-[#FFFDF9]/70 text-[#A8A29E] border-[#E4E0D8]/80 cursor-not-allowed'
+                : isPastPaper
+                ? 'bg-[#16A34A]/12 text-[#15803D] border-[#16A34A]/30 hover:bg-[#16A34A]/18 cursor-pointer'
+                : 'bg-[#FFFDF9] text-[#57534E] border-[#E4E0D8] hover:border-[#181715] hover:text-[#181715] cursor-pointer'
+            }`}
+            title={
+              !isWatched
+                ? 'Mark "Watched" first to unlock Past Paper'
+                : isPastPaper
+                ? 'Past Paper done (click to toggle)'
+                : 'Mark Past Paper done'
+            }
+          >
+            <span
+              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                !isWatched
+                  ? 'border-[#D6D1C7] bg-[#FFFDF9]'
+                  : isPastPaper
+                  ? 'bg-[#16A34A] border-[#16A34A] text-[#FFFDF9]'
+                  : 'border-[#C8C3B8] bg-[#FFFDF9]'
+              }`}
+            >
+              {isWatched && isPastPaper && <Check size={9} strokeWidth={3.5} />}
+            </span>
+            <span>Past paper</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface DayTimelineViewProps {
+  tasks: AgendaTask[];
+  isViewingToday: boolean;
+  nowMinutes: number;
+  onToggle: (task: AgendaTask) => void;
+  onTogglePastPaper: (task: AgendaTask) => void;
+  onLongPress: (task: AgendaTask) => void;
+}
+
+const DayTimelineView: React.FC<DayTimelineViewProps> = ({
+  tasks,
+  isViewingToday,
+  nowMinutes,
+  onToggle,
+  onTogglePastPaper,
+  onLongPress,
+}) => {
+  const PX_PER_HOUR = 96;
+  const PX_PER_MIN = PX_PER_HOUR / 60;
+  const MIN_CARD_HEIGHT = 82;
+  const VISUAL_GAP_PX = 6;
+  const MIN_VISUAL_MINUTES = Math.ceil((MIN_CARD_HEIGHT + VISUAL_GAP_PX) / PX_PER_MIN);
+  const TOP_PAD = 12;
+
+  const layout = useMemo(() => {
+    const timed = tasks
+      .filter((t) => t.startMinutes !== null)
+      .sort((a, b) => {
+        const diff = (a.startMinutes ?? 0) - (b.startMinutes ?? 0);
+        if (diff !== 0) return diff;
+        return b.durationMinutes - a.durationMinutes;
+      });
+
+    if (timed.length === 0) {
+      return {
+        startHour: 8,
+        endHour: 18,
+        placed: [] as {
+          task: AgendaTask;
+          topPx: number;
+          heightPx: number;
+          colIndex: number;
+          colCount: number;
+        }[],
+      };
+    }
+
+    const earliestMin = Math.min(...timed.map((t) => t.startMinutes!));
+    const latestVisualEnd = Math.max(
+      ...timed.map((t) =>
+        Math.max(t.startMinutes! + t.durationMinutes, t.startMinutes! + MIN_VISUAL_MINUTES)
+      )
+    );
+
+    let minHour = Math.floor(earliestMin / 60);
+    let maxHour = Math.ceil(latestVisualEnd / 60);
+
+    if (isViewingToday) {
+      const currentHour = Math.floor(nowMinutes / 60);
+      minHour = Math.min(minHour, currentHour);
+      maxHour = Math.max(maxHour, currentHour + 1);
+    }
+
+    // Ensure at least a 4-hour span for visual rhythm
+    if (maxHour - minHour < 4) {
+      const extra = 4 - (maxHour - minHour);
+      const addBefore = Math.floor(extra / 2);
+      const addAfter = extra - addBefore;
+      minHour = Math.max(0, minHour - addBefore);
+      maxHour = Math.min(24, maxHour + addAfter);
+      if (maxHour - minHour < 4) {
+        if (minHour === 0) maxHour = Math.min(24, 4);
+        else minHour = Math.max(0, maxHour - 4);
+      }
+    }
+
+    const startHour = Math.max(0, minHour);
+    const endHour = Math.min(24, Math.max(startHour + 1, maxHour));
+
+    // Greedy connected-cluster overlap solver using effective visual bounds
+    type ClusterItem = {
+      task: AgendaTask;
+      start: number;
+      visualEnd: number;
+      colIndex: number;
+    };
+
+    const placed: {
+      task: AgendaTask;
+      topPx: number;
+      heightPx: number;
+      colIndex: number;
+      colCount: number;
+    }[] = [];
+
+    let cluster: ClusterItem[] = [];
+    let clusterEnd = -1;
+
+    const flushCluster = () => {
+      if (cluster.length === 0) return;
+      const colEnds: number[] = [];
+      for (const item of cluster) {
+        let assigned = -1;
+        for (let c = 0; c < colEnds.length; c++) {
+          if (colEnds[c] <= item.start) {
+            assigned = c;
+            colEnds[c] = item.visualEnd;
+            break;
+          }
+        }
+        if (assigned === -1) {
+          assigned = colEnds.length;
+          colEnds.push(item.visualEnd);
+        }
+        item.colIndex = assigned;
+      }
+
+      const colCount = Math.max(1, colEnds.length);
+      for (const item of cluster) {
+        const topPx = TOP_PAD + ((item.start - startHour * 60) / 60) * PX_PER_HOUR + 2;
+        const heightPx = Math.max(MIN_CARD_HEIGHT, item.task.durationMinutes * PX_PER_MIN - 4);
+        placed.push({
+          task: item.task,
+          topPx,
+          heightPx,
+          colIndex: item.colIndex,
+          colCount,
+        });
+      }
+      cluster = [];
+      clusterEnd = -1;
+    };
+
+    for (const task of timed) {
+      const start = task.startMinutes!;
+      const visualEnd = Math.max(start + task.durationMinutes, start + MIN_VISUAL_MINUTES);
+      if (cluster.length > 0 && start >= clusterEnd) {
+        flushCluster();
+      }
+      cluster.push({ task, start, visualEnd, colIndex: 0 });
+      clusterEnd = Math.max(clusterEnd, visualEnd);
+    }
+    flushCluster();
+
+    return { startHour, endHour, placed };
+  }, [tasks, isViewingToday, nowMinutes, MIN_VISUAL_MINUTES, PX_PER_MIN]);
+
+  const hoursList = useMemo(() => {
+    const arr: number[] = [];
+    for (let h = layout.startHour; h <= layout.endHour; h++) {
+      arr.push(h);
+    }
+    return arr;
+  }, [layout.startHour, layout.endHour]);
+
+  const totalHeightPx = (layout.endHour - layout.startHour) * PX_PER_HOUR + TOP_PAD * 2;
+  const showLiveLine =
+    isViewingToday &&
+    nowMinutes >= layout.startHour * 60 &&
+    nowMinutes <= layout.endHour * 60;
+  const liveTopPx = TOP_PAD + ((nowMinutes - layout.startHour * 60) / 60) * PX_PER_HOUR;
+  const liveClock = formatClockTime12h(nowMinutes).clock;
+
+  return (
+    <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl px-3 sm:px-4 py-3 shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+      <div className="relative" style={{ height: `${totalHeightPx}px` }}>
+        {/* Hour Rail Labels & Horizontal Hairlines */}
+        {hoursList.map((h) => {
+          const topPx = TOP_PAD + (h - layout.startHour) * PX_PER_HOUR;
+          const h24 = h % 24;
+          const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+          const meridiem = h24 >= 12 ? 'PM' : 'AM';
+          const showMeridiem = h === layout.startHour || h24 === 12 || h24 === 0;
+
+          return (
+            <React.Fragment key={h}>
+              <div
+                style={{ top: `${topPx - 7}px` }}
+                className="absolute left-0 w-[44px] sm:w-[52px] pr-2 text-right pointer-events-none select-none"
+              >
+                <div className="text-[11px] font-sans font-medium text-[#78716C] tabular-nums leading-none">
+                  {h12}:00
+                </div>
+                {showMeridiem && (
+                  <div className="text-[9px] font-sans font-semibold text-[#A8A29E] uppercase leading-none mt-0.5">
+                    {meridiem}
+                  </div>
+                )}
+              </div>
+              <div
+                style={{ top: `${topPx}px` }}
+                className="absolute left-[48px] sm:left-[56px] right-0 border-t border-[#EFECE6] pointer-events-none"
+              />
+            </React.Fragment>
+          );
+        })}
+
+        {/* Live Current-Time Crimson Indicator (Today only) */}
+        {showLiveLine && (
+          <>
+            <div
+              style={{ top: `${liveTopPx - 7}px` }}
+              className="absolute left-0 w-[44px] sm:w-[52px] pr-1.5 text-right z-30 pointer-events-none select-none"
+            >
+              <span className="inline-block bg-[#FFFDF9] px-1 rounded text-[11px] font-sans font-bold text-[#DC2626] tabular-nums leading-none">
+                {liveClock}
+              </span>
+            </div>
+            <div
+              style={{ top: `${liveTopPx - 3}px` }}
+              className="absolute left-[45px] sm:left-[53px] right-0 z-20 pointer-events-none flex items-center"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] flex-shrink-0" />
+              <span className="flex-1 h-[1.5px] bg-[#DC2626]/85" />
+            </div>
+          </>
+        )}
+
+        {/* Scheduled Duration-Scaled Cards */}
+        <div className="absolute inset-y-0 left-[52px] sm:left-[62px] right-0 z-10">
+          {layout.placed.map((item) => (
+            <TimelineTaskCard
+              key={item.task.id}
+              task={item.task}
+              topPx={item.topPx}
+              heightPx={item.heightPx}
+              colIndex={item.colIndex}
+              colCount={item.colCount}
+              onToggle={onToggle}
+              onTogglePastPaper={onTogglePastPaper}
+              onLongPress={onLongPress}
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -482,15 +1022,34 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     }
   };
 
+  // Live clock ticker for Today current-time indicator
+  const [nowMinutes, setNowMinutes] = useState<number>(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+
+  useEffect(() => {
+    const updateNow = () => {
+      const d = new Date();
+      setNowMinutes(d.getHours() * 60 + d.getMinutes());
+    };
+    const id = window.setInterval(updateNow, 60000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // Add modal state
   const [addMode, setAddMode] = useState<'task' | 'subject'>('task');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDetail, setNewTaskDetail] = useState('');
+  const [newTaskStartTime, setNewTaskStartTime] = useState(() =>
+    getDefaultStartTimeForDate(today, today)
+  );
   const [newTaskDuration, setNewTaskDuration] = useState('50 min');
 
   const [newSubjId, setNewSubjId] = useState('');
   const [newLessonId, setNewLessonId] = useState('');
   const [newPartId, setNewPartId] = useState('');
+  const [newSubjDuration, setNewSubjDuration] = useState('45 min');
   const [newSubjStudied, setNewSubjStudied] = useState(true);
   const [newSubjPastPaper, setNewSubjPastPaper] = useState(false);
 
@@ -502,11 +1061,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskDetail, setEditTaskDetail] = useState('');
+  const [editStartTime, setEditStartTime] = useState('09:00');
   const [editTaskDuration, setEditTaskDuration] = useState('50 min');
 
   const [editSubjId, setEditSubjId] = useState('');
   const [editLessonId, setEditLessonId] = useState('');
   const [editPartId, setEditPartId] = useState('');
+  const [editSubjDuration, setEditSubjDuration] = useState('45 min');
   const [editSubjStudied, setEditSubjStudied] = useState(false);
   const [editSubjPastPaper, setEditSubjPastPaper] = useState(false);
 
@@ -518,6 +1079,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     teachback: '',
     notes: '',
   };
+
+  // Prefill smart default start time whenever Add modal opens
+  useEffect(() => {
+    if (isAddModalOpen) {
+      setNewTaskStartTime(getDefaultStartTimeForDate(activeTargetDate, today));
+    }
+  }, [isAddModalOpen, activeTargetDate, today]);
 
   const updateEntryForDate = (targetDate: string, updates: Partial<DailyEntry>) => {
     const baseEntry = dailyEntries[targetDate] || {
@@ -542,6 +1110,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     if (!actionTask) return;
     setIsActionMenuOpen(false);
 
+    const normalizeDuration = (val?: string, fallback = '45 min') => {
+      if (!val) return fallback;
+      if (val === '60 min') return '1 hr';
+      if (val === '90 min') return '1.5 hr';
+      if (val === '120 min') return '2 hr';
+      return (DURATION_OPTIONS as readonly string[]).includes(val) ? val : fallback;
+    };
+
     if (actionTask.source === 'subject') {
       const entry = dailyEntries[actionTask.date];
       const log = (entry?.subjects || []).find((s) => s.id === actionTask.originalId);
@@ -550,12 +1126,19 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       setEditPartId(actionTask.partId || log?.partId || '');
       setEditSubjStudied(actionTask.done);
       setEditSubjPastPaper(actionTask.pastPaperDone || false);
+      setEditSubjDuration(normalizeDuration(log?.duration || actionTask.duration, '45 min'));
+      setEditStartTime(
+        actionTask.startTime || getDefaultStartTimeForDate(actionTask.date, today)
+      );
     } else if (actionTask.source === 'hour') {
       const entry = dailyEntries[actionTask.date];
       const hourBlock = (entry?.hours || []).find((h) => h.id === actionTask.originalId);
       setEditTaskTitle(actionTask.title);
       setEditTaskDetail(actionTask.detail || '');
-      setEditTaskDuration(actionTask.duration || (hourBlock as any)?.duration || '50 min');
+      setEditTaskDuration(normalizeDuration(actionTask.duration || hourBlock?.duration, '50 min'));
+      setEditStartTime(
+        actionTask.startTime || getDefaultStartTimeForDate(actionTask.date, today)
+      );
     }
 
     setIsEditModalOpen(true);
@@ -584,6 +1167,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             partId: editPartId || undefined,
             studied: editSubjStudied,
             pastPaper: editSubjPastPaper,
+            startTime: editStartTime || undefined,
+            duration: editSubjDuration,
           };
         }
         return s;
@@ -609,6 +1194,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           return {
             ...h,
             task: fullTaskStr,
+            startTime: editStartTime || undefined,
             duration: editTaskDuration,
           };
         }
@@ -672,6 +1258,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           : SUBJECT_ACCENT_COLORS[hIdx % SUBJECT_ACCENT_COLORS.length];
 
         const subjectLabel = matchingSubj ? matchingSubj.name : 'Study Block';
+        const durationStr = h.duration || '50 min';
+        const durationMinutes = Math.max(15, parseDurationToMinutes(durationStr) || 50);
+        const startMinutes = parseStartTimeToMinutes(h.startTime, h.time);
+        const startTime = startMinutes !== null ? minutesToHHMM(startMinutes) : undefined;
+        const timeRangeLabel =
+          startMinutes !== null ? formatTimeRange12h(startMinutes, durationMinutes) : undefined;
 
         result.push({
           id: `h_${dateStr}_${h.id}`,
@@ -681,7 +1273,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           title,
           detail,
           subjectLabel,
-          duration: (h as any).duration || '50 min',
+          duration: durationStr,
+          startTime,
+          startMinutes,
+          durationMinutes,
+          timeRangeLabel,
           done: !!h.done,
           accentColor,
         });
@@ -702,6 +1298,15 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
         const title = partName ? `${subjName} — ${lessonName}: ${partName}` : `${subjName} — ${lessonName}`;
         const accentColor = getSubjectColorById(s.subjectId, subjects);
+        const durationStr = s.duration || (isPastPaper ? '60 min' : '45 min');
+        const durationMinutes = Math.max(
+          15,
+          parseDurationToMinutes(durationStr) || (isPastPaper ? 60 : 45)
+        );
+        const startMinutes = parseStartTimeToMinutes(s.startTime);
+        const startTime = startMinutes !== null ? minutesToHHMM(startMinutes) : undefined;
+        const timeRangeLabel =
+          startMinutes !== null ? formatTimeRange12h(startMinutes, durationMinutes) : undefined;
 
         result.push({
           id: `s_${dateStr}_${s.id}`,
@@ -714,7 +1319,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
             : s.pastPaper
             ? `${subjName} · Past Paper`
             : `${subjName} · Lesson`,
-          duration: (s as any).duration || (isPastPaper ? '60 min' : '45 min'),
+          duration: durationStr,
+          startTime,
+          startMinutes,
+          durationMinutes,
+          timeRangeLabel,
           done: isWatched,
           accentColor,
           subjectId: s.subjectId,
@@ -744,12 +1353,21 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           title: `${subjName} — ${lessonName}`,
           subjectLabel: `${subjName} · ${r.type}`,
           duration: '30 min',
+          startMinutes: null,
+          durationMinutes: 30,
           done: !!r.done,
           accentColor,
         });
       });
 
-    return result;
+    return result.sort((a, b) => {
+      if (a.startMinutes !== null && b.startMinutes !== null) {
+        return a.startMinutes - b.startMinutes;
+      }
+      if (a.startMinutes !== null) return -1;
+      if (b.startMinutes !== null) return 1;
+      return 0;
+    });
   };
 
   const handleToggleTask = (task: AgendaTask) => {
@@ -975,6 +1593,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         id: uid(),
         task: fullTaskStr,
         done: false,
+        startTime: newTaskStartTime || undefined,
         duration: newTaskDuration,
       };
 
@@ -999,7 +1618,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         partId: newPartId || undefined,
         studied: newSubjStudied,
         pastPaper: newSubjPastPaper,
-        duration: newSubjPastPaper ? '60 min' : '45 min',
+        startTime: newTaskStartTime || undefined,
+        duration: newSubjDuration,
       };
 
       const baseEntry = dailyEntries[targetDate] || {
@@ -1474,6 +2094,61 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                 </button>
               )}
             </div>
+          ) : filterMode !== 'all' && !searchQuery.trim() ? (
+            (() => {
+              const timedTasks = tasksToRender.filter((t) => t.startMinutes !== null);
+              const unscheduledTasks = tasksToRender.filter((t) => t.startMinutes === null);
+              const isViewingToday = activeTargetDate === today;
+
+              return (
+                <section className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between px-1 select-none">
+                    <h2 className="font-sans font-bold text-xs uppercase tracking-wider text-[#78716C] m-0">
+                      Schedule
+                    </h2>
+                    <span className="text-xs font-sans font-semibold text-[#78716C] tabular-nums">
+                      {tasksCompletedCount}/{tasksToRender.length}
+                    </span>
+                  </div>
+
+                  {unscheduledTasks.length > 0 && (
+                    <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+                      <div className="px-4 sm:px-5 py-2.5 border-b border-[#EFECE6] flex items-center justify-between gap-2 bg-[#F6F4EF]/60">
+                        <div className="flex items-center gap-1.5 text-xs font-sans font-semibold text-[#57534E]">
+                          <Clock size={13} className="text-[#78716C]" />
+                          <span>Unscheduled</span>
+                        </div>
+                        <span className="text-[11px] font-sans text-[#78716C]">
+                          Tap ··· to set a time
+                        </span>
+                      </div>
+                      <div className="divide-y divide-[#EFECE6]">
+                        {unscheduledTasks.map((task) => (
+                          <AgendaTaskRow
+                            key={task.id}
+                            task={task}
+                            onToggle={handleToggleTask}
+                            onTogglePastPaper={handleToggleTaskPastPaper}
+                            onLongPress={handleTaskLongPress}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {timedTasks.length > 0 && (
+                    <DayTimelineView
+                      tasks={timedTasks}
+                      isViewingToday={isViewingToday}
+                      nowMinutes={nowMinutes}
+                      onToggle={handleToggleTask}
+                      onTogglePastPaper={handleToggleTaskPastPaper}
+                      onLongPress={handleTaskLongPress}
+                    />
+                  )}
+                </section>
+              );
+            })()
           ) : (
             <section className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1 select-none">
@@ -1749,22 +2424,36 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                        Duration
-                      </label>
-                      <select
-                        value={newTaskDuration}
-                        onChange={(e) => setNewTaskDuration(e.target.value)}
-                        className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                      >
-                        <option value="30 min">30 min</option>
-                        <option value="45 min">45 min</option>
-                        <option value="50 min">50 min</option>
-                        <option value="1 hr">1 hr</option>
-                        <option value="1.5 hr">1.5 hr</option>
-                        <option value="2 hr">2 hr</option>
-                      </select>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Start Time
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          value={newTaskStartTime}
+                          onChange={(e) => setNewTaskStartTime(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm tabular-nums focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={newTaskDuration}
+                          onChange={(e) => setNewTaskDuration(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          {DURATION_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -1926,6 +2615,38 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         );
                       })()}
 
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Start Time
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          value={newTaskStartTime}
+                          onChange={(e) => setNewTaskStartTime(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm tabular-nums focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={newSubjDuration}
+                          onChange={(e) => setNewSubjDuration(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          {DURATION_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-5 pt-2 border-t border-[#EFECE6]">
                       <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#181715]">
                         <input
@@ -1941,7 +2662,13 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         <input
                           type="checkbox"
                           checked={newSubjPastPaper}
-                          onChange={(e) => setNewSubjPastPaper(e.target.checked)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setNewSubjPastPaper(checked);
+                            if (checked && newSubjDuration === '45 min') {
+                              setNewSubjDuration('1 hr');
+                            }
+                          }}
                           className="rounded accent-[#181715]"
                         />
                         Past Paper Done
@@ -2006,6 +2733,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     </h3>
                     <p className="text-xs font-sans text-[#78716C] m-0 truncate tabular-nums">
                       {actionTask.subjectLabel}
+                      {actionTask.timeRangeLabel ? ` · ${actionTask.timeRangeLabel}` : ''}
                       {actionTask.duration ? ` · ${actionTask.duration}` : ''}
                     </p>
                   </div>
@@ -2229,6 +2957,38 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         );
                       })()}
 
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Start Time
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          value={editStartTime}
+                          onChange={(e) => setEditStartTime(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm tabular-nums focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={editSubjDuration}
+                          onChange={(e) => setEditSubjDuration(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          {DURATION_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-5 pt-2 border-t border-[#EFECE6]">
                       <label className="flex items-center gap-2 cursor-pointer text-xs font-sans font-medium text-[#181715]">
                         <input
@@ -2281,22 +3041,36 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
-                        Duration
-                      </label>
-                      <select
-                        value={editTaskDuration}
-                        onChange={(e) => setEditTaskDuration(e.target.value)}
-                        className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
-                      >
-                        <option value="30 min">30 min</option>
-                        <option value="45 min">45 min</option>
-                        <option value="50 min">50 min</option>
-                        <option value="1 hr">1 hr</option>
-                        <option value="1.5 hr">1.5 hr</option>
-                        <option value="2 hr">2 hr</option>
-                      </select>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Start Time
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          value={editStartTime}
+                          onChange={(e) => setEditStartTime(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm tabular-nums focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={editTaskDuration}
+                          onChange={(e) => setEditTaskDuration(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          {DURATION_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </>
                 )}
