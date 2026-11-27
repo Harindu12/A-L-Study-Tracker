@@ -4,7 +4,11 @@ import { useStore } from '../store';
 import { useNavigation } from '../navigation';
 import { DailyEntry, DailySubjectLog, HourBlock } from '../types';
 import { todayStr, uid, addDays } from '../utils';
-import { SUBJECT_ACCENT_COLORS, getSubjectColorById } from '../utils/colors';
+import {
+  SoftColorPalette,
+  getSoftSubjectPaletteById,
+  getSoftCategoryPalette,
+} from '../utils/colors';
 import { parseDurationToMinutes } from '../utils/duration';
 import {
   Plus,
@@ -33,6 +37,7 @@ interface CalendarTabProps {
 }
 
 const DURATION_OPTIONS = ['30 min', '45 min', '50 min', '1 hr', '1.5 hr', '2 hr'] as const;
+const GENERAL_CATEGORIES = ['Study Block', 'Revision', 'Past Paper', 'Tuition', 'Notes'] as const;
 
 function parseStartTimeToMinutes(startTime?: string, legacyTime?: string): number | null {
   const raw = (startTime || legacyTime || '').trim();
@@ -109,6 +114,7 @@ interface AgendaTask {
   title: string;
   detail?: string;
   subjectLabel: string;
+  category?: string;
   duration?: string;
   startTime?: string;
   startMinutes: number | null;
@@ -116,6 +122,7 @@ interface AgendaTask {
   timeRangeLabel?: string;
   done: boolean;
   accentColor: string;
+  softPalette: SoftColorPalette;
   subjectId?: string;
   lessonId?: string;
   partId?: string;
@@ -244,30 +251,30 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
     <div
       {...interactionProps}
       title="Tap to toggle · Hold or use menu to edit or delete"
-      className={`group px-4 sm:px-5 py-3.5 transition-colors cursor-pointer flex items-start gap-3 select-none ${
+      className={`group px-4 sm:px-5 py-3 transition-colors cursor-pointer flex items-start gap-3 select-none ${
         isWatched ? 'bg-[#F6F4EF]/70 hover:bg-[#F6F4EF]' : 'bg-[#FFFDF9] hover:bg-[#F6F4EF]/55'
       }`}
     >
-      {/* 40px touch target around 20px subject-tinted circle */}
+      {/* 40px touch target around 18px soft-tinted circle */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onToggle(task);
         }}
-        className="w-10 h-10 -ml-2 -my-1 flex items-center justify-center rounded-xl hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
+        className="w-10 h-10 -ml-2 -my-1.5 flex items-center justify-center rounded-xl hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
         aria-label={isWatched ? 'Mark incomplete' : 'Mark watched'}
         title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
       >
         <span
-          className="w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
+          className="w-[18px] h-[18px] rounded-full border-[1.75px] flex items-center justify-center transition-colors"
           style={{
-            borderColor: isWatched ? task.accentColor : `${task.accentColor}75`,
+            borderColor: isWatched ? task.accentColor : `${task.accentColor}88`,
             backgroundColor: isWatched ? task.accentColor : '#FFFDF9',
             color: '#FFFDF9',
           }}
         >
-          {isWatched && <Check size={11} strokeWidth={3} />}
+          {isWatched && <Check size={10} strokeWidth={3} />}
         </span>
       </button>
 
@@ -275,7 +282,7 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <h3
-            className={`font-sans font-semibold text-sm sm:text-[15px] leading-snug tracking-tight break-words m-0 ${
+            className={`font-sans font-semibold text-sm leading-snug tracking-tight break-words m-0 ${
               isWatched ? 'line-through text-[#78716C]' : 'text-[#181715]'
             }`}
           >
@@ -296,7 +303,7 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
               }}
               aria-label={`Task options for ${task.title}`}
               title="Edit or delete"
-              className="w-8 h-8 -mr-1.5 -mt-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
+              className="w-8 h-8 -mr-1.5 -my-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0"
             >
               <MoreHorizontal size={16} />
             </button>
@@ -304,7 +311,7 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
         </div>
 
         {/* Unboxed Metadata + Interactive Step 2 Past Paper Toggle */}
-        <div className="flex items-center justify-between gap-2 flex-wrap mt-1.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
           <div className="flex items-center gap-1.5 flex-wrap text-xs font-sans text-[#78716C] tabular-nums">
             <span
               className="inline-flex items-center gap-1.5 font-semibold"
@@ -341,11 +348,11 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
                   onTogglePastPaper(task);
                 }
               }}
-              className={`min-h-[28px] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-sans font-semibold border transition-colors flex-shrink-0 ${
+              className={`min-h-[26px] inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-sans font-semibold border transition-colors flex-shrink-0 ${
                 !isWatched
                   ? 'bg-[#F6F4EF] text-[#A8A29E] border-[#EFECE6] cursor-not-allowed'
                   : isPastPaper
-                  ? 'bg-[#16A34A]/10 text-[#15803D] border-[#16A34A]/30 hover:bg-[#16A34A]/15 cursor-pointer'
+                  ? 'bg-[#EEF6F2] text-[#3D7F63] border-[#CFE3D8] hover:bg-[#E4F0EA] cursor-pointer'
                   : 'bg-[#FFFDF9] text-[#57534E] border-[#E4E0D8] hover:border-[#181715] hover:text-[#181715] cursor-pointer'
               }`}
               title={
@@ -361,7 +368,7 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
                   !isWatched
                     ? 'border-[#D6D1C7] bg-[#FFFDF9]'
                     : isPastPaper
-                    ? 'bg-[#16A34A] border-[#16A34A] text-[#FFFDF9]'
+                    ? 'bg-[#3D7F63] border-[#3D7F63] text-[#FFFDF9]'
                     : 'border-[#C8C3B8] bg-[#FFFDF9]'
                 }`}
               >
@@ -402,7 +409,7 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
   const isWatched = task.done;
   const isPastPaper = !!task.pastPaperDone;
   const isSplitColumn = colCount > 1;
-  const showDetail = !!task.detail && heightPx >= 106;
+  const showDetail = !!task.detail && heightPx >= 94;
 
   const widthPct = 100 / colCount;
   const leftPct = colIndex * widthPct;
@@ -416,8 +423,8 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
         borderColor: '#E4E0D8',
       }
     : {
-        background: `linear-gradient(0deg, ${task.accentColor}16, ${task.accentColor}16), #FFFDF9`,
-        borderColor: `${task.accentColor}38`,
+        backgroundColor: task.softPalette.bg,
+        borderColor: task.softPalette.border,
       };
 
   return (
@@ -433,7 +440,7 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
           : '100%',
         ...cardSurfaceStyle,
       }}
-      className="absolute rounded-2xl border px-3 sm:px-3.5 py-2.5 flex flex-col justify-between gap-1.5 transition-all duration-150 cursor-pointer select-none overflow-hidden hover:shadow-[0_2px_8px_rgba(24,23,21,0.06)]"
+      className="absolute rounded-xl border px-2.5 sm:px-3 py-1.5 flex flex-col justify-between gap-1 transition-all duration-150 cursor-pointer select-none overflow-hidden hover:shadow-[0_1px_6px_rgba(24,23,21,0.05)]"
     >
       {/* Top Row: Completion Circle + Title + Time Range + Menu */}
       <div className="flex items-start gap-2 min-w-0">
@@ -443,37 +450,37 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
             e.stopPropagation();
             onToggle(task);
           }}
-          className="w-10 h-10 -ml-2.5 -my-2 flex items-center justify-center rounded-xl hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
+          className="w-9 h-9 -ml-2.5 -my-2 flex items-center justify-center rounded-lg hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
           aria-label={isWatched ? 'Mark incomplete' : 'Mark watched'}
           title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
         >
           <span
-            className="w-5 h-5 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
+            className="w-4 h-4 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
             style={{
-              borderColor: isWatched ? task.accentColor : `${task.accentColor}85`,
-              backgroundColor: isWatched ? task.accentColor : '#FFFDF9',
+              borderColor: isWatched ? task.softPalette.accent : `${task.softPalette.accent}90`,
+              backgroundColor: isWatched ? task.softPalette.accent : '#FFFDF9',
               color: '#FFFDF9',
             }}
           >
-            {isWatched && <Check size={11} strokeWidth={3} />}
+            {isWatched && <Check size={9} strokeWidth={3} />}
           </span>
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center justify-between gap-1.5">
             <h3
-              className={`font-sans font-semibold text-[13px] sm:text-sm leading-snug tracking-tight break-words m-0 ${
-                heightPx < 104 ? 'line-clamp-2' : 'line-clamp-3'
+              className={`font-sans font-semibold text-[13px] leading-tight tracking-tight m-0 min-w-0 ${
+                heightPx < 76 ? 'truncate' : 'line-clamp-2 break-words'
               } ${isWatched ? 'line-through text-[#78716C]' : 'text-[#181715]'}`}
             >
               {task.title}
             </h3>
 
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-0.5 flex-shrink-0">
               {!isSplitColumn && task.timeRangeLabel && (
                 <span
-                  className={`text-[11px] font-sans font-medium tabular-nums whitespace-nowrap pt-0.5 ${
-                    isWatched ? 'text-[#78716C]' : 'text-[#57534E]'
+                  className={`text-[11px] font-sans font-medium tabular-nums whitespace-nowrap ${
+                    isWatched ? 'text-[#8C857D]' : 'text-[#6D675E]'
                   }`}
                 >
                   {task.timeRangeLabel}
@@ -487,50 +494,40 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
                 }}
                 aria-label={`Task options for ${task.title}`}
                 title="Edit or delete"
-                className="w-7 h-7 -mr-1.5 -mt-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#181715]/8 transition-colors cursor-pointer flex-shrink-0"
+                className="w-7 h-7 -mr-1.5 -my-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#181715] hover:bg-[#181715]/8 transition-colors cursor-pointer flex-shrink-0"
               >
-                <MoreHorizontal size={15} />
+                <MoreHorizontal size={14} />
               </button>
             </div>
           </div>
 
           {showDetail && (
-            <p className="text-xs font-sans text-[#57534E] leading-snug line-clamp-2 mt-0.5 m-0">
+            <p className="text-[11px] font-sans text-[#6D675E] leading-snug line-clamp-1 mt-0.5 m-0">
               {task.detail}
             </p>
           )}
         </div>
       </div>
 
-      {/* Bottom Row: Subject Label + Duration + Inline Past Paper Toggle */}
-      <div className="flex items-center justify-between gap-2 flex-wrap pl-7">
-        <div className="flex items-center gap-1.5 flex-wrap text-[11px] sm:text-xs font-sans text-[#57534E] tabular-nums min-w-0">
+      {/* Bottom Row: Subject/Category Label + Duration + Inline Past Paper Toggle */}
+      <div className="flex items-center justify-between gap-2 pl-6 min-w-0">
+        <div className="flex items-center gap-1.5 text-[11px] font-sans text-[#6D675E] tabular-nums min-w-0 truncate">
           <span
             className="inline-flex items-center gap-1.5 font-semibold truncate"
-            style={{ color: isWatched ? '#78716C' : task.accentColor }}
+            style={{ color: isWatched ? '#78716C' : task.softPalette.accent }}
           >
             <span
-              className="w-2 h-2 rounded-[3px] flex-shrink-0"
-              style={{ backgroundColor: isWatched ? '#A8A29E' : task.accentColor }}
+              className="w-1.5 h-1.5 rounded-[2px] flex-shrink-0"
+              style={{ backgroundColor: isWatched ? '#A8A29E' : task.softPalette.accent }}
               aria-hidden="true"
             />
             <span className="truncate">{task.subjectLabel}</span>
           </span>
           {task.duration && (
-            <>
-              <span aria-hidden="true" className="text-[#78716C]">
-                ·
-              </span>
-              <span className="text-[#78716C]">{task.duration}</span>
-            </>
+            <span className="text-[#78716C] flex-shrink-0">· {task.duration}</span>
           )}
           {isSplitColumn && task.timeRangeLabel && (
-            <>
-              <span aria-hidden="true" className="text-[#78716C]">
-                ·
-              </span>
-              <span className="text-[#78716C]">{task.timeRangeLabel}</span>
-            </>
+            <span className="text-[#78716C] truncate">· {task.timeRangeLabel}</span>
           )}
         </div>
 
@@ -544,11 +541,11 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
                 onTogglePastPaper(task);
               }
             }}
-            className={`min-h-[26px] inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-sans font-semibold border transition-colors flex-shrink-0 ${
+            className={`min-h-[24px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-sans font-semibold border transition-colors flex-shrink-0 ${
               !isWatched
-                ? 'bg-[#FFFDF9]/70 text-[#A8A29E] border-[#E4E0D8]/80 cursor-not-allowed'
+                ? 'bg-[#FFFDF9]/75 text-[#A8A29E] border-[#E4E0D8]/80 cursor-not-allowed'
                 : isPastPaper
-                ? 'bg-[#16A34A]/12 text-[#15803D] border-[#16A34A]/30 hover:bg-[#16A34A]/18 cursor-pointer'
+                ? 'bg-[#EEF6F2] text-[#3D7F63] border-[#CFE3D8] hover:bg-[#E4F0EA] cursor-pointer'
                 : 'bg-[#FFFDF9] text-[#57534E] border-[#E4E0D8] hover:border-[#181715] hover:text-[#181715] cursor-pointer'
             }`}
             title={
@@ -560,15 +557,15 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
             }
           >
             <span
-              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+              className={`w-3 h-3 rounded-full border flex items-center justify-center flex-shrink-0 ${
                 !isWatched
                   ? 'border-[#D6D1C7] bg-[#FFFDF9]'
                   : isPastPaper
-                  ? 'bg-[#16A34A] border-[#16A34A] text-[#FFFDF9]'
+                  ? 'bg-[#3D7F63] border-[#3D7F63] text-[#FFFDF9]'
                   : 'border-[#C8C3B8] bg-[#FFFDF9]'
               }`}
             >
-              {isWatched && isPastPaper && <Check size={9} strokeWidth={3.5} />}
+              {isWatched && isPastPaper && <Check size={8} strokeWidth={3.5} />}
             </span>
             <span>Past paper</span>
           </button>
@@ -595,12 +592,12 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
   onTogglePastPaper,
   onLongPress,
 }) => {
-  const PX_PER_HOUR = 96;
+  const PX_PER_HOUR = 68;
   const PX_PER_MIN = PX_PER_HOUR / 60;
-  const MIN_CARD_HEIGHT = 82;
-  const VISUAL_GAP_PX = 6;
+  const MIN_CARD_HEIGHT = 56;
+  const VISUAL_GAP_PX = 4;
   const MIN_VISUAL_MINUTES = Math.ceil((MIN_CARD_HEIGHT + VISUAL_GAP_PX) / PX_PER_MIN);
-  const TOP_PAD = 12;
+  const TOP_PAD = 10;
 
   const layout = useMemo(() => {
     const timed = tasks
@@ -742,7 +739,7 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
   const liveClock = formatClockTime12h(nowMinutes).clock;
 
   return (
-    <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl px-3 sm:px-4 py-3 shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
+    <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl px-3 sm:px-4 py-2.5 shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
       <div className="relative" style={{ height: `${totalHeightPx}px` }}>
         {/* Hour Rail Labels & Horizontal Hairlines */}
         {hoursList.map((h) => {
@@ -775,14 +772,14 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
           );
         })}
 
-        {/* Live Current-Time Crimson Indicator (Today only) */}
+        {/* Live Current-Time Soft Rose Indicator (Today only) */}
         {showLiveLine && (
           <>
             <div
               style={{ top: `${liveTopPx - 7}px` }}
               className="absolute left-0 w-[44px] sm:w-[52px] pr-1.5 text-right z-30 pointer-events-none select-none"
             >
-              <span className="inline-block bg-[#FFFDF9] px-1 rounded text-[11px] font-sans font-bold text-[#DC2626] tabular-nums leading-none">
+              <span className="inline-block bg-[#FFFDF9] px-1 rounded text-[11px] font-sans font-semibold text-[#C25954] tabular-nums leading-none">
                 {liveClock}
               </span>
             </div>
@@ -790,8 +787,8 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
               style={{ top: `${liveTopPx - 3}px` }}
               className="absolute left-[45px] sm:left-[53px] right-0 z-20 pointer-events-none flex items-center"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] flex-shrink-0" />
-              <span className="flex-1 h-[1.5px] bg-[#DC2626]/85" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C25954] flex-shrink-0" />
+              <span className="flex-1 h-[1.25px] bg-[#C25954]/65" />
             </div>
           </>
         )}
@@ -1041,6 +1038,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
   const [addMode, setAddMode] = useState<'task' | 'subject'>('task');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDetail, setNewTaskDetail] = useState('');
+  const [newTaskSubjectId, setNewTaskSubjectId] = useState('');
+  const [newTaskCategory, setNewTaskCategory] = useState<string>('Study Block');
   const [newTaskStartTime, setNewTaskStartTime] = useState(() =>
     getDefaultStartTimeForDate(today, today)
   );
@@ -1061,6 +1060,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
 
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskDetail, setEditTaskDetail] = useState('');
+  const [editTaskSubjectId, setEditTaskSubjectId] = useState('');
+  const [editTaskCategory, setEditTaskCategory] = useState<string>('Study Block');
   const [editStartTime, setEditStartTime] = useState('09:00');
   const [editTaskDuration, setEditTaskDuration] = useState('50 min');
 
@@ -1135,6 +1136,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       const hourBlock = (entry?.hours || []).find((h) => h.id === actionTask.originalId);
       setEditTaskTitle(actionTask.title);
       setEditTaskDetail(actionTask.detail || '');
+      setEditTaskSubjectId(hourBlock?.subjectId || actionTask.subjectId || '');
+      setEditTaskCategory(hourBlock?.category || actionTask.category || 'Study Block');
       setEditTaskDuration(normalizeDuration(actionTask.duration || hourBlock?.duration, '50 min'));
       setEditStartTime(
         actionTask.startTime || getDefaultStartTimeForDate(actionTask.date, today)
@@ -1194,6 +1197,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           return {
             ...h,
             task: fullTaskStr,
+            subjectId: editTaskSubjectId || undefined,
+            category: editTaskCategory || undefined,
             startTime: editStartTime || undefined,
             duration: editTaskDuration,
           };
@@ -1238,7 +1243,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
     const result: AgendaTask[] = [];
 
     if (dayEntry && dayEntry.hours) {
-      dayEntry.hours.forEach((h, hIdx) => {
+      dayEntry.hours.forEach((h) => {
         let title = h.task;
         let detail: string | undefined = undefined;
         const colonIdx = h.task.indexOf(':');
@@ -1247,17 +1252,33 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           detail = h.task.slice(colonIdx + 1).trim();
         }
 
-        const matchingSubj = subjects.find(
-          (s) =>
-            title.toLowerCase().includes(s.name.toLowerCase()) ||
-            (detail && detail.toLowerCase().includes(s.name.toLowerCase()))
-        );
+        const explicitSubj = h.subjectId
+          ? subjects.find((s) => s.id === h.subjectId)
+          : undefined;
 
-        const accentColor = matchingSubj
-          ? getSubjectColorById(matchingSubj.id, subjects)
-          : SUBJECT_ACCENT_COLORS[hIdx % SUBJECT_ACCENT_COLORS.length];
+        const keywordSubj = !h.subjectId
+          ? subjects.find(
+              (s) =>
+                title.toLowerCase().includes(s.name.toLowerCase()) ||
+                (detail && detail.toLowerCase().includes(s.name.toLowerCase()))
+            )
+          : undefined;
 
-        const subjectLabel = matchingSubj ? matchingSubj.name : 'Study Block';
+        const resolvedSubj = explicitSubj || keywordSubj;
+        const category = h.category || 'Study Block';
+
+        const softPalette = resolvedSubj
+          ? getSoftSubjectPaletteById(resolvedSubj.id, subjects)
+          : getSoftCategoryPalette(category);
+
+        const subjectLabel = resolvedSubj
+          ? category !== 'Study Block'
+            ? `${resolvedSubj.name} · ${category}`
+            : `${resolvedSubj.name} · Task`
+          : category === 'Study Block'
+          ? 'General'
+          : category;
+
         const durationStr = h.duration || '50 min';
         const durationMinutes = Math.max(15, parseDurationToMinutes(durationStr) || 50);
         const startMinutes = parseStartTimeToMinutes(h.startTime, h.time);
@@ -1273,13 +1294,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           title,
           detail,
           subjectLabel,
+          category,
           duration: durationStr,
           startTime,
           startMinutes,
           durationMinutes,
           timeRangeLabel,
           done: !!h.done,
-          accentColor,
+          accentColor: softPalette.accent,
+          softPalette,
+          subjectId: resolvedSubj?.id,
         });
       });
     }
@@ -1297,7 +1321,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         const isPastPaper = part ? !!part.pastPaper : !!s.pastPaper;
 
         const title = partName ? `${subjName} — ${lessonName}: ${partName}` : `${subjName} — ${lessonName}`;
-        const accentColor = getSubjectColorById(s.subjectId, subjects);
+        const softPalette = getSoftSubjectPaletteById(s.subjectId, subjects);
         const durationStr = s.duration || (isPastPaper ? '60 min' : '45 min');
         const durationMinutes = Math.max(
           15,
@@ -1325,7 +1349,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           durationMinutes,
           timeRangeLabel,
           done: isWatched,
-          accentColor,
+          accentColor: softPalette.accent,
+          softPalette,
           subjectId: s.subjectId,
           lessonId: s.lessonId,
           partId: s.partId,
@@ -1343,7 +1368,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         const lesson = lessons.find((l) => l.id === r.lessonId);
         const subjName = subj ? subj.name : 'Subject';
         const lessonName = lesson ? lesson.name : 'Lesson Revisit';
-        const accentColor = getSubjectColorById(r.subjectId, subjects);
+        const softPalette = getSoftSubjectPaletteById(r.subjectId, subjects);
 
         result.push({
           id: `r_${dateStr}_${r.id}`,
@@ -1356,7 +1381,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           startMinutes: null,
           durationMinutes: 30,
           done: !!r.done,
-          accentColor,
+          accentColor: softPalette.accent,
+          softPalette,
         });
       });
 
@@ -1593,6 +1619,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
         id: uid(),
         task: fullTaskStr,
         done: false,
+        subjectId: newTaskSubjectId || undefined,
+        category: newTaskCategory || undefined,
         startTime: newTaskStartTime || undefined,
         duration: newTaskDuration,
       };
@@ -1608,6 +1636,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       updateEntryForDate(targetDate, { hours: [...(baseEntry.hours || []), newHour] });
       setNewTaskTitle('');
       setNewTaskDetail('');
+      setNewTaskSubjectId('');
+      setNewTaskCategory('Study Block');
       closeOverlay();
     } else {
       if (!newSubjId || !newLessonId) return;
@@ -1746,7 +1776,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
           const isOverdue = r.date < today;
           const subject = subjects.find((s) => s.id === r.subjectId);
           const lesson = lessons.find((l) => l.id === r.lessonId);
-          const accentColor = getSubjectColorById(r.subjectId, subjects);
+          const accentColor = getSoftSubjectPaletteById(r.subjectId, subjects).accent;
 
           return (
             <div
@@ -1760,8 +1790,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                 className="w-10 h-10 -ml-2 flex items-center justify-center rounded-xl hover:bg-[#EDEAE2] transition-colors cursor-pointer flex-shrink-0 group"
               >
                 <span
-                  className="w-5 h-5 rounded-full border-[1.75px] bg-[#FFFDF9] block transition-colors group-hover:border-[#16A34A]"
-                  style={{ borderColor: `${accentColor}75` }}
+                  className="w-5 h-5 rounded-full border-[1.75px] bg-[#FFFDF9] block transition-colors group-hover:border-[#3D7F63]"
+                  style={{ borderColor: `${accentColor}88` }}
                 />
               </button>
 
@@ -1785,7 +1815,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                   <span>{r.type}</span>
                   <span aria-hidden="true">·</span>
                   {isOverdue ? (
-                    <span className="inline-flex items-center gap-1 text-[#DC2626] font-semibold">
+                    <span className="inline-flex items-center gap-1 text-[#B45A55] font-semibold">
                       <AlertCircle size={12} />
                       <span>Overdue</span>
                     </span>
@@ -2427,6 +2457,43 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Subject
+                        </label>
+                        <select
+                          value={newTaskSubjectId}
+                          onChange={(e) => setNewTaskSubjectId(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          <option value="">General</option>
+                          {subjects.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Category
+                        </label>
+                        <select
+                          value={newTaskCategory}
+                          onChange={(e) => setNewTaskCategory(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          {GENERAL_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
                           Start Time
                         </label>
                         <input
@@ -2720,9 +2787,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border"
                     style={{
-                      backgroundColor: `${actionTask.accentColor}15`,
-                      borderColor: `${actionTask.accentColor}35`,
-                      color: actionTask.accentColor,
+                      backgroundColor: actionTask.softPalette.bg,
+                      borderColor: actionTask.softPalette.border,
+                      color: actionTask.softPalette.accent,
                     }}
                   >
                     <BookOpen size={16} />
@@ -3039,6 +3106,43 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                         placeholder="e.g. Questions 1 to 5"
                         className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3.5 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Subject
+                        </label>
+                        <select
+                          value={editTaskSubjectId}
+                          onChange={(e) => setEditTaskSubjectId(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          <option value="">General</option>
+                          {subjects.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-sans font-bold text-[#78716C] uppercase tracking-wider mb-1">
+                          Category
+                        </label>
+                        <select
+                          value={editTaskCategory}
+                          onChange={(e) => setEditTaskCategory(e.target.value)}
+                          className="w-full bg-[#F6F4EF] border border-[#E4E0D8] rounded-xl px-3 py-2.5 text-sm focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none text-[#181715]"
+                        >
+                          {GENERAL_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">

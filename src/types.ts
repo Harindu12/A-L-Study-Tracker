@@ -37,6 +37,8 @@ export interface HourBlock {
   time?: string;
   startTime?: string;
   duration?: string;
+  subjectId?: string;
+  category?: string;
   task: string;
   done: boolean;
 }
