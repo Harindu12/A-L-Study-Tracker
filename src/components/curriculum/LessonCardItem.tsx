@@ -64,6 +64,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
   const telegramTextRef = useRef(telegramText);
   telegramTextRef.current = telegramText;
   const [removedPreviewIds, setRemovedPreviewIds] = useState<Record<string, boolean>>({});
+  const [editedNames, setEditedNames] = useState<Record<string, string>>({});
+  const [editedTitles, setEditedTitles] = useState<Record<string, string>>({});
   const [editedLinks, setEditedLinks] = useState<Record<string, string>>({});
   const [showBulkLinks, setShowBulkLinks] = useState(false);
   const [bulkLinksText, setBulkLinksText] = useState('');
@@ -75,6 +77,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       setTelegramText('');
       telegramTextRef.current = '';
       setRemovedPreviewIds({});
+      setEditedNames({});
+      setEditedTitles({});
       setEditedLinks({});
       setShowBulkLinks(false);
       setBulkLinksText('');
@@ -245,14 +249,22 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       visibleRawTelegramParts.map((item, idx) => {
         const bulkLink = bulkLinksList[idx] || '';
         const baseLink = bulkLink || item.videoLink;
+        const rawName = editedNames[item.id] !== undefined ? editedNames[item.id] : item.name;
+        const rawTitle = editedTitles[item.id] !== undefined ? editedTitles[item.id] : item.title;
         const rawLink = editedLinks[item.id] !== undefined ? editedLinks[item.id] : baseLink;
+        const effectiveName = rawName.trim() || item.name;
+        const effectiveTitle = rawTitle.trim();
         return {
           ...item,
+          rawName,
+          rawTitle,
           rawLink,
+          effectiveName,
+          effectiveTitle,
           effectiveVideoLink: isValidHttpUrl(rawLink) ? rawLink.trim() : '',
         };
       }),
-    [visibleRawTelegramParts, bulkLinksList, editedLinks]
+    [visibleRawTelegramParts, bulkLinksList, editedNames, editedTitles, editedLinks]
   );
 
   const previewLinksCount = useMemo(
@@ -308,6 +320,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       const normalized = extractTextFromRichElement(el);
       setTelegramText(normalized);
       setRemovedPreviewIds({});
+      setEditedNames({});
+      setEditedTitles({});
       setEditedLinks({});
     } catch {
       // Fall back to default paste behavior without error
@@ -327,6 +341,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
 
     setTelegramText(extracted);
     setRemovedPreviewIds({});
+    setEditedNames({});
+    setEditedTitles({});
     setEditedLinks({});
   };
 
@@ -337,6 +353,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     }
     setTelegramText('');
     setRemovedPreviewIds({});
+    setEditedNames({});
+    setEditedTitles({});
     setEditedLinks({});
   };
 
@@ -349,7 +367,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
     let skipped = 0;
 
     for (const item of previewTelegramParts) {
-      const normalized = item.name.trim().toLowerCase();
+      const normalized = item.effectiveName.trim().toLowerCase();
       if (seenNames.has(normalized)) {
         skipped++;
         continue;
@@ -357,8 +375,8 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
       seenNames.add(normalized);
       newParts.push({
         id: Math.random().toString(36).slice(2, 10),
-        name: item.name,
-        ...(item.title ? { title: item.title } : {}),
+        name: item.effectiveName,
+        ...(item.effectiveTitle ? { title: item.effectiveTitle } : {}),
         ...(item.effectiveVideoLink ? { videoLink: item.effectiveVideoLink } : {}),
         watched: false,
         pastPaper: false,
@@ -1111,7 +1129,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     <div className="relative flex-1 min-h-[190px] flex flex-col">
                       {telegramText.length === 0 && (
                         <div className="pointer-events-none absolute inset-0 p-3.5 font-sans text-[13px] leading-relaxed text-[#78716C]/70 whitespace-pre-wrap select-none overflow-hidden">
-                          {'👉 DAY 01 | යාන්ත්‍ර විද්‍යාව ආරම්භය - දෛශික\nhttps://youtu.be/...'}
+                          {'Paste any Telegram lesson list — Day 01, Part 01, numbered lines, or titles with links\nhttps://youtu.be/...'}
                         </div>
                       )}
                       <div
@@ -1137,7 +1155,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                         <div className="flex items-center justify-between gap-2 pt-0.5">
                           {rawParsedTelegramParts.length === 0 ? (
                             <p className="text-xs font-sans font-medium text-[#DC2626] m-0">
-                              No DAY lines found - check the pasted text
+                              No lesson parts found — check that your message has readable lines or links
                             </p>
                           ) : previewTelegramParts.length === 0 ? (
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1286,37 +1304,41 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     ) : (
                       <div className="flex flex-col gap-2">
                         {previewTelegramParts.map((item) => {
-                          const alreadyExists = existingPartNamesSet.has(item.name.trim().toLowerCase());
+                          const alreadyExists = existingPartNamesSet.has(
+                            item.effectiveName.trim().toLowerCase()
+                          );
                           return (
                             <div
                               key={item.id}
                               className="rounded-2xl border border-[#E4E0D8] bg-[#FFFDF9] p-3 flex flex-col gap-2 shadow-[0_1px_2px_rgba(24,23,21,0.03)]"
                             >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-sans font-bold text-xs text-[#181715]">
-                                      {item.name}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <input
+                                    type="text"
+                                    value={item.rawName}
+                                    onChange={(e) =>
+                                      setEditedNames((prev) => ({
+                                        ...prev,
+                                        [item.id]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={item.name}
+                                    aria-label={`Part name for ${item.name}`}
+                                    className="w-28 sm:w-32 font-sans font-bold text-xs px-2.5 py-1.5 rounded-xl border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none transition-colors"
+                                  />
+                                  {item.effectiveVideoLink && (
+                                    <span
+                                      title={item.effectiveVideoLink}
+                                      className="inline-flex items-center text-[#16A34A] flex-shrink-0"
+                                    >
+                                      <Link2 size={12} />
                                     </span>
-                                    {item.effectiveVideoLink && (
-                                      <span
-                                        title={item.effectiveVideoLink}
-                                        className="inline-flex items-center text-[#16A34A]"
-                                      >
-                                        <Link2 size={12} />
-                                      </span>
-                                    )}
-                                    {alreadyExists && (
-                                      <span className="text-[11px] font-sans font-medium text-[#78716C]">
-                                        · Already exists (will skip)
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {item.title && (
-                                    <p className="text-xs font-sans text-[#57534E] leading-relaxed whitespace-normal break-words mt-1 m-0">
-                                      {item.title}
-                                    </p>
+                                  )}
+                                  {alreadyExists && (
+                                    <span className="text-[11px] font-sans font-medium text-[#78716C] truncate">
+                                      · Already exists (will skip)
+                                    </span>
                                   )}
                                 </div>
 
@@ -1328,13 +1350,28 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                                       [item.id]: true,
                                     }))
                                   }
-                                  title={`Remove ${item.name} from import`}
-                                  aria-label={`Remove ${item.name}`}
-                                  className="w-8 h-8 -mt-1 -mr-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#DC2626] hover:bg-red-50/70 transition-colors cursor-pointer flex-shrink-0"
+                                  title={`Remove ${item.effectiveName} from import`}
+                                  aria-label={`Remove ${item.effectiveName}`}
+                                  className="w-8 h-8 -mt-0.5 -mr-1 rounded-lg flex items-center justify-center text-[#78716C] hover:text-[#DC2626] hover:bg-red-50/70 transition-colors cursor-pointer flex-shrink-0"
                                 >
                                   <X size={14} />
                                 </button>
                               </div>
+
+                              {/* Editable Topic Title */}
+                              <input
+                                type="text"
+                                value={item.rawTitle}
+                                onChange={(e) =>
+                                  setEditedTitles((prev) => ({
+                                    ...prev,
+                                    [item.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Optional topic title..."
+                                aria-label={`Topic title for ${item.effectiveName}`}
+                                className="w-full font-sans text-xs px-2.5 py-1.5 rounded-xl border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] placeholder:text-[#A8A29E] focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none transition-colors"
+                              />
 
                               {/* Optional manual video link field (type="url" bypasses unlayered text-input rule) */}
                               <div className="flex items-center gap-2">
@@ -1356,7 +1393,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                                     }))
                                   }
                                   placeholder="Optional video link (https://...)"
-                                  aria-label={`Video link for ${item.name}`}
+                                  aria-label={`Video link for ${item.effectiveName}`}
                                   className="w-full font-sans text-xs px-2.5 py-2 rounded-xl border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] placeholder:text-[#A8A29E] focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none transition-colors"
                                 />
                               </div>
