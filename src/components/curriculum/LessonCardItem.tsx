@@ -1129,7 +1129,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                     <div className="relative flex-1 min-h-[190px] flex flex-col">
                       {telegramText.length === 0 && (
                         <div className="pointer-events-none absolute inset-0 p-3.5 font-sans text-[13px] leading-relaxed text-[#78716C]/70 whitespace-pre-wrap select-none overflow-hidden">
-                          {'Paste any Telegram lesson list — Day 01, Part 01, numbered lines, or titles with links\nhttps://youtu.be/...'}
+                          {'Paste any Telegram lesson list — Day 01, Part 01, or any text with a link behind it\nhttps://youtu.be/...'}
                         </div>
                       )}
                       <div
@@ -1325,7 +1325,7 @@ export const LessonCardItem: React.FC<LessonCardItemProps> = ({
                                     }
                                     placeholder={item.name}
                                     aria-label={`Part name for ${item.name}`}
-                                    className="w-28 sm:w-32 font-sans font-bold text-xs px-2.5 py-1.5 rounded-xl border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none transition-colors"
+                                    className="flex-1 min-w-[140px] font-sans font-bold text-xs px-2.5 py-1.5 rounded-xl border border-[#E4E0D8] bg-[#F6F4EF] text-[#181715] focus:border-[#181715] focus:bg-[#FFFDF9] focus:outline-none transition-colors"
                                   />
                                   {item.effectiveVideoLink && (
                                     <span

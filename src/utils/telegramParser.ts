@@ -37,12 +37,15 @@ const KEYWORD_TOKEN_REGEX =
 const LEADING_NUMBER_LIST_REGEX =
   /^(?:[^\p{L}\p{N}\s]+\s*)*(?:\(?0*(\d{1,3})\)?[.):\-–—|]+\s+|0*(\d{1,3})\uFE0F?\u20E3\s*|#0*(\d{1,3})\b\s*[-–—:|]*\s*)(.*)$/u;
 
-// Leading bullets / decorative emojis to trim cleanly from extracted titles
+// Leading bullets / decorative symbols to trim cleanly from extracted titles
 const LEADING_BULLET_REGEX = /^[\s•·▪▫▸▹►▶👉👈👇👆🔹🔸🔷🔶📌📍✅✔☑🎬🎥📹📺🔗✨🔥⚡⭐🌟➤➔➜➡-]+/u;
 
-// Common link-only CTA phrases that shouldn't pollute lesson titles
+// Common link-only CTA phrases that shouldn't become or pollute part names/titles
 const LINK_CTA_ONLY_REGEX =
-  /^(?:watch(?:\s+(?:now|here|video|recording|class|lesson))?|click\s+here|tap\s+here|video(?:\s+link)?|link|recording|youtube|drive\s+link|zoom\s+link|class\s+link|open|play)[\s:|\-–—👉👇🔗]*$/i;
+  /^(?:watch(?:\s+(?:now|here|video|recording|class|lesson))?|click\s+here|tap\s+here|video(?:\s+link)?|link|recording|youtube|drive\s+link|zoom\s+link|class\s+link|open|play)[\s:|\-–—]*$/i;
+
+const TRAILING_CTA_REGEX =
+  /[\s|:\-–—]+(?:watch(?:\s+(?:now|here|video|recording|class|lesson))?|click\s+here|tap\s+here|video\s+link|drive\s+link|zoom\s+link|class\s+link|link)\s*$/i;
 
 function isSeparatorLine(trimmedLine: string): boolean {
   if (!trimmedLine) return false;
@@ -61,22 +64,12 @@ function isHeaderLine(trimmedLine: string): boolean {
   );
 }
 
-function extractUrlAndCleanText(rawText: string): { url: string; cleanedText: string } {
-  const match = rawText.match(URL_REGEX);
-  if (!match) {
-    return { url: '', cleanedText: cleanTitleFragments(rawText) };
-  }
-
-  let url = match[0];
+function normalizeUrl(rawUrl: string): string {
+  let url = rawUrl.trim();
   while (url.endsWith(')') && (url.match(/\(/g)?.length || 0) < (url.match(/\)/g)?.length || 0)) {
     url = url.slice(0, -1);
   }
-  url = url.replace(/[.,;!?]+$/, '');
-
-  const withoutUrls = rawText.replace(GLOBAL_URL_REGEX, ' ').trim();
-  const cleanedText = cleanTitleFragments(withoutUrls);
-
-  return { url, cleanedText: LINK_CTA_ONLY_REGEX.test(cleanedText) ? '' : cleanedText };
+  return url.replace(/[.,;!?]+$/, '');
 }
 
 function cleanTitleFragments(text: string): string {
@@ -91,6 +84,30 @@ function cleanTitleFragments(text: string): string {
     .trim();
 
   return /[\p{L}\p{N}]/u.test(cleaned) ? cleaned : '';
+}
+
+function cleanLinkedSegmentText(rawText: string): string {
+  let cleaned = cleanTitleFragments(rawText);
+  if (!cleaned) return '';
+  if (LINK_CTA_ONLY_REGEX.test(cleaned)) return '';
+  const withoutTrailingCta = cleanTitleFragments(cleaned.replace(TRAILING_CTA_REGEX, ''));
+  if (withoutTrailingCta && !LINK_CTA_ONLY_REGEX.test(withoutTrailingCta)) {
+    return withoutTrailingCta;
+  }
+  return LINK_CTA_ONLY_REGEX.test(cleaned) ? '' : cleaned;
+}
+
+function extractUrlAndCleanText(rawText: string): { url: string; cleanedText: string } {
+  const match = rawText.match(URL_REGEX);
+  if (!match) {
+    return { url: '', cleanedText: cleanTitleFragments(rawText) };
+  }
+
+  const url = normalizeUrl(match[0]);
+  const withoutUrls = rawText.replace(GLOBAL_URL_REGEX, ' ').trim();
+  const cleanedText = cleanLinkedSegmentText(withoutUrls);
+
+  return { url, cleanedText };
 }
 
 export function isValidHttpUrl(url?: string): boolean {
@@ -220,13 +237,7 @@ export function extractHttpUrls(input: string): string[] {
   if (!matches) return [];
 
   return matches
-    .map((raw) => {
-      let url = raw.trim();
-      while (url.endsWith(')') && (url.match(/\(/g)?.length || 0) < (url.match(/\)/g)?.length || 0)) {
-        url = url.slice(0, -1);
-      }
-      return url.replace(/[.,;!?]+$/, '');
-    })
+    .map((raw) => normalizeUrl(raw))
     .filter((url) => isValidHttpUrl(url));
 }
 
@@ -289,232 +300,319 @@ function extractEntryFromTokenSpan(
   };
 }
 
-function parseLabeledLines(lines: string[]): ParsedTelegramPart[] {
-  const results: ParsedTelegramPart[] = [];
-  let currentEntry: ParsedTelegramPart | null = null;
-  let sawBlankSinceLastLine = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-
-    if (!trimmed) {
-      sawBlankSinceLastLine = true;
-      continue;
-    }
-
-    if (isSeparatorLine(trimmed) || isHeaderLine(trimmed)) {
-      sawBlankSinceLastLine = true;
-      continue;
-    }
-
-    const tokens = findKeywordTokens(trimmed);
-    if (tokens.length > 0) {
-      // Check if multiple items of the SAME label type are packed on one line (e.g. "Day 01 ... | Day 02 ...")
-      const primaryPrefix = tokens[0].labelPrefix;
-      const sameFamilyTokens = tokens.filter((t) => t.labelPrefix === primaryPrefix);
-
-      if (sameFamilyTokens.length > 1) {
-        for (let k = 0; k < sameFamilyTokens.length; k++) {
-          const tok = sameFamilyTokens[k];
-          const sliceStart = k === 0 ? 0 : tok.matchStart;
-          const sliceEnd =
-            k < sameFamilyTokens.length - 1 ? sameFamilyTokens[k + 1].matchStart : trimmed.length;
-          const subLine = trimmed.slice(sliceStart, sliceEnd);
-          const adjustedToken: KeywordTokenMatch = {
-            ...tok,
-            matchStart: tok.matchStart - sliceStart,
-            matchEnd: tok.matchEnd - sliceStart,
-          };
-          currentEntry = extractEntryFromTokenSpan(subLine, adjustedToken, i, k);
-          results.push(currentEntry);
-        }
-      } else {
-        // Prefer an explicit "Day" token if both Day & Part appear (e.g., "DAY 01 | Mechanics Part 1")
-        const chosenToken =
-          tokens.find((t) => t.labelPrefix === 'Day') || tokens[0];
-        currentEntry = extractEntryFromTokenSpan(trimmed, chosenToken, i, 0);
-        results.push(currentEntry);
-      }
-
-      sawBlankSinceLastLine = false;
-      continue;
-    }
-
-    // Continuation line for the active labeled entry
-    if (currentEntry) {
-      const { url, cleanedText } = extractUrlAndCleanText(trimmed);
-
-      if (url && !currentEntry.videoLink) {
-        currentEntry.videoLink = url;
-      }
-
-      // Populate title if it was empty (even across a blank line), or continue adjacent title lines
-      if (cleanedText && (!currentEntry.title || !sawBlankSinceLastLine)) {
-        currentEntry.title = currentEntry.title
-          ? `${currentEntry.title} ${cleanedText}`
-          : cleanedText;
-      }
-
-      sawBlankSinceLastLine = false;
-    }
-  }
-
-  return results;
+interface UrlSegment {
+  text: string;
+  url: string;
 }
 
-function parseNumberedListLines(lines: string[]): ParsedTelegramPart[] {
-  const results: ParsedTelegramPart[] = [];
-  let currentEntry: ParsedTelegramPart | null = null;
-  let sawBlankSinceLastLine = false;
+function splitLineByUrls(line: string): UrlSegment[] {
+  const segments: UrlSegment[] = [];
+  GLOBAL_URL_REGEX.lastIndex = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (!trimmed) {
-      sawBlankSinceLastLine = true;
-      continue;
-    }
-    if (isSeparatorLine(trimmed) || isHeaderLine(trimmed)) {
-      sawBlankSinceLastLine = true;
-      continue;
-    }
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
 
-    const numMatch = trimmed.match(LEADING_NUMBER_LIST_REGEX);
-    if (numMatch) {
-      const rawNum = numMatch[1] || numMatch[2] || numMatch[3];
-      const num = parseInt(rawNum, 10);
-      if (!isNaN(num) && num >= 1 && num <= 499) {
-        const padded = String(num).padStart(2, '0');
-        const rest = numMatch[4] || '';
-        const { url, cleanedText } = extractUrlAndCleanText(rest);
-        currentEntry = {
-          id: `tg_${i}_num_${padded}`,
-          name: `Part ${padded}`,
-          title: cleanedText,
-          videoLink: url,
-        };
-        results.push(currentEntry);
-        sawBlankSinceLastLine = false;
-        continue;
-      }
+  while ((m = GLOBAL_URL_REGEX.exec(line)) !== null) {
+    const url = normalizeUrl(m[0]);
+    const rawText = line.slice(lastIndex, m.index);
+    const cleanedText = cleanLinkedSegmentText(rawText);
+    if (isValidHttpUrl(url)) {
+      segments.push({ text: cleanedText, url });
     }
+    lastIndex = m.index + m[0].length;
+  }
 
-    if (currentEntry) {
-      const { url, cleanedText } = extractUrlAndCleanText(trimmed);
-      if (url && !currentEntry.videoLink) {
-        currentEntry.videoLink = url;
-      }
-      if (cleanedText && (!currentEntry.title || !sawBlankSinceLastLine)) {
-        currentEntry.title = currentEntry.title
-          ? `${currentEntry.title} ${cleanedText}`
-          : cleanedText;
-      }
-      sawBlankSinceLastLine = false;
+  // Handle trailing descriptive text after the final URL (e.g. "https://youtu.be/1 - Vectors")
+  if (segments.length > 0 && lastIndex < line.length) {
+    const trailing = cleanLinkedSegmentText(line.slice(lastIndex));
+    if (trailing && !segments[segments.length - 1].text) {
+      segments[segments.length - 1].text = trailing;
     }
   }
 
-  return results;
-}
-
-function parseUnlabeledFallbackLines(lines: string[]): ParsedTelegramPart[] {
-  const results: ParsedTelegramPart[] = [];
-  let pendingTitleLines: string[] = [];
-  let partCounter = 0;
-
-  const flushEntry = (title: string, url: string, lineIdx: number) => {
-    partCounter++;
-    const padded = String(partCounter).padStart(2, '0');
-    results.push({
-      id: `tg_${lineIdx}_part_${padded}`,
-      name: `Part ${padded}`,
-      title: cleanTitleFragments(title),
-      videoLink: url,
-    });
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (!trimmed || isSeparatorLine(trimmed) || isHeaderLine(trimmed)) {
-      if (pendingTitleLines.length > 0 && !trimmed) {
-        // Keep up to 1 blank line only if next line has URL; otherwise keep pending text intact until URL or bullet
-      }
-      continue;
-    }
-
-    const { url, cleanedText } = extractUrlAndCleanText(trimmed);
-    const hasBulletPrefix = /^[•·▪▫▸▹►▶👉👈👇👆🔹🔸🔷🔶📌📍✅✔☑🎬🎥📹📺✨🔥⚡⭐🌟➤➔➜➡-]\s*/u.test(
-      trimmed
-    );
-
-    if (url) {
-      if (cleanedText) {
-        // Line itself has both title text and URL
-        const combinedTitle =
-          pendingTitleLines.length > 0 && !hasBulletPrefix
-            ? `${pendingTitleLines.join(' ')} — ${cleanedText}`
-            : cleanedText;
-        if (pendingTitleLines.length > 0 && hasBulletPrefix) {
-          flushEntry(pendingTitleLines.join(' '), '', i - 1);
-        }
-        flushEntry(combinedTitle, url, i);
-        pendingTitleLines = [];
-      } else if (pendingTitleLines.length > 0) {
-        // Standalone URL (or CTA + URL) following title line(s)
-        flushEntry(pendingTitleLines.join(' '), url, i);
-        pendingTitleLines = [];
-      } else {
-        // URL with no title at all
-        flushEntry('', url, i);
-      }
-      continue;
-    }
-
-    // No URL on this line
-    if (cleanedText) {
-      if (hasBulletPrefix && pendingTitleLines.length > 0) {
-        flushEntry(pendingTitleLines.join(' '), '', i - 1);
-        pendingTitleLines = [cleanedText];
-      } else {
-        pendingTitleLines.push(cleanedText);
-      }
-    }
-  }
-
-  // If the post had only bulleted/plain lines with no URLs at all, turn each pending line into a Part
-  if (results.length === 0 && pendingTitleLines.length > 0) {
-    pendingTitleLines.forEach((line, idx) => {
-      flushEntry(line, '', idx);
-    });
-  } else if (pendingTitleLines.length > 0) {
-    // Trailing title without a URL after URL-based items
-    flushEntry(pendingTitleLines.join(' '), '', lines.length);
-  }
-
-  return results;
+  return segments;
 }
 
 /**
- * Parses a pasted Telegram post into structured lesson parts across multiple formats:
- * 1. Labeled markers anywhere on a line (Day 01, Part 02, Session 1, Lesson 03, දින 01, etc.)
- * 2. Numbered lists (1., 02), #3, 1️⃣) assigned Part 01, Part 02...
- * 3. Unlabeled bullet lists or alternating Title + URL blocks assigned Part 01, Part 02...
+ * Parses a pasted Telegram post into structured lesson parts:
+ * - Any text paired with a URL (either inline `<a href>` text or `text https://...`) becomes a part.
+ * - Multiple links on a single line split into separate parts.
+ * - Labeled markers (`Day 01`, `Part 02`, `Session 1`, `Lesson 03`, `දින 01`, etc.) anywhere in a
+ *   segment/line keep their label as `name` and use remaining text as `title`.
+ * - Unlabeled linked text uses the linked text itself as `name`.
+ * - Mixed posts (combining `Day 01` entries and plain linked items) keep all items without dropping links.
+ * - Supports multi-line `Title` -> `URL` pairs and linkless numbered/bulleted lists.
  */
 export function parseTelegramPost(input: string): ParsedTelegramPart[] {
   if (!input || !input.trim()) return [];
 
   const lines = input.split(/\r?\n/);
+  const results: ParsedTelegramPart[] = [];
 
-  // Strategy 1: Explicit labeled markers (Day 01, Part 01, Session 02, etc.) anywhere on a line
-  const labeled = parseLabeledLines(lines);
-  if (labeled.length > 0) {
-    return labeled;
+  let activeEntry: ParsedTelegramPart | null = null;
+  let activeIsBareHeader = false;
+  let sawBlankSinceActive = false;
+  let pendingTitleLines: string[] = [];
+  let autoPartCounter = 0;
+
+  const nextFallbackName = () => {
+    autoPartCounter++;
+    return `Part ${String(autoPartCounter).padStart(2, '0')}`;
+  };
+
+  const buildPartsFromSegmentText = (
+    text: string,
+    url: string,
+    lineIdx: number,
+    segIdx: number
+  ): { parts: ParsedTelegramPart[]; wasLabeled: boolean } => {
+    const tokens = findKeywordTokens(text);
+
+    if (tokens.length > 0) {
+      const primaryPrefix = tokens[0].labelPrefix;
+      const sameFamilyTokens = tokens.filter((t) => t.labelPrefix === primaryPrefix);
+
+      if (sameFamilyTokens.length > 1) {
+        const multiParts: ParsedTelegramPart[] = [];
+        for (let k = 0; k < sameFamilyTokens.length; k++) {
+          const tok = sameFamilyTokens[k];
+          const sliceStart = k === 0 ? 0 : tok.matchStart;
+          const sliceEnd =
+            k < sameFamilyTokens.length - 1 ? sameFamilyTokens[k + 1].matchStart : text.length;
+          const subLine = text.slice(sliceStart, sliceEnd);
+          const adjustedToken: KeywordTokenMatch = {
+            ...tok,
+            matchStart: tok.matchStart - sliceStart,
+            matchEnd: tok.matchEnd - sliceStart,
+          };
+          const part = extractEntryFromTokenSpan(subLine, adjustedToken, lineIdx, segIdx * 10 + k);
+          if (url && k === sameFamilyTokens.length - 1 && !part.videoLink) {
+            part.videoLink = url;
+          }
+          multiParts.push(part);
+        }
+        return { parts: multiParts, wasLabeled: true };
+      }
+
+      const chosenToken = tokens.find((t) => t.labelPrefix === 'Day') || tokens[0];
+      const part = extractEntryFromTokenSpan(text, chosenToken, lineIdx, segIdx);
+      if (url && !part.videoLink) {
+        part.videoLink = url;
+      }
+      return { parts: [part], wasLabeled: true };
+    }
+
+    const numMatch = text.match(LEADING_NUMBER_LIST_REGEX);
+    if (numMatch) {
+      const rawNum = numMatch[1] || numMatch[2] || numMatch[3];
+      const num = parseInt(rawNum, 10);
+      if (!isNaN(num) && num >= 1 && num <= 499) {
+        const padded = String(num).padStart(2, '0');
+        const restTitle = cleanLinkedSegmentText(numMatch[4] || '');
+        return {
+          parts: [
+            {
+              id: `tg_${lineIdx}_${segIdx}_num_${padded}`,
+              name: `Part ${padded}`,
+              title: restTitle,
+              videoLink: url,
+            },
+          ],
+          wasLabeled: true,
+        };
+      }
+    }
+
+    // Unlabeled linked text -> use the linked text itself as the part name
+    const cleanName = cleanLinkedSegmentText(text);
+    const finalName = cleanName || nextFallbackName();
+    return {
+      parts: [
+        {
+          id: `tg_${lineIdx}_${segIdx}_link_${results.length + 1}`,
+          name: finalName,
+          title: '',
+          videoLink: url,
+        },
+      ],
+      wasLabeled: false,
+    };
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+
+    if (!trimmed) {
+      if (sawBlankSinceActive && pendingTitleLines.length > 0) {
+        pendingTitleLines = [];
+      }
+      sawBlankSinceActive = true;
+      continue;
+    }
+
+    if (isSeparatorLine(trimmed) || isHeaderLine(trimmed)) {
+      sawBlankSinceActive = true;
+      pendingTitleLines = [];
+      continue;
+    }
+
+    const urlSegments = splitLineByUrls(trimmed);
+
+    if (urlSegments.length > 0) {
+      // Single bare URL (or CTA + URL like "Watch Video https://...") with no descriptive text
+      if (urlSegments.length === 1 && !urlSegments[0].text) {
+        const url = urlSegments[0].url;
+        if (activeEntry && !activeEntry.videoLink) {
+          activeEntry.videoLink = url;
+          activeIsBareHeader = false;
+          pendingTitleLines = [];
+          sawBlankSinceActive = false;
+          continue;
+        }
+
+        if (pendingTitleLines.length > 0) {
+          const combinedPending = cleanTitleFragments(pendingTitleLines.join(' '));
+          pendingTitleLines = [];
+          if (combinedPending) {
+            const built = buildPartsFromSegmentText(combinedPending, url, i, 0);
+            results.push(...built.parts);
+            activeEntry = built.wasLabeled ? built.parts[built.parts.length - 1] : null;
+            activeIsBareHeader = false;
+            sawBlankSinceActive = false;
+            continue;
+          }
+        }
+
+        results.push({
+          id: `tg_${i}_0_url_${results.length + 1}`,
+          name: nextFallbackName(),
+          title: '',
+          videoLink: url,
+        });
+        activeEntry = null;
+        activeIsBareHeader = false;
+        pendingTitleLines = [];
+        sawBlankSinceActive = false;
+        continue;
+      }
+
+      // If previous line was a bare label header (e.g. "👉 Day 01") with no title & no link yet,
+      // and this single-link line has unlabeled title text + link, attach both to that header entry
+      if (
+        urlSegments.length === 1 &&
+        activeEntry &&
+        activeIsBareHeader &&
+        !activeEntry.title &&
+        !activeEntry.videoLink &&
+        findKeywordTokens(urlSegments[0].text).length === 0
+      ) {
+        activeEntry.title = urlSegments[0].text;
+        activeEntry.videoLink = urlSegments[0].url;
+        activeIsBareHeader = false;
+        pendingTitleLines = [];
+        sawBlankSinceActive = false;
+        continue;
+      }
+
+      // Otherwise, every text+link segment on this line becomes its own part
+      pendingTitleLines = [];
+      for (let s = 0; s < urlSegments.length; s++) {
+        const seg = urlSegments[s];
+        const built = buildPartsFromSegmentText(seg.text, seg.url, i, s);
+        results.push(...built.parts);
+        activeEntry = built.wasLabeled ? built.parts[built.parts.length - 1] : null;
+        activeIsBareHeader = false;
+      }
+      sawBlankSinceActive = false;
+      continue;
+    }
+
+    // Line has NO URLs
+    const tokens = findKeywordTokens(trimmed);
+    if (tokens.length > 0) {
+      pendingTitleLines = [];
+      const built = buildPartsFromSegmentText(trimmed, '', i, 0);
+      results.push(...built.parts);
+      const last = built.parts[built.parts.length - 1] || null;
+      activeEntry = last;
+      activeIsBareHeader = Boolean(last && !last.title && !last.videoLink);
+      sawBlankSinceActive = false;
+      continue;
+    }
+
+    // Numbered list item without URL (when not continuing an untitled bare header)
+    const numMatch = trimmed.match(LEADING_NUMBER_LIST_REGEX);
+    if (numMatch && (!activeEntry || activeEntry.videoLink || sawBlankSinceActive || activeEntry.title)) {
+      const rawNum = numMatch[1] || numMatch[2] || numMatch[3];
+      const num = parseInt(rawNum, 10);
+      if (!isNaN(num) && num >= 1 && num <= 499) {
+        pendingTitleLines = [];
+        const padded = String(num).padStart(2, '0');
+        const restTitle = cleanTitleFragments(numMatch[4] || '');
+        const part: ParsedTelegramPart = {
+          id: `tg_${i}_0_num_${padded}`,
+          name: `Part ${padded}`,
+          title: restTitle,
+          videoLink: '',
+        };
+        results.push(part);
+        activeEntry = part;
+        activeIsBareHeader = !restTitle;
+        sawBlankSinceActive = false;
+        continue;
+      }
+    }
+
+    // Plain unlinked text line
+    const cleanedLine = cleanTitleFragments(trimmed);
+    if (!cleanedLine || LINK_CTA_ONLY_REGEX.test(cleanedLine)) {
+      continue;
+    }
+
+    // Continue active labeled entry's title ONLY if it doesn't already have a link
+    // (and either has no title yet, or immediately follows the header without a blank line)
+    if (
+      activeEntry &&
+      !activeEntry.videoLink &&
+      (!activeEntry.title || !sawBlankSinceActive)
+    ) {
+      activeEntry.title = activeEntry.title
+        ? `${activeEntry.title} ${cleanedLine}`
+        : cleanedLine;
+      activeIsBareHeader = false;
+      sawBlankSinceActive = false;
+      continue;
+    }
+
+    // Otherwise store as pending title for a possible next-line URL (or linkless fallback)
+    if (sawBlankSinceActive) {
+      pendingTitleLines = [cleanedLine];
+    } else {
+      pendingTitleLines.push(cleanedLine);
+    }
+    activeEntry = null;
+    activeIsBareHeader = false;
+    sawBlankSinceActive = false;
   }
 
-  // Strategy 2: Numbered list items (1., 01), #1, 1️⃣)
-  const numbered = parseNumberedListLines(lines);
-  if (numbered.length > 0) {
-    return numbered;
+  // Fallback for posts with zero links and zero labeled/numbered lines (e.g., plain bulleted topics)
+  if (results.length === 0) {
+    const plainLines = lines
+      .map((l) => l.trim())
+      .filter((l) => l && !isSeparatorLine(l) && !isHeaderLine(l))
+      .map((l) => cleanTitleFragments(l))
+      .filter((l) => l && !LINK_CTA_ONLY_REGEX.test(l));
+
+    plainLines.forEach((lineText, idx) => {
+      const padded = String(idx + 1).padStart(2, '0');
+      results.push({
+        id: `tg_${idx}_fallback_${padded}`,
+        name: `Part ${padded}`,
+        title: lineText,
+        videoLink: '',
+      });
+    });
   }
 
-  // Strategy 3: Unlabeled bullet lines or Title + Link pairs
-  return parseUnlabeledFallbackLines(lines);
+  return results;
 }
