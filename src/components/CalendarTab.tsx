@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { useNavigation } from '../navigation';
@@ -30,6 +30,12 @@ import {
   ArrowRight,
   RotateCcw,
   Clock,
+  GripVertical,
+  Atom,
+  FlaskConical,
+  Calculator,
+  FileText,
+  GraduationCap,
 } from 'lucide-react';
 
 interface CalendarTabProps {
@@ -383,23 +389,48 @@ const AgendaTaskRow: React.FC<AgendaTaskRowProps> = ({
   );
 };
 
+function renderTaskSubjectIcon(task: AgendaTask, size = 15): React.ReactNode {
+  const hint = `${task.subjectLabel} ${task.category || ''}`.toLowerCase();
+  if (hint.includes('phys')) return <Atom size={size} strokeWidth={1.9} />;
+  if (hint.includes('chem')) return <FlaskConical size={size} strokeWidth={1.9} />;
+  if (hint.includes('math') || hint.includes('combined')) return <Calculator size={size} strokeWidth={1.9} />;
+  if (hint.includes('past paper')) return <FileText size={size} strokeWidth={1.9} />;
+  if (hint.includes('tuition')) return <GraduationCap size={size} strokeWidth={1.9} />;
+  if (hint.includes('revision') || task.source === 'revisit') return <RotateCcw size={size} strokeWidth={1.9} />;
+  if (hint.includes('notes')) return <PenTool size={size} strokeWidth={1.9} />;
+  return <BookOpen size={size} strokeWidth={1.9} />;
+}
+
 interface TimelineTaskCardProps {
   task: AgendaTask;
   topPx: number;
   heightPx: number;
+  isDragging?: boolean;
+  isSwapTarget?: boolean;
+  previewShiftPx?: number;
   onToggle: (task: AgendaTask) => void;
+  onTogglePastPaper: (task: AgendaTask) => void;
   onOpenMenu: (task: AgendaTask) => void;
+  onGripPointerDown: (e: React.PointerEvent, task: AgendaTask) => void;
 }
 
 const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
   task,
   topPx,
   heightPx,
+  isDragging = false,
+  isSwapTarget = false,
+  previewShiftPx = 0,
   onToggle,
+  onTogglePastPaper,
   onOpenMenu,
+  onGripPointerDown,
 }) => {
   const isWatched = task.done;
-  const showDetail = task.source === 'hour' && !!task.detail && heightPx >= 90;
+  const isSubjectWithPart = task.source === 'subject' && !!task.partId;
+  const isPastPaper = !!task.pastPaperDone;
+  const isTall = heightPx >= 84;
+  const showDetail = task.source === 'hour' && !!task.detail && heightPx >= 94;
 
   const cardSurfaceStyle: React.CSSProperties = isWatched
     ? {
@@ -407,17 +438,28 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
         backgroundImage:
           'repeating-linear-gradient(-45deg, #F6F4EF, #F6F4EF 6px, #EDE9DF 6px, #EDE9DF 12px)',
         borderColor: '#E4E0D8',
+        boxShadow: isDragging
+          ? '0 14px 28px -8px rgba(24,23,21,0.16), 0 4px 10px -2px rgba(24,23,21,0.08)'
+          : 'none',
       }
     : {
         backgroundColor: task.softPalette.bg,
-        borderColor: task.softPalette.border,
+        backgroundImage: `linear-gradient(135deg, ${task.softPalette.bg} 0%, #FFFDF9 140%)`,
+        borderColor: isDragging || isSwapTarget ? task.softPalette.accent : task.softPalette.border,
+        boxShadow: isDragging
+          ? '0 14px 28px -8px rgba(24,23,21,0.16), 0 4px 10px -2px rgba(24,23,21,0.08)'
+          : isSwapTarget
+          ? `0 0 0 1px ${task.softPalette.accent}40, inset 0 1px 0 rgba(255,255,255,0.75)`
+          : 'inset 0 1px 0 rgba(255,255,255,0.75), 0 1px 2px rgba(24,23,21,0.03)',
       };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onOpenMenu(task)}
+      onClick={() => {
+        if (!isDragging) onOpenMenu(task);
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
         onOpenMenu(task);
@@ -428,45 +470,59 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
           onOpenMenu(task);
         }
       }}
-      title="Tap card for options · Tap circle to mark done"
+      title="Drag grip to reorder · Tap card for options"
       style={{
         top: `${topPx}px`,
         height: `${heightPx}px`,
         left: '0%',
         width: '100%',
+        transform: isDragging
+          ? 'scale(1.015)'
+          : previewShiftPx !== 0
+          ? `translateY(${previewShiftPx}px)`
+          : undefined,
+        zIndex: isDragging ? 40 : isSwapTarget ? 20 : 10,
+        transition: isDragging
+          ? 'box-shadow 150ms ease, border-color 150ms ease'
+          : 'transform 160ms cubic-bezier(0.16, 1, 0.3, 1), top 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms ease',
         ...cardSurfaceStyle,
       }}
-      className="absolute rounded-xl border px-3 py-2 flex items-start gap-2.5 transition-all duration-150 cursor-pointer select-none overflow-hidden hover:shadow-[0_1px_6px_rgba(24,23,21,0.05)]"
+      className={`absolute rounded-xl border px-2 sm:px-3 py-2 flex ${
+        isTall ? 'items-start pt-2.5' : 'items-center'
+      } gap-1.5 sm:gap-2 cursor-pointer select-none overflow-hidden hover:shadow-[0_2px_8px_rgba(24,23,21,0.05)]`}
     >
-      {/* Left Check Circle (>= 40px invisible tap target) */}
+      {/* Drag Grip Handle (>= 40px height, touch-none so mobile drags cleanly) */}
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle(task);
-        }}
-        className="w-10 h-10 -ml-3 -my-2 flex items-center justify-center rounded-lg hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
-        aria-label={isWatched ? 'Mark incomplete' : 'Mark done'}
-        title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
+        onPointerDown={(e) => onGripPointerDown(e, task)}
+        onClick={(e) => e.stopPropagation()}
+        aria-label={`Drag to reorder ${task.title}`}
+        title="Drag to reorder"
+        className="w-6 h-10 -ml-1 flex items-center justify-center rounded-md text-[#A8A29E] hover:text-[#57534E] hover:bg-[#181715]/5 touch-none cursor-grab active:cursor-grabbing flex-shrink-0 transition-colors"
       >
-        <span
-          className="w-4 h-4 rounded-full border-[1.75px] flex items-center justify-center transition-colors"
-          style={{
-            borderColor: isWatched ? task.softPalette.accent : `${task.softPalette.accent}90`,
-            backgroundColor: isWatched ? task.softPalette.accent : '#FFFDF9',
-            color: '#FFFDF9',
-          }}
-        >
-          {isWatched && <Check size={9} strokeWidth={3} />}
-        </span>
+        <GripVertical size={14} />
       </button>
 
-      {/* Strictly Minimal Typography: Title + Time Range + Quiet Subject Kicker */}
+      {/* Soft Subject / Category Icon Emblem */}
+      <div
+        className="w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 transition-colors"
+        style={{
+          backgroundColor: isWatched ? '#F6F4EF' : '#FFFDF9',
+          borderColor: isWatched ? '#E4E0D8' : task.softPalette.border,
+          color: isWatched ? '#9C968D' : task.softPalette.accent,
+          boxShadow: isWatched ? 'none' : '0 1px 2px rgba(24,23,21,0.04)',
+        }}
+        aria-hidden="true"
+      >
+        {renderTaskSubjectIcon(task, 15)}
+      </div>
+
+      {/* Primary Info & Quiet Unboxed Metadata */}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <h3
             className={`font-sans font-semibold text-[13px] leading-tight tracking-tight m-0 min-w-0 ${
-              heightPx < 76 ? 'truncate' : 'line-clamp-2 break-words'
+              heightPx < 78 ? 'truncate' : 'line-clamp-2 break-words'
             } ${isWatched ? 'line-through text-[#78716C]' : 'text-[#181715]'}`}
           >
             {task.title}
@@ -483,11 +539,64 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
           )}
         </div>
 
-        <div
-          className="text-[11px] font-sans font-medium leading-tight truncate mt-0.5"
-          style={{ color: isWatched ? '#78716C' : task.softPalette.accent }}
-        >
-          {task.subjectLabel}
+        <div className="flex items-center gap-1.5 text-[11px] font-sans leading-tight mt-0.5 min-w-0">
+          <span
+            className="font-semibold truncate"
+            style={{ color: isWatched ? '#78716C' : task.softPalette.accent }}
+          >
+            {task.subjectLabel}
+          </span>
+
+          {task.duration && (
+            <span className="text-[#78716C] tabular-nums flex-shrink-0">
+              · {task.duration}
+            </span>
+          )}
+
+          {isSubjectWithPart && (
+            <>
+              <span className="text-[#C8C3B8] flex-shrink-0" aria-hidden="true">
+                ·
+              </span>
+              <button
+                type="button"
+                disabled={!isWatched}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isWatched) {
+                    onTogglePastPaper(task);
+                  }
+                }}
+                title={
+                  !isWatched
+                    ? 'Mark "Watched" first to unlock Past Paper'
+                    : isPastPaper
+                    ? 'Past Paper done (tap to toggle)'
+                    : 'Tap to mark Past Paper done'
+                }
+                className={`min-h-[24px] -my-1 px-1 rounded inline-flex items-center gap-1 flex-shrink-0 transition-colors ${
+                  !isWatched
+                    ? 'text-[#A8A29E] cursor-not-allowed'
+                    : isPastPaper
+                    ? 'text-[#3D7F63] font-semibold hover:bg-[#3D7F63]/10 cursor-pointer'
+                    : 'text-[#57534E] font-medium hover:text-[#181715] hover:bg-[#181715]/5 cursor-pointer'
+                }`}
+              >
+                <span
+                  className={`w-3 h-3 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                    !isWatched
+                      ? 'border-[#D6D1C7]'
+                      : isPastPaper
+                      ? 'bg-[#3D7F63] border-[#3D7F63] text-[#FFFDF9]'
+                      : 'border-[#B8B2A6]'
+                  }`}
+                >
+                  {isWatched && isPastPaper && <Check size={8} strokeWidth={3.5} />}
+                </span>
+                <span className="whitespace-nowrap">Past Paper</span>
+              </button>
+            </>
+          )}
         </div>
 
         {showDetail && (
@@ -496,6 +605,29 @@ const TimelineTaskCard: React.FC<TimelineTaskCardProps> = ({
           </p>
         )}
       </div>
+
+      {/* Right Completion Check Circle (>= 40px invisible tap target) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(task);
+        }}
+        className="w-10 h-10 -mr-2 -my-1.5 flex items-center justify-center rounded-lg hover:bg-[#181715]/5 transition-colors cursor-pointer flex-shrink-0"
+        aria-label={isWatched ? 'Mark incomplete' : 'Mark done'}
+        title={isWatched ? 'Done (click to unmark)' : 'Click to mark done'}
+      >
+        <span
+          className="w-[18px] h-[18px] rounded-full border-[1.75px] flex items-center justify-center transition-colors"
+          style={{
+            borderColor: isWatched ? task.softPalette.accent : `${task.softPalette.accent}95`,
+            backgroundColor: isWatched ? task.softPalette.accent : '#FFFDF9',
+            color: '#FFFDF9',
+          }}
+        >
+          {isWatched && <Check size={10} strokeWidth={3} />}
+        </span>
+      </button>
     </div>
   );
 };
@@ -505,7 +637,13 @@ interface DayTimelineViewProps {
   isViewingToday: boolean;
   nowMinutes: number;
   onToggle: (task: AgendaTask) => void;
+  onTogglePastPaper: (task: AgendaTask) => void;
   onOpenMenu: (task: AgendaTask) => void;
+  onReorderTaskTime: (
+    draggedTask: AgendaTask,
+    newStartMinutes: number,
+    swapWithTask?: AgendaTask | null
+  ) => void;
 }
 
 const DayTimelineView: React.FC<DayTimelineViewProps> = ({
@@ -513,13 +651,27 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
   isViewingToday,
   nowMinutes,
   onToggle,
+  onTogglePastPaper,
   onOpenMenu,
+  onReorderTaskTime,
 }) => {
-  const PX_PER_HOUR = 64;
+  const PX_PER_HOUR = 72;
   const PX_PER_MIN = PX_PER_HOUR / 60;
-  const MIN_CARD_HEIGHT = 54;
-  const GAP_PX = 4;
+  const MIN_CARD_HEIGHT = 60;
+  const GAP_PX = 5;
   const TOP_PAD = 10;
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const justDraggedRef = useRef<boolean>(false);
+
+  const [dragState, setDragState] = useState<{
+    taskId: string;
+    originTopPx: number;
+    originHeightPx: number;
+    currentTopPx: number;
+    targetMinutes: number;
+    swapTaskId: string | null;
+  } | null>(null);
 
   const layout = useMemo(() => {
     const timed = tasks
@@ -599,6 +751,116 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
     return { startHour, endHour, totalHeightPx, placed };
   }, [tasks, isViewingToday, nowMinutes, PX_PER_MIN]);
 
+  const handleGripPointerDown = (e: React.PointerEvent, task: AgendaTask) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const containerEl = containerRef.current;
+    if (!containerEl) return;
+
+    const placedItem = layout.placed.find((p) => p.task.id === task.id);
+    if (!placedItem) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = containerEl.getBoundingClientRect();
+    const pointerOffsetY = e.clientY - rect.top - placedItem.topPx;
+    const minTop = TOP_PAD;
+    const maxTop = Math.max(TOP_PAD, layout.totalHeightPx - placedItem.heightPx - TOP_PAD);
+    const minMinutes = Math.max(0, layout.startHour * 60);
+    const maxMinutes = Math.min(23 * 60 + 45, layout.endHour * 60 - 15);
+
+    const initialMinutes = task.startMinutes ?? minMinutes;
+    setDragState({
+      taskId: task.id,
+      originTopPx: placedItem.topPx,
+      originHeightPx: placedItem.heightPx,
+      currentTopPx: placedItem.topPx,
+      targetMinutes: initialMinutes,
+      swapTaskId: null,
+    });
+
+    let latestState = {
+      targetMinutes: initialMinutes,
+      swapTaskId: null as string | null,
+      moved: false,
+    };
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const currentRect = containerEl.getBoundingClientRect();
+      const rawTop = moveEvent.clientY - currentRect.top - pointerOffsetY;
+      const clampedTop = Math.max(minTop, Math.min(maxTop, rawTop));
+      if (Math.abs(clampedTop - placedItem.topPx) > 4) {
+        latestState.moved = true;
+      }
+
+      const dragCenterY = clampedTop + placedItem.heightPx / 2;
+      const hoveredItem = layout.placed.find(
+        (p) =>
+          p.task.id !== task.id &&
+          dragCenterY >= p.topPx &&
+          dragCenterY <= p.topPx + p.heightPx
+      );
+
+      let targetMinutes: number;
+      let swapTaskId: string | null = null;
+
+      if (hoveredItem && hoveredItem.task.startMinutes !== null) {
+        targetMinutes = hoveredItem.task.startMinutes;
+        swapTaskId = hoveredItem.task.id;
+      } else {
+        const rawMin = layout.startHour * 60 + ((clampedTop - TOP_PAD - 2) / PX_PER_HOUR) * 60;
+        const snapped = Math.round(rawMin / 15) * 15;
+        targetMinutes = Math.max(minMinutes, Math.min(maxMinutes, snapped));
+      }
+
+      latestState = {
+        targetMinutes,
+        swapTaskId,
+        moved: latestState.moved,
+      };
+
+      setDragState({
+        taskId: task.id,
+        originTopPx: placedItem.topPx,
+        originHeightPx: placedItem.heightPx,
+        currentTopPx: clampedTop,
+        targetMinutes,
+        swapTaskId,
+      });
+    };
+
+    const handlePointerUpOrCancel = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUpOrCancel);
+      window.removeEventListener('pointercancel', handlePointerUpOrCancel);
+
+      setDragState(null);
+
+      if (latestState.moved) {
+        justDraggedRef.current = true;
+        window.setTimeout(() => {
+          justDraggedRef.current = false;
+        }, 80);
+
+        const swapTask = latestState.swapTaskId
+          ? layout.placed.find((p) => p.task.id === latestState.swapTaskId)?.task ?? null
+          : null;
+        if (latestState.targetMinutes !== task.startMinutes || swapTask) {
+          onReorderTaskTime(task, latestState.targetMinutes, swapTask);
+        }
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUpOrCancel);
+    window.addEventListener('pointercancel', handlePointerUpOrCancel);
+  };
+
+  const handleCardOpenMenu = (task: AgendaTask) => {
+    if (justDraggedRef.current) return;
+    onOpenMenu(task);
+  };
+
   const hoursList = useMemo(() => {
     const arr: number[] = [];
     for (let h = layout.startHour; h <= layout.endHour; h++) {
@@ -614,9 +876,21 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
   const liveTopPx = TOP_PAD + ((nowMinutes - layout.startHour * 60) / 60) * PX_PER_HOUR;
   const liveClock = formatClockTime12h(nowMinutes).clock;
 
+  const dragPreviewTopPx = dragState
+    ? TOP_PAD + ((dragState.targetMinutes - layout.startHour * 60) / 60) * PX_PER_HOUR
+    : 0;
+  const dragPreviewClock = dragState ? formatClockTime12h(dragState.targetMinutes) : null;
+  const draggedTaskObj = dragState
+    ? layout.placed.find((p) => p.task.id === dragState.taskId)?.task
+    : null;
+
   return (
     <div className="bg-[#FFFDF9] border border-[#E4E0D8] rounded-2xl px-3 sm:px-4 py-2.5 shadow-[0_1px_2px_rgba(24,23,21,0.03)]">
-      <div className="relative" style={{ height: `${layout.totalHeightPx}px` }}>
+      <div
+        ref={containerRef}
+        className="relative"
+        style={{ height: `${layout.totalHeightPx}px` }}
+      >
         {/* Hour Rail Labels & Horizontal Hairlines */}
         {hoursList.map((h) => {
           const topPx = TOP_PAD + (h - layout.startHour) * PX_PER_HOUR;
@@ -669,18 +943,63 @@ const DayTimelineView: React.FC<DayTimelineViewProps> = ({
           </>
         )}
 
+        {/* Active Drag Snapped Target Clock & Drop Guide */}
+        {dragState && dragPreviewClock && (
+          <>
+            <div
+              style={{ top: `${dragPreviewTopPx - 9}px` }}
+              className="absolute left-0 w-[48px] sm:w-[56px] pr-1 text-right z-50 pointer-events-none select-none"
+            >
+              <span
+                className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-sans font-bold tabular-nums leading-none shadow-sm text-[#FFFDF9]"
+                style={{ backgroundColor: draggedTaskObj?.softPalette.accent || '#181715' }}
+              >
+                {dragPreviewClock.clock} {dragPreviewClock.period}
+              </span>
+            </div>
+            <div
+              style={{ top: `${dragPreviewTopPx}px` }}
+              className="absolute left-[50px] sm:left-[58px] right-0 z-30 pointer-events-none flex items-center"
+            >
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: draggedTaskObj?.softPalette.accent || '#181715' }}
+              />
+              <span
+                className="flex-1 h-[1.5px]"
+                style={{ backgroundColor: draggedTaskObj?.softPalette.accent || '#181715' }}
+              />
+            </div>
+          </>
+        )}
+
         {/* Single-Column Full-Width Timeline Cards */}
         <div className="absolute inset-y-0 left-[52px] sm:left-[62px] right-0 z-10">
-          {layout.placed.map((item) => (
-            <TimelineTaskCard
-              key={item.task.id}
-              task={item.task}
-              topPx={item.topPx}
-              heightPx={item.heightPx}
-              onToggle={onToggle}
-              onOpenMenu={onOpenMenu}
-            />
-          ))}
+          {layout.placed.map((item) => {
+            const isDragging = dragState?.taskId === item.task.id;
+            const isSwapTarget = dragState?.swapTaskId === item.task.id;
+            const previewShiftPx = isSwapTarget && dragState
+              ? dragState.originTopPx > item.topPx
+                ? Math.min(18, Math.max(8, (dragState.originTopPx - item.topPx) * 0.22))
+                : -Math.min(18, Math.max(8, (item.topPx - dragState.originTopPx) * 0.22))
+              : 0;
+
+            return (
+              <TimelineTaskCard
+                key={item.task.id}
+                task={item.task}
+                topPx={isDragging && dragState ? dragState.currentTopPx : item.topPx}
+                heightPx={item.heightPx}
+                isDragging={isDragging}
+                isSwapTarget={isSwapTarget}
+                previewShiftPx={previewShiftPx}
+                onToggle={onToggle}
+                onTogglePastPaper={onTogglePastPaper}
+                onOpenMenu={handleCardOpenMenu}
+                onGripPointerDown={handleGripPointerDown}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1338,6 +1657,57 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
       );
       saveFn(targetDate, { ...targetEntry, subjects: updatedSubjects });
     }
+  };
+
+  const handleReorderTimelineTask = (
+    draggedTask: AgendaTask,
+    newStartMinutes: number,
+    swapWithTask?: AgendaTask | null
+  ) => {
+    const targetDate = draggedTask.date;
+    const baseEntry = dailyEntries[targetDate] || {
+      date: targetDate,
+      hours: [],
+      subjects: [],
+      teachback: '',
+      notes: '',
+    };
+
+    const nextDraggedStart = minutesToHHMM(newStartMinutes);
+    let nextSwapStart: string | undefined;
+
+    if (swapWithTask && swapWithTask.id !== draggedTask.id && draggedTask.startMinutes !== null) {
+      if (swapWithTask.startMinutes === newStartMinutes && draggedTask.startMinutes === newStartMinutes) {
+        nextSwapStart = minutesToHHMM(Math.min(23 * 60 + 45, newStartMinutes + 15));
+      } else {
+        nextSwapStart = minutesToHHMM(draggedTask.startMinutes);
+      }
+    }
+
+    let updatedHours = [...(baseEntry.hours || [])];
+    let updatedSubjects = [...(baseEntry.subjects || [])];
+
+    const applyTimeToTask = (t: AgendaTask, timeStr: string) => {
+      if (t.source === 'hour') {
+        updatedHours = updatedHours.map((h) =>
+          h.id === t.originalId ? { ...h, startTime: timeStr } : h
+        );
+      } else if (t.source === 'subject') {
+        updatedSubjects = updatedSubjects.map((s) =>
+          s.id === t.originalId ? { ...s, startTime: timeStr } : s
+        );
+      }
+    };
+
+    applyTimeToTask(draggedTask, nextDraggedStart);
+    if (swapWithTask && nextSwapStart) {
+      applyTimeToTask(swapWithTask, nextSwapStart);
+    }
+
+    updateEntryForDate(targetDate, {
+      hours: updatedHours,
+      subjects: updatedSubjects,
+    });
   };
 
   // Due & overdue revisits for the unified Today view
@@ -2041,7 +2411,9 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ onNavigateToRevisit })
                       isViewingToday={isViewingToday}
                       nowMinutes={nowMinutes}
                       onToggle={handleToggleTask}
+                      onTogglePastPaper={handleToggleTaskPastPaper}
                       onOpenMenu={handleTaskLongPress}
+                      onReorderTaskTime={handleReorderTimelineTask}
                     />
                   )}
                 </section>
